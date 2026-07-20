@@ -1,0 +1,54 @@
+# Build every Linux host closure on a natively matching runner, so a green
+# check means each machine provably builds — not just evaluates (check.yml).
+# Substitutes from cache.nixos.org; --fallback builds locally if a path is
+# missing there.
+#
+# neon (darwin) is deliberately absent: its closure contains the customized
+# linux-builder VM image (an aarch64-linux derivation) which is not on
+# cache.nixos.org, and a macOS runner has no Linux builder to make it.
+# Adding neon needs a personal binary cache seeded from the Mac first.
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  closure:
+    name: ${{ matrix.host }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: vm-aarch64-fusion
+            runner: ubuntu-24.04-arm
+          - host: vm-aarch64-utm
+            runner: ubuntu-24.04-arm
+          - host: vm-aarch64-apple
+            runner: ubuntu-24.04-arm
+          - host: wsl
+            runner: ubuntu-latest
+          - host: helium
+            runner: ubuntu-latest
+          - host: oxygen
+            runner: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The token avoids GitHub API rate limits when fetching flake inputs.
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build system closure
+        run: |
+          nix build -L --fallback --no-link --print-out-paths \
+            ".#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel"
