@@ -103,6 +103,16 @@ gc: ## Delete system generations older than 7d and collect store garbage
 	sudo nix profile wipe-history --profile $(SYSTEM_PROFILE) --older-than 7d
 	nix store gc
 
+# The customized linux-builder image is an aarch64-linux derivation that
+# cache.nixos.org does not carry; neon's CI build substitutes it from the
+# personal cachix cache. Re-run this after a flake.lock bump changes the
+# image (the failing neon CI job is the reminder).
+.PHONY: cachix/seed
+cachix/seed: ## Push the linux-builder image closure to the cachix cache
+	nix build --no-link ".#darwinConfigurations.neon.config.nix.linux-builder.package"
+	nix run nixpkgs#cachix -- push micheloosterhof \
+		"$$(nix eval --raw '.#darwinConfigurations.neon.config.nix.linux-builder.package.outPath')"
+
 .PHONY: store/verify
 store/verify: ## Check the integrity of every store path
 	nix store verify --all

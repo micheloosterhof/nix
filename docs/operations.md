@@ -95,12 +95,17 @@ evaluates every host config, catching eval breakage before deploy.
 (fast format + hygiene on commit).
 
 CI (`.github/workflows/check.yml`) runs the same `nix flake check` on every
-push. `.github/workflows/build.yml` builds every Linux host closure on a
-natively matching runner (`ubuntu-24.04-arm` for the aarch64 VMs,
-`ubuntu-latest` for wsl/helium/oxygen), so a green check means each machine
-provably builds; neon is excluded until a personal binary cache exists (its
-closure contains the customized linux-builder image, which cache.nixos.org
-does not have). `.github/workflows/update-lock.yml` opens a weekly
+push. `.github/workflows/build.yml` builds every host closure on a natively
+matching runner (`ubuntu-24.04-arm` for the aarch64 VMs, `ubuntu-latest`
+for wsl/helium/oxygen, `macos-latest` for neon), so a green check means
+each machine provably builds. neon's closure contains the customized
+linux-builder image (aarch64-linux, not on cache.nixos.org, unbuildable on
+a macOS runner); CI substitutes it from the personal cachix cache
+(`https://micheloosterhof.cachix.org`, wired as a substituter on every host
+in `modules/nix-settings.nix`). After a flake.lock bump changes that image,
+re-seed the cache from the Mac with `make cachix/seed` — until then the
+neon job fails on the missing image. `.github/workflows/update-lock.yml`
+opens a weekly
 flake.lock bump PR with the input changes in the body and dispatches
 check/build onto the branch. `.github/workflows/dependency-graph.yml`
 submits a representative host's closure to GitHub's dependency graph so

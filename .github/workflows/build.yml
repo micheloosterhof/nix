@@ -1,12 +1,12 @@
-# Build every Linux host closure on a natively matching runner, so a green
-# check means each machine provably builds — not just evaluates (check.yml).
-# Substitutes from cache.nixos.org; --fallback builds locally if a path is
-# missing there.
+# Build every host closure on a natively matching runner, so a green check
+# means each machine provably builds — not just evaluates (check.yml).
+# Substitutes from cache.nixos.org plus the personal cachix cache;
+# --fallback builds locally if a path is missing from both.
 #
-# neon (darwin) is deliberately absent: its closure contains the customized
-# linux-builder VM image (an aarch64-linux derivation) which is not on
-# cache.nixos.org, and a macOS runner has no Linux builder to make it.
-# Adding neon needs a personal binary cache seeded from the Mac first.
+# neon depends on the cachix cache holding the customized linux-builder
+# image (an aarch64-linux derivation a macOS runner cannot build). After a
+# flake.lock bump changes that image, run `make cachix/seed` from the Mac —
+# until then the neon job fails on the missing image, which is the signal.
 name: build
 
 on:
@@ -30,16 +30,25 @@ jobs:
         include:
           - host: vm-aarch64-fusion
             runner: ubuntu-24.04-arm
+            attr: nixosConfigurations.vm-aarch64-fusion.config.system.build.toplevel
           - host: vm-aarch64-utm
             runner: ubuntu-24.04-arm
+            attr: nixosConfigurations.vm-aarch64-utm.config.system.build.toplevel
           - host: vm-aarch64-apple
             runner: ubuntu-24.04-arm
+            attr: nixosConfigurations.vm-aarch64-apple.config.system.build.toplevel
           - host: wsl
             runner: ubuntu-latest
+            attr: nixosConfigurations.wsl.config.system.build.toplevel
           - host: helium
             runner: ubuntu-latest
+            attr: nixosConfigurations.helium.config.system.build.toplevel
           - host: oxygen
             runner: ubuntu-latest
+            attr: nixosConfigurations.oxygen.config.system.build.toplevel
+          - host: neon
+            runner: macos-latest
+            attr: darwinConfigurations.neon.system
     steps:
       - uses: actions/checkout@v5
 
@@ -47,8 +56,10 @@ jobs:
       - uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            extra-substituters = https://micheloosterhof.cachix.org
+            extra-trusted-public-keys = micheloosterhof.cachix.org-1:A80V0fr3ruUDRZtyNLGQLNCi9pL5aYyr4r9IfA590xA=
 
       - name: build system closure
         run: |
-          nix build -L --fallback --no-link --print-out-paths \
-            ".#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel"
+          nix build -L --fallback --no-link --print-out-paths ".#${{ matrix.attr }}"
