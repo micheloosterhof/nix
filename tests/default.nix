@@ -240,6 +240,22 @@ lib.runTests {
     expected = true;
   };
 
+  # modules/nix-settings.nix: the personal cachix cache is a substituter on
+  # every host (CI substitutes the linux-builder image from it for neon).
+  testCachixSubstituterNixos = {
+    expr = builtins.elem "https://micheloosterhof.cachix.org" fusion.nix.settings.extra-substituters;
+    expected = true;
+  };
+  testCachixSubstituterDarwin = {
+    expr = builtins.elem "https://micheloosterhof.cachix.org" mac.nix.settings.extra-substituters;
+    expected = true;
+  };
+  # Substituters stay optional: substitution failure falls back to building.
+  testSubstituterFallback = {
+    expr = fusion.nix.settings.fallback;
+    expected = true;
+  };
+
   # modules/vm.nix: VM DNS is strict DoT to Quad9 with no plaintext fallback
   # (fails closed rather than leaking to the NAT gateway's resolver).
   testVmDnsOverTls = {

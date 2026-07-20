@@ -32,6 +32,23 @@ let
           # Use XDG dirs (~/.local/state/nix, ~/.config/nix) instead of the
           # ~/.nix-profile / ~/.nix-defexpr dotfiles.
           use-xdg-base-directories = true;
+
+          # Substituters are best-effort: an unreachable cache costs 5
+          # seconds (not a hang), and a failed substitution falls back to a
+          # local build (not an error). Keeps the cachix cache and roaming
+          # network conditions optional for every operation.
+          fallback = true;
+          connect-timeout = 5;
+
+          # Personal binary cache, holding artifacts cache.nixos.org lacks —
+          # notably the customized linux-builder image, which neon's CI build
+          # substitutes (a macOS runner cannot build aarch64-linux). Seed
+          # with `make cachix/seed`. The extra-* forms append to the
+          # defaults instead of replacing them.
+          extra-substituters = [ "https://micheloosterhof.cachix.org" ];
+          extra-trusted-public-keys = [
+            "micheloosterhof.cachix.org-1:A80V0fr3ruUDRZtyNLGQLNCi9pL5aYyr4r9IfA590xA="
+          ];
         };
 
         # Periodically hard-link identical store paths. On macOS this is the
