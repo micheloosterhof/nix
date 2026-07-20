@@ -1,0 +1,117 @@
+#!/bin/bash
+# Environment variables. This should be able to run non-interactively
+
+umask 077
+ulimit -c 0
+
+# This is an attempt to create order from chaos in platform naming
+# All info is derived from uname and lowercased.  OS patchlevel is truncated.
+export OS=`uname -s | sed -e 's/  */-/g;y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/'`
+#export OSVERSION=`uname -r`; OSVERSION=`expr "$OSVERSION" : '[^0-9]*\([0-9]*\.[0-9]*\)'`
+#export MACHINE=`uname -m | sed -e 's/  */-/g;y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/'`
+#export PLATFORM="$MACHINE-$OS-$OSVERSION"
+
+#[ -z "$HOSTNAME" ] && export HOSTNAME=$(hostname -s)
+
+case $OS in
+darwin)
+  # path_helper sets PATH from /etc/paths and /etc/paths.d/*
+  eval $(/usr/libexec/path_helper -s)
+  # Homebrew shellenv: HOMEBREW_PREFIX, MANPATH/INFOPATH, /opt/homebrew/{bin,sbin} on PATH.
+  [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+;;
+esac
+
+# Prepend personal dirs to the inherited PATH. On NixOS the Nix profiles
+# (/run/current-system/sw/bin, /etc/profiles/per-user/$USER/bin) and
+# ~/.local/bin are already on PATH at login (environment.localBinInPath);
+# on macOS they are not, so the darwin block below adds the Nix profiles.
+USER_PATHS=" ${HOME}/.bin
+             ${HOME}/.local/bin
+             ${HOME}/.cargo/bin
+             ${HOME}/.go/bin"
+for f in $USER_PATHS; do
+    [ -d "$f" ] && case ":$PATH:" in
+        *":$f:"*) ;;
+        *) PATH="$f:$PATH" ;;
+    esac
+done
+export PATH
+unset USER_PATHS
+
+NIXPROFILES="/run/current-system/sw/etc/profile.d/nix.sh
+             ${HOME}/.nix-profile/etc/profile.d/nix.sh
+             /nix/var/nix/profiles/default/etc/profile.d/nix.sh
+             /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
+
+for profile in $NIXPROFILES; do
+    if [ -e $profile ]; then
+        source $profile
+        break
+    fi
+done
+
+# nix-darwin does not put the per-user / current-system Nix profiles on
+# PATH the way NixOS does, so add them here on macOS. The per-user profile
+# is listed last so it ends up first on PATH after the prepends.
+case $OS in
+darwin)
+  NIX_PROFILE_PATHS="/run/current-system/sw/bin
+                     /etc/profiles/per-user/${USER}/bin"
+  for f in $NIX_PROFILE_PATHS; do
+      [ -d "$f" ] && case ":$PATH:" in
+          *":$f:"*) ;;
+          *) PATH="$f:$PATH" ;;
+      esac
+  done
+  export PATH
+  unset NIX_PROFILE_PATHS
+;;
+esac
+
+unset HISTFILE
+export HISTCONTROL=ignoredups
+unset TMOUT
+unset TIMEOUT
+export IGNOREEOF=1
+
+export NETHACKOPTIONS='decgraphics,gender:male,dogname:Spot,pickup_types:$,race:Elf,role:Valkyrie,color'
+
+export BLOCKSIZE=1K
+
+export LANG=C.UTF-8
+export PAPERSIZE=a4
+
+export VISUAL=vi
+export EDITOR=${VISUAL}
+export PAGER=less
+
+# Don’t clear the screen after quitting a manual page
+export MANPAGER="less -X";
+
+[ -d ${HOME}/.tmp ] && export TMPDIR="${HOME}/.tmp"
+[ -d ${HOME}/.log ] && export LOGDIR="${HOME}/.log/"
+
+case $OS in
+linux)
+  export ICEAUTHORITY=$TMPDIR/.ICEauthority
+  export XKBOPTIONS='compose:ralt'
+  export DEBEMAIL='michel@oosterhof.net'
+  export DEBFULLNAME='Michel Oosterhof'
+;;
+darwin)
+  export HOMEBREW_NO_INSECURE_REDIRECT=1
+  export LSCOLORS=gxfxbEaEBxxEhEhBaDaCaD
+  export BASH_SILENCE_DEPRECATION_WARNING=1
+  # Secure Enclave provider for sk-type SSH keys (ssh-add/ssh-keygen)
+  export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
+;;
+esac
+
+export NIXPKGS_ALLOW_UNFREE=1
+
+
+# Set marker so this is not run twice
+export MICHEL=1
+
+# eof

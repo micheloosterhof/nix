@@ -1,0 +1,127 @@
+#!/bin/bash
+
+# If not running interactively, don't do anything
+[ -z "$PS1" ] && return
+[ ! -t 1 ] && return
+
+[ -z "$MICHEL" ] && \. ${HOME}/.bash_env
+
+[ -f /etc/static/bashrc ] && source /etc/static/bashrc
+
+# FUNCTIONS
+#########################################################################
+
+brname () {
+  a=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [ -n "$a" ]; then
+    echo " [$a]"
+  else
+    echo ""
+  fi
+}
+
+title () { echo -n "]0;$*"; }
+set -b
+
+# PROMPT
+#############################################################################
+# export PS1="\$LOGNAME@\$HOSTNAME:\$PWD [\!] \$\\n:; "
+export PS1="\$LOGNAME@\h:\$PWD [\!] \$\\n:; "
+# use :; to copy-paste entire line and still execute the command
+export PS2='(more) :; '
+
+# let control+w only delete one directory of a path, not the whole word
+export WORDCHARS='*?_[]~=&;!#$%^(){}'
+
+# TERMINAL INTEGRATION
+#############################################################################
+# OSC 133 prompt mark + OSC 7 working-directory report before every prompt:
+# enables jump-to-prompt (terminal and tmux copy-mode [ / ]) and makes new
+# windows/splits open in the current directory.
+osc_prompt () { printf '\033]133;A\033\\\033]7;file://%s%s\033\\' "${HOSTNAME}" "${PWD}"; }
+PROMPT_COMMAND="osc_prompt${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+
+# less
+##############################################################################
+export LESS='iFMQRWX'
+export LESSHISTFILE='-'
+export LESSCHARSET='utf-8'
+type lesspipe >/dev/null 2>&1 && eval `lesspipe`
+type lesspipe.sh >/dev/null 2>&1 && eval `lesspipe.sh`
+
+# colors in man pages
+export LESS_TERMCAP_mb=$(tput bold; tput setaf 2) # green
+export LESS_TERMCAP_md=$(tput bold; tput setaf 6) # cyan
+export LESS_TERMCAP_me=$(tput sgr0)
+export LESS_TERMCAP_so=$(tput bold; tput setaf 3; tput setab 4) # yellow on blue
+export LESS_TERMCAP_se=$(tput rmso; tput sgr0)
+export LESS_TERMCAP_us=$(tput smul; tput bold; tput setaf 7) # white
+export LESS_TERMCAP_ue=$(tput rmul; tput sgr0)
+export LESS_TERMCAP_mr=$(tput rev)
+export LESS_TERMCAP_mh=$(tput dim)
+export LESS_TERMCAP_ZN=$(tput ssubm)
+export LESS_TERMCAP_ZV=$(tput rsubm)
+export LESS_TERMCAP_ZO=$(tput ssupm)
+export LESS_TERMCAP_ZW=$(tput rsupm)
+
+# ALIASES
+#############################################################################
+alias dot='. ~/.bash_profile; echo "# reloaded .bash_profile"'
+
+alias tf=terraform
+alias tl='tmux list-sessions'
+alias ta='tmux attach'
+alias zed='zeditor'
+
+alias g=egrep
+alias h=history
+alias j=jobs
+alias k=kubectl
+alias ks='kubectl run -it --image bash --restart Never --rm shell'
+alias man='man -a'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# ls
+#############################################################################
+LS_OPT=''
+if [ -t 1 ]; then
+  COLORS=$(tput colors 2>/dev/null)
+  [ $? -ne 0 ] && COLORS=0
+  [ $COLORS -gt 0 ] && [ x$OS = "xfreebsd" ] && LS_OPT='-G'
+  [ $COLORS -gt 0 ] && [ x$OS = "xdarwin" ] && LS_OPT='-G'
+  [ $COLORS -gt 0 ] && [ x$OS = "xlinux" ] && LS_OPT='--color=auto'
+  [ -x /usr/bin/dircolors ] && eval `dircolors ~/.dircolors`
+  alias ls="ls -F $LS_OPT"
+  alias v='ls -l'
+  alias va='ls -al'
+  alias vr='ls -lrt'
+  alias vz='ls -lSr'
+  alias d='ls -s'
+  alias da='ls -As'
+fi
+
+case $OS in
+debian)
+;;
+darwin)
+  alias top="/usr/bin/top -o cpu"
+  alias vlc=/Applications/VLC.app/Contents/MacOS/VLC
+;;
+esac
+
+alias llm='claude --permission-mode auto'
+
+# load direnv
+type direnv >/dev/null 2>&1 && eval "$(direnv hook bash)"
+
+# load fzf
+# back fzf with ripgrep so file search respects .gitignore, when available
+type rg >/dev/null 2>&1 && export FZF_DEFAULT_COMMAND="rg --files --hidden --glob '!.git'" FZF_CTRL_T_COMMAND="rg --files --hidden --glob '!.git'"
+type fzf >/dev/null 2>&1 && eval "$(fzf --bash)"
+
+# Use bash-completion, if available
+[ -f ${HOME}/.bash_completion ] && \
+    . ${HOME}/.bash_completion
+
+

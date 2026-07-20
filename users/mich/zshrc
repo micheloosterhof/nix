@@ -1,0 +1,168 @@
+#!/bin/zsh
+
+# Commands are then read from $ZDOTDIR/.zshenv. If the shell is a
+# login shell, commands are read from /etc/zprofile and then
+# $ZDOTDIR/.zprofile. Then, if the shell is interactive, commands are
+# read from /etc/zshrc and then $ZDOTDIR/.zshrc. Finally, if the shell
+# is a login shell, /etc/zlogin and $ZDOTDIR/.zlogin are read.
+
+# FUNCTIONS
+#########################################################################
+
+brname () {
+  a=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [ -n "$a" ]; then
+    echo " [$a]"
+  else
+    echo ""
+  fi
+}
+
+title () { echo -n "]0;$*"; }
+
+# PROMPT
+#############################################################################
+# export PS1="\$LOGNAME@\$HOSTNAME:\$PWD [\!] \$\\n:; "
+NEWLINE=$'\n'
+export PS1="%n@%m:%~ %#${NEWLINE}:; "
+# use :; to copy-paste entire line and still execute the command
+export PS2='(more) :; '
+
+# let control+w only delete one directory of a path, not the whole word
+export WORDCHARS='*?_[]~=&;!#$%^(){}'
+
+# TERMINAL INTEGRATION
+#############################################################################
+autoload -Uz add-zsh-hook
+
+# OSC 133 prompt mark before every prompt: enables jump-to-prompt in the
+# terminal and tmux copy-mode [ / ] prompt navigation.
+osc133-mark () { print -n '\e]133;A\e\\' }
+add-zsh-hook precmd osc133-mark
+
+# OSC 7 working-directory report (percent-encoded file:// URL) so the
+# terminal and tmux open new windows/splits in the current directory.
+osc7-pwd () {
+  emulate -L zsh
+  setopt extendedglob
+  local LC_ALL=C
+  printf '\e]7;file://%s%s\e\\' $HOST ${PWD//(#m)([^@-Za-z&-;_~])/%${(l:2::0:)$(([##16]#MATCH))}}
+}
+chpwd-osc7 () { (( ZSH_SUBSHELL )) || osc7-pwd }
+add-zsh-hook chpwd chpwd-osc7
+osc7-pwd
+
+# less
+##############################################################################
+export LESS='iFMQRWX'
+export LESSHISTFILE='-'
+export LESSCHARSET='utf-8'
+which lesspipe >/dev/null && eval `lesspipe`
+which lesspipe.sh >/dev/null && eval `lesspipe.sh`
+
+# colors in man pages
+export LESS_TERMCAP_mb=$(tput bold; tput setaf 2) # green
+export LESS_TERMCAP_md=$(tput bold; tput setaf 6) # cyan
+export LESS_TERMCAP_me=$(tput sgr0)
+export LESS_TERMCAP_so=$(tput bold; tput setaf 3; tput setab 4) # yellow on blue
+export LESS_TERMCAP_se=$(tput rmso; tput sgr0)
+export LESS_TERMCAP_us=$(tput smul; tput bold; tput setaf 7) # white
+export LESS_TERMCAP_ue=$(tput rmul; tput sgr0)
+export LESS_TERMCAP_mr=$(tput rev)
+export LESS_TERMCAP_mh=$(tput dim)
+export LESS_TERMCAP_ZN=$(tput ssubm)
+export LESS_TERMCAP_ZV=$(tput rsubm)
+export LESS_TERMCAP_ZO=$(tput ssupm)
+export LESS_TERMCAP_ZW=$(tput rsupm)
+
+# ALIASES
+#############################################################################
+
+alias tf=terraform
+alias tl='tmux list-sessions'
+alias ta='tmux attach'
+alias td='tmux detach'
+alias k='kubectl'
+alias ks='kubectl run -it --image bash --restart Never --rm shell'
+alias zed='zeditor'
+
+alias j=jobs
+alias g=egrep
+alias h=history
+alias man='man -a'
+alias cp='cp -i'
+alias mv='mv -i'
+alias timeout=gtimeout
+
+# HISTORY
+#############################################################################
+HISTFILE=$HOME/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+# Immediately append to history file:
+setopt INC_APPEND_HISTORY
+# Record timestamp in history:
+setopt EXTENDED_HISTORY
+# Expire duplicate entries first when trimming history:
+setopt HIST_EXPIRE_DUPS_FIRST
+# Dont record an entry that was just recorded again:
+setopt HIST_IGNORE_DUPS
+# Delete old recorded entry if new entry is a duplicate:
+setopt HIST_IGNORE_ALL_DUPS
+# Do not display a line previously found:
+setopt HIST_FIND_NO_DUPS
+# Dont record an entry starting with a space:
+setopt HIST_IGNORE_SPACE
+# Dont write duplicate entries in the history file:
+setopt HIST_SAVE_NO_DUPS
+# Share history between all sessions:
+setopt SHARE_HISTORY
+# Execute commands using history (e.g.: using !$) immediatel:
+unsetopt HIST_VERIFY
+
+# ls
+#############################################################################
+LS_OPT=''
+if [ -t 1 ]; then
+  COLORS=$(tput colors 2>/dev/null)
+  [ $? -ne 0 ] && COLORS=0
+  [ $COLORS -gt 0 ] && [ x$OS = "xfreebsd" ] && LS_OPT='-G'
+  [ $COLORS -gt 0 ] && [ x$OS = "xdarwin" ] && LS_OPT='-G'
+  [ $COLORS -gt 0 ] && [ x$OS = "xlinux" ] && LS_OPT='--color=auto'
+  [ -x /usr/bin/dircolors ] && eval `dircolors ~/.dircolors`
+  alias ls="ls -F $LS_OPT"
+  alias v='ls -l'
+  alias va='ls -al'
+  alias vr='ls -lrt'
+  alias vz='ls -lSr'
+  alias d='ls -s'
+  alias da='ls -As'
+fi
+
+# OS specific aliases
+#############################################################################
+case $OS in
+debian)
+;;
+darwin)
+  alias top="/usr/bin/top -o cpu"
+  alias vlc=/Applications/VLC.app/Contents/MacOS/VLC
+;;
+esac
+
+autoload -U +X bashcompinit && bashcompinit
+autoload -Uz compinit && compinit
+
+bindkey -e
+
+type terraform >/dev/null 2>&1 && complete -o nospace -C $(which terraform) terraform
+
+[ -e ${HOME}/.zsh_kubectl ] && source ${HOME}/.zsh_kubectl
+
+# load direnv
+type direnv >/dev/null 2>&1 && eval "$(direnv hook zsh)"
+
+# load fzf
+# back fzf with ripgrep so file search respects .gitignore, when available
+type rg >/dev/null 2>&1 && export FZF_DEFAULT_COMMAND="rg --files --hidden --glob '!.git'" FZF_CTRL_T_COMMAND="rg --files --hidden --glob '!.git'"
+type fzf >/dev/null 2>&1 && source <(fzf --zsh)

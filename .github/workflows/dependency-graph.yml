@@ -1,0 +1,46 @@
+# Submits the Nix closure of a representative host to GitHub's dependency
+# graph, so dependency review and security advisories cover the actual
+# deployed system, not just the flake inputs.
+name: dependency-graph
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [oxygen]
+    steps:
+      - uses: actions/checkout@v5
+
+      # The token avoids GitHub API rate limits when fetching flake inputs.
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build toplevel
+        env:
+          HOST: ${{ matrix.host }}
+        run: nix --quiet --print-build-logs build ".#nixosConfigurations.$HOST.config.system.build.toplevel" --out-link ./result
+
+      - name: build snapshot
+        env:
+          HOST: ${{ matrix.host }}
+        run: ./.github/scripts/nix-deps-snapshot.sh "$HOST" ./result > snapshot.json
+
+      - name: submit snapshot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$GH_REPO/dependency-graph/snapshots" \
+            --input snapshot.json

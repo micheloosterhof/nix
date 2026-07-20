@@ -1,0 +1,93 @@
+#!/bin/zsh
+
+# Commands are then read from $ZDOTDIR/.zshenv. If the shell is a
+# login shell, commands are read from /etc/zprofile and then
+# $ZDOTDIR/.zprofile. Then, if the shell is interactive, commands are
+# read from /etc/zshrc and then $ZDOTDIR/.zshrc. Finally, if the shell
+# is a login shell, /etc/zlogin and $ZDOTDIR/.zlogin are read.
+
+umask 077
+ulimit -c 0
+
+# This is an attempt to create order from chaos in platform naming
+# All info is derived from uname and lowercased.  OS patchlevel is truncated.
+export OS=`uname -s | sed -e 's/  */-/g;y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/'`
+#export OSVERSION=`uname -r`; OSVERSION=`expr "$OSVERSION" : '[^0-9]*\([0-9]*\.[0-9]*\)'`
+#export MACHINE=`uname -m | sed -e 's/  */-/g;y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/'`
+#export PLATFORM="$MACHINE-$OS-$OSVERSION"
+
+#[ -z "$HOSTNAME" ] && export HOSTNAME=$(hostname -s)
+
+# Set a basic path that works on most systems
+PATHS=( ${HOME}/.bin
+        /run/current-system/sw/bin
+        /etc/profiles/per-user/${USER}/bin
+	/usr/local/sbin
+	/usr/local/bin
+	/opt/homebrew/bin
+	/sbin
+	/bin
+	/usr/sbin
+	/usr/bin )
+
+MY_PATH=""
+for f in $PATHS; do test -d $f && MY_PATH=$MY_PATH$f:; done
+export PATH=${MY_PATH%:}; unset MY_PATH; unset PATHS
+
+# ksh/bash specific
+unset HISTFILE
+export HISTCONTROL=ignoredups
+unset TMOUT
+unset TIMEOUT
+export IGNOREEOF=1
+
+export NETHACKOPTIONS='decgraphics,gender:male,dogname:Spot,pickup_types:$,race:Elf,role:Valkyrie,color'
+
+export BLOCKSIZE=1K
+
+export LANG=C.UTF-8
+export PAPERSIZE=a4
+
+export VISUAL=vi
+export EDITOR=${VISUAL}
+export PAGER=less
+
+# Don’t clear the screen after quitting a manual page
+export MANPAGER="less -X";
+
+[ -d ${HOME}/.tmp ] && export TMPDIR="${HOME}/.tmp"
+[ -d ${HOME}/.log ] && export LOGDIR="${HOME}/.log/"
+
+export ICEAUTHORITY=$TMPDIR/.ICEauthority
+export XKBOPTIONS='compose:ralt'
+
+case $OS in
+debian)
+  export DEBEMAIL='michel@oosterhof.net'
+  export DEBFULLNAME='Michel Oosterhof'
+;;
+darwin)
+  export HOMEBREW_NO_INSECURE_REDIRECT=1
+  export LSCOLORS=gxfxbEaEBxxEhEhBaDaCaD
+  export BASH_SILENCE_DEPRECATION_WARNING=1
+  # Secure Enclave provider for sk-type SSH keys (ssh-add/ssh-keygen)
+  export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
+  # Homebrew shellenv: HOMEBREW_PREFIX, MANPATH/INFOPATH, /opt/homebrew/{bin,sbin} on PATH.
+  [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+;;
+esac
+
+NIXPROFILES=( /nix/var/nix/profiles/default/etc/profile.d/nix.sh
+              ${HOME}/.nix-profile/etc/profile.d/nix.sh
+              /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh )
+
+for profile in $NIXPROFILES; do
+    if [ -e $profile ]; then 
+        source $profile
+    fi
+done
+
+# Set marker so this is not run twice
+export MICHEL=1
+
+# eof

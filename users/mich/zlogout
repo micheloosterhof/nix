@@ -1,0 +1,9 @@
+#!/bin/bash
+# commands that are run when exiting a shell -*- shell-script -*-
+# when leaving the console clear the screen to increase privacy
+if [ "$SHLVL" = 1 ]; then
+    [ type clear_console >/dev/null 2>&1 ] && clear_console
+    [ type clear >/dev/null 2>&1 ] && clear
+else
+    echo Bye bye.
+fi

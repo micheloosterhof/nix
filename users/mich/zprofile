@@ -1,0 +1,21 @@
+#!/bin/zsh
+
+# Commands are then read from $ZDOTDIR/.zshenv. If the shell is a
+# login shell, commands are read from /etc/zprofile and then
+# $ZDOTDIR/.zprofile. Then, if the shell is interactive, commands are
+# read from /etc/zshrc and then $ZDOTDIR/.zshrc. Finally, if the shell
+# is a login shell, /etc/zlogin and $ZDOTDIR/.zlogin are read.
+
+# delete unwanted files
+rm -f ~/.shosts ~/.rhosts ~/.lesshst
+
+[ "$TERM" = "xterm" ] && title $LOGNAME@$HOSTNAME
+
+[ -z "$TMUX" ] && type tmux >/dev/null 2>&1 && tmux list-sessions 2>/dev/null | sed 's/^/# tmux /'
+
+#last -3 $LOGNAME # | egrep "^$LOGNAME" | sed 's/^/# /' || echo
+#echo
+
+# ssh-add -l | egrep -v 'no' \
+# || ssh-add 2>&1 | egrep -v 'added' \
+# || ssh-add -l | egrep -v 'no'

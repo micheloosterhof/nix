@@ -1,0 +1,5 @@
+# euro support
+set convert-meta off
+set output-meta on
+# no bell (beep) from readline
+set bell-style none

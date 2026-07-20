@@ -1,0 +1,4 @@
+set visualbell
+syntax on
+nnoremap <SPACE> <Nop>
+let mapleader=" "

@@ -1,0 +1,37 @@
+.encoding = "UTF-8"
+config.version = "8"
+virtualHW.version = "22"
+displayName = "dev"
+firmware = "efi"
+guestOS = "arm-other6xlinux-64"
+numvcpus = "4"
+cpuid.coresPerSocket = "1"
+memsize = "8192"
+
+# 256 MiB SVGA VRAM lets Fusion drive HiDPI/Retina at native pixels.
+# Without this the guest sees a smaller framebuffer and dpi=220 looks huge.
+svga.vramSize = "268435456"
+svga.guestBackedPrimaryAware = "TRUE"
+
+# Expose host-GPU 3D acceleration (SVGA3D) to the guest. The guest's Mesa
+# vmwgfx/svga driver renders against this for hardware OpenGL instead of
+# llvmpipe software rendering. Requires guest kernel >= 5.19 and Mesa >= 22.1.1.
+mks.enable3d = "TRUE"
+
+# Graphics memory for the virtual GPU. 1 GiB gives the guest vmwgfx driver
+# headroom; the 256 MiB default triggers "mob memory overflow" under load.
+svga.graphicsMemoryKB = "1048576"
+
+nvme0.present = "TRUE"
+nvme0:0.present = "TRUE"
+nvme0:0.fileName = "dev.vmdk"
+ethernet0.present = "TRUE"
+ethernet0.connectionType = "nat"
+ethernet0.virtualDev = "vmxnet3"
+ethernet0.addressType = "generated"
+usb.present = "TRUE"
+usb_xhci.present = "TRUE"
+sound.present = "FALSE"
+floppy0.present = "FALSE"
+tools.syncTime = "TRUE"
+tools.upgrade.policy = "upgradeAtPowerCycle"

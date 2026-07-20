@@ -1,0 +1,23 @@
+# CI mirror of `make lint`: nix flake check runs the nixfmt, deadnix, and
+# eval-tests checks and evaluates every host configuration, so eval breakage
+# (renamed file, dropped upstream attr, broken mksystem wiring) is caught on
+# every push without building any system.
+name: check
+
+on: push
+
+permissions:
+  contents: read
+
+jobs:
+  flake-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The token avoids GitHub API rate limits when fetching flake inputs.
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: nix flake check

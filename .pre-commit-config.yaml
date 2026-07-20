@@ -1,0 +1,22 @@
+# Fast local format + hygiene checks. Deeper Nix linting (nixfmt, deadnix)
+# runs via `nix flake check` / `make lint`.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=4096]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: local
+    hooks:
+      - id: nixfmt
+        name: nixfmt
+        entry: nix fmt --
+        language: system
+        types: [nix]

@@ -1,0 +1,10 @@
+#!/bin/bash
+# $Id: .bash_logout 10 2008-01-20 01:59:56Z michel $
+# commands that are run when exiting a shell -*- shell-script -*-
+# when leaving the console clear the screen to increase privacy
+if [ "$SHLVL" = 1 ]; then
+    [ -x /usr/bin/clear_console ] && /usr/bin/clear_console -q
+    [ -x /usr/bin/clear ] && /usr/bin/clear
+else
+    echo Bye bye.
+fi
