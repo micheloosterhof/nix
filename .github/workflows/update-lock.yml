@@ -1,0 +1,53 @@
+# Weekly flake.lock bump as a reviewable PR, with the input rev changes in
+# the PR body. check/build runs are dispatched onto the branch explicitly
+# because pushes made with GITHUB_TOKEN do not trigger on-push workflows.
+name: update-lock
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The token avoids GitHub API rate limits when fetching flake inputs.
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: bump lock, open PR, dispatch CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          nix flake update 2>&1 | tee update.log
+          if git diff --quiet -- flake.lock; then
+            echo "flake.lock already at branch tips; nothing to do"
+            exit 0
+          fi
+          branch="flake-lock/$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add flake.lock
+          git commit -m "chore(flake): update inputs"
+          git push -u origin "$branch"
+          {
+            echo "Automated weekly flake.lock bump. Input changes:"
+            echo '```'
+            cat update.log
+            echo '```'
+            echo "Review the revs above before merging; a lock bump is a real version bump."
+          } > pr-body.md
+          gh pr create --title "chore(flake): weekly input bump" --body-file pr-body.md
+          gh workflow run check.yml --ref "$branch"
+          gh workflow run build.yml --ref "$branch"
