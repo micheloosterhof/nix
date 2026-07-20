@@ -4,10 +4,16 @@
 # every push without building any system.
 name: check
 
-on: push
+on:
+  push:
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   flake-check:
