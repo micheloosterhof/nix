@@ -78,6 +78,7 @@ updates inside the VM go through `make rebuild`.
 | `make store/repair` | Verify with content hashing and repair broken paths |
 | `make secrets/backup` | Tar `~/.ssh` + `~/.gnupg` into `backup.tar.gz` |
 | `make secrets/restore` | Untar `backup.tar.gz` back into `~` |
+| `make cachix/seed` | Push the linux-builder image closure to the cachix cache |
 
 Scheduled hygiene is built into every host: weekly GC keeping 30 days of
 generations, weekly store optimise, and weekly stale-gcroot cleanup
@@ -98,18 +99,36 @@ CI (`.github/workflows/check.yml`) runs the same `nix flake check` on every
 push. `.github/workflows/build.yml` builds every host closure on a natively
 matching runner (`ubuntu-24.04-arm` for the aarch64 VMs, `ubuntu-latest`
 for wsl/helium/oxygen, `macos-latest` for neon), so a green check means
-each machine provably builds. neon's closure contains the customized
-linux-builder image (aarch64-linux, not on cache.nixos.org, unbuildable on
-a macOS runner); CI substitutes it from the personal cachix cache
-(`https://micheloosterhof.cachix.org`, wired as a substituter on every host
-in `modules/nix-settings.nix`). After a flake.lock bump changes that image,
-re-seed the cache from the Mac with `make cachix/seed` — until then the
-neon job fails on the missing image. `.github/workflows/update-lock.yml`
-opens a weekly
-flake.lock bump PR with the input changes in the body and dispatches
-check/build onto the branch. `.github/workflows/dependency-graph.yml`
-submits a representative host's closure to GitHub's dependency graph so
-advisories cover the deployed system, not just the flake inputs.
+each machine provably builds. neon's job substitutes the linux-builder
+image from the cachix cache (see Binary cache below).
+`.github/workflows/update-lock.yml` opens a weekly flake.lock bump PR with
+the input changes in the body and dispatches check/build onto the branch.
+`.github/workflows/dependency-graph.yml` submits a representative host's
+closure to GitHub's dependency graph so advisories cover the deployed
+system, not just the flake inputs.
+
+## Binary cache
+
+`https://micheloosterhof.cachix.org` is a personal cachix cache, wired as
+an `extra-substituter` (with its signing key) on every host in
+`modules/nix-settings.nix`. It holds artifacts cache.nixos.org lacks —
+today that is one thing: the customized linux-builder VM image, an
+aarch64-linux derivation that neon's CI job cannot build on a macOS runner
+and a fresh Mac cannot build before it has a working builder.
+
+- **Optional by construction**: `fallback = true` and `connect-timeout = 5`
+  mean an unreachable or missing cache costs five seconds and then
+  operations proceed normally (cache.nixos.org, local builds). Nothing
+  hard-depends on cachix except neon's CI job, whose failure on a missing
+  image is the re-seed signal.
+- **Seeding**: `make cachix/seed` builds the builder image (via the Mac's
+  own builder) and pushes its closure (~3 GiB). Run it after a flake.lock
+  bump changes the image. Pushing needs the cachix CLI authenticated once:
+  `nix run nixpkgs#cachix -- authtoken <token>`.
+- **Reading needs no auth** — the cache is world-readable, so CI pulls
+  without secrets. The `CACHIX_TOKEN` repo secret exists but is unused;
+  it's reserved for selective CI pushing later. Free-tier storage is 5 GB,
+  so don't push whole host closures.
 
 ## Building Linux artifacts on the Mac
 
@@ -119,8 +138,10 @@ needs a Linux builder. The Mac config uses nix-darwin's `nix.linux-builder`
 launchd, `ephemeral = true` so it doesn't persist state between boots.
 
 - The customized builder (8 cores / 32 GB / 100 GB) cache-misses against
-  cache.nixos.org, so a first activation must use the default variant; only
-  a working builder can build the customized image.
+  cache.nixos.org. A fresh Mac substitutes it from the cachix cache when
+  seeded (see Binary cache above); with the cache empty, a first activation
+  must use the default variant, since only a working builder can build the
+  customized image.
 - "failed to start SSH connection to linux-builder" means the builder VM is
   down (ephemeral builders don't restart after a crash). Revive with
   `sudo launchctl kickstart -k system/org.nixos.linux-builder`, then wait:

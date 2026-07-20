@@ -14,8 +14,8 @@ The detailed maps live in `docs/`:
   aggregates, the profile/platform axes, the output families. Read it before
   restructuring anything.
 - **[docs/operations.md](docs/operations.md)** — build, deploy,
-  provisioning, the Mac's Linux builder, and the gotchas around
-  `flake.lock`.
+  provisioning, the Mac's Linux builder, the cachix binary cache, and the
+  gotchas around `flake.lock`.
 
 ## Repo layout
 
@@ -83,6 +83,9 @@ push.
 
 - `flake.lock` regenerates aggressively; a lock refresh is a real version
   bump. Details and the unstable-overlay cache caveat: `docs/operations.md`.
+- A lock bump that changes the linux-builder image breaks neon's CI build
+  until `make cachix/seed` is run from the Mac (`docs/operations.md`,
+  Binary cache).
 - Homebrew (darwin) runs `onActivation.cleanup = "none"`, so ad-hoc `brew
   install` survives activation; the cask/brew lists in
   `users/mich/darwin.nix` are not yet exhaustive.
