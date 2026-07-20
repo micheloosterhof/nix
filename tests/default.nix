@@ -153,7 +153,8 @@ lib.runTests {
     expected = [ ];
   };
   testOxygenTorRelay = {
-    expr = oxygen.services.tor.relay.enable && builtins.elem 9001 oxygen.networking.firewall.allowedTCPPorts;
+    expr =
+      oxygen.services.tor.relay.enable && builtins.elem 9001 oxygen.networking.firewall.allowedTCPPorts;
     expected = true;
   };
 
