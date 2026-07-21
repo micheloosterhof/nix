@@ -69,8 +69,6 @@ defaults baseline). Attribution in parentheses.
   self/nixpkgs on the container tarball and VM images.
 
 - **Small nix.settings from people who build nix** (Mic92, EmergentMind):
-  `fallback = true` (build locally when a substituter is down instead of
-  failing — matters for a roaming laptop), `connect-timeout = 5`,
   `warn-dirty = false`, `builders-use-substitutes = true` (remote builder
   fetches from cache directly instead of copy-via-Mac; free win for the
   existing linux-builder).
@@ -91,12 +89,12 @@ defaults baseline). Attribution in parentheses.
   dbus-broker `restartIfChanged = mkForce false` are the two canonical
   "switch hangs" fixes for GUI VMs.
 
-- **Lock-bump commit convention** (Misterio77's AGENTS.md): flake.lock
-  commits must summarize what actually changed upstream (compare the old/new
-  revs, bullet the meaningful commits). Pairs with the weekly
-  update-flake-lock PR idea — makes those PRs reviewable instead of
-  rubber-stamped. Worth adding to our AGENTS.md alongside the existing
-  "call out lock regeneration" rule.
+- **Lock-bump commit convention** (Misterio77's AGENTS.md): manual
+  flake.lock commits must summarize what actually changed upstream (compare
+  the old/new revs, bullet the meaningful commits). The weekly update-lock
+  PR already carries the input diff; this is the same rule for hand-run
+  bumps. Worth adding to our AGENTS.md alongside the existing "call out
+  lock regeneration" rule.
 
 - **inotify watch bump for dev VMs** (dustinlyons):
   `boot.kernel.sysctl."fs.inotify.max_user_watches" = 1048576` — stops
@@ -104,19 +102,10 @@ defaults baseline). Attribution in parentheses.
 
 ## Tier 2 — higher value, bigger change or a real decision
 
-- **Build every host closure in CI, not just eval** (Mic92, dustinlyons,
-  Misterio77, wimpysworld — unanimous). Mic92's shape fits us best: a small
-  map turning each `nixosConfigurations.<n>.config.system.build.toplevel` /
-  `darwinConfigurations.<n>.system` into `checks.<system>.host-<n>`, so
-  plain `nix flake check` builds them. The enablers are new since our CI was
-  written: GitHub's free `ubuntu-24.04-arm` and `macos-latest` runners match
-  our all-aarch64 fleet natively (wimpysworld's matrix maps system→runner,
-  enumerated lazily with `nix eval --apply builtins.attrNames` to avoid
-  cross-platform deep-eval), `wimpysworld/nothing-but-nix` reclaims ~65 GB
-  of runner disk, and dustinlyons gates the weekly lock-update PR on the
-  toplevel build succeeding (`needs: check-build`) plus dependabot for the
-  actions themselves. Adopt incrementally: toplevel-as-check first, arm
-  runners second, gating third.
+- **Dependabot for the GitHub Actions themselves** (dustinlyons): a small
+  `.github/dependabot.yml` keeps the pinned `actions/checkout@v5` /
+  `cachix/install-nix-action@v31` versions current via PRs instead of
+  silently aging. (Leftover from the adopted build-every-closure item.)
 
 - **Fleet SSH config derived from the flake itself** (Misterio77;
   EmergentMind variant). Commit each host's `ssh_host_ed25519_key.pub` next
@@ -413,13 +402,6 @@ personalization excluded, diff against what we already have before adopting.
   in the Makefile (`... |& nom`, or `nom build` where targets run
   `nix build`, e.g. `vm/image`, `wsl`).
 
-- **Weekly flake.lock bump PR** — `.github/workflows/update.yaml`:
-  `DeterminateSystems/update-flake-lock` on a Sunday cron opens a PR with
-  the lock diff. Directly answers the AGENTS.md caveat that re-pins are
-  real version bumps that slip by: the bump arrives as a reviewable diff
-  with our `nix flake check` CI already run against it. Skip his automerge
-  half (needs branch protection; we commit to main).
-
 ## Tier 2 — higher value, bigger change or a real decision
 
 - **Flake templates for project scaffolding** — `flake.templates` +
@@ -440,14 +422,13 @@ personalization excluded, diff against what we already have before adopting.
   secrets pulled at use time. Limits: needs an unlocked bw session, only
   covers tools with command hooks.
 
-- **Personal binary cache fed by CI** — `build.yml` derives its build matrix
-  from `nix flake show --json | jq '.packages."x86_64-linux" | keys'` (never
-  goes stale as packages are added) and pushes every package to a personal
-  cachix; hosts add one substituter. Becomes interesting exactly when
-  `container-server` grows into real artifacts or CI starts building hosts;
-  until then our builds are local and fast. Worth keeping regardless: his
-  `build-status` join-job trick, letting one required status check stand in
-  for a whole matrix.
+- **CI feeding the cachix cache** — the cache and per-host substituter now
+  exist (seeded from the Mac); the unadopted half is CI pushing built
+  artifacts, bounded by the 5 GB free tier, so it needs a selective
+  pushFilter (e.g. only container-server tarballs), and the `CACHIX_TOKEN`
+  secret is already in place. Worth keeping regardless: his `build-status`
+  join-job trick, letting one required status check stand in for a whole
+  matrix.
 
 ## Programs spotted (CLI, cross-platform) — candidates for `home.packages`
 
