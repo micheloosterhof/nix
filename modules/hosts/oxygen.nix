@@ -88,27 +88,6 @@
         };
       }
 
-      # A non-exit Tor relay (guard/middle). Bandwidth-capped so it doesn't
-      # starve this 1-core / 1 GB VM.
-      {
-        services.tor = {
-          enable = true;
-          relay = {
-            enable = true;
-            role = "relay";
-          };
-          # No Nickname: the relay stays unnamed in the consensus, so the
-          # public consensus entry (nickname + IP) cannot be linked back to
-          # this public config.
-          settings = {
-            ORPort = 9001;
-            RelayBandwidthRate = "2 MBytes";
-            RelayBandwidthBurst = "4 MBytes";
-          };
-        };
-        networking.firewall.allowedTCPPorts = [ 9001 ];
-      }
-
       { config._module.args = { inherit inputs; }; }
     ];
   };

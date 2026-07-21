@@ -152,10 +152,11 @@ lib.runTests {
     ] oxygen.networking.firewall.trustedInterfaces;
     expected = [ ];
   };
-  testOxygenTorRelay = {
-    expr =
-      oxygen.services.tor.relay.enable && builtins.elem 9001 oxygen.networking.firewall.allowedTCPPorts;
-    expected = true;
+  # oxygen runs no relay/public service: sshd's port is the only inbound
+  # opening (via openFirewall); the dropped Tor relay's 9001 is gone.
+  testOxygenNoExtraPorts = {
+    expr = oxygen.networking.firewall.allowedTCPPorts;
+    expected = [ 4444 ];
   };
 
   # helium sits behind NAT on the trusted home LAN: the onboard NIC is a
