@@ -97,9 +97,11 @@
             enable = true;
             role = "relay";
           };
+          # No Nickname: the relay stays unnamed in the consensus, so the
+          # public consensus entry (nickname + IP) cannot be linked back to
+          # this public config.
           settings = {
             ORPort = 9001;
-            Nickname = "oxygen";
             RelayBandwidthRate = "2 MBytes";
             RelayBandwidthBurst = "4 MBytes";
           };
