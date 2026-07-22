@@ -8,7 +8,7 @@
 { config, inputs, ... }:
 {
   flake.modules.nixos.gce =
-    { pkgs, ... }:
+    { pkgs, lib, ... }:
     {
       imports = [
         "${inputs.nixpkgs}/nixos/modules/virtualisation/google-compute-image.nix"
@@ -26,11 +26,34 @@
       # assignment wins.
       networking.firewall.enable = true;
 
-      # gcloud / gsutil on the instance.
+      # Standard GCP login as a fallback alongside the baked mich key, so a
+      # fresh instance is never a lockout and behaves like a normal GCE VM:
+      #   - OS Login (security.googleOsLogin, enabled unconditionally by the
+      #     GCE profile) is NSS/PAM-based and needs the instance/project
+      #     metadata enable-oslogin=TRUE plus IAM roles at deploy time.
+      #   - metadata SSH keys, the console SSH button and `gcloud compute ssh`
+      #     go through the guest agent's account daemon, which only runs with
+      #     mutable users. The fleet is immutable-users by policy
+      #     (accounts.nix); this is a deliberate cloud-image-only exception.
+      users.mutableUsers = lib.mkForce true;
+      # hardening.nix restricts logins to mich; relax it so OS Login and
+      # guest-agent users (IAM- or key-gated) can authenticate too.
+      services.openssh.settings.AllowUsers = lib.mkForce null;
+
+      # Generic cloud image: containers via podman, not docker. The server
+      # aggregate enables docker (for the container-running pet servers);
+      # a generic cloud base shouldn't carry the daemon.
+      virtualisation.docker.enable = lib.mkForce false;
+      virtualisation.podman = {
+        enable = true;
+        dockerCompat = true;
+      };
+
+      # gcloud / gsutil on the instance (base components only, no extras).
       environment.systemPackages = [ pkgs.google-cloud-sdk ];
 
-      # New artifact family: no pre-existing state to preserve.
-      system.stateVersion = "26.05";
+      # system.stateVersion comes from the server aggregate (server.nix); the
+      # image always composes it, so it is not repeated here.
     };
 
   perSystem =
@@ -45,11 +68,7 @@
             config.flake.modules.nixos.gce
             ../users/mich/nixos.nix
             { my.profile = "server"; }
-            {
-              config._module.args = {
-                inputs = inputs;
-              };
-            }
+            { config._module.args = { inputs = inputs; }; }
           ];
         }).config.system.build.googleComputeImage;
     };

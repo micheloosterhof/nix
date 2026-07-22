@@ -118,6 +118,11 @@ fusion/utm equivalent (identical package sets; only merge order differs).
 - **container-server** builds to a correct rootfs (verified: `/init`,
   `activate`, nix store) but running systemd as PID 1 under each runtime is
   untested.
+- **gce-image** builds (x86_64 green in CI) but has not been booted on GCE;
+  the guest-agent, OS Login, DHCP and serial-console wiring come from the
+  upstream `google-compute-image` module but are unverified against a real
+  instance. The image is legacy-BIOS (GRUB); Shielded VM (Secure Boot) would
+  need `virtualisation.googleComputeImage.efi = true`.
 
 ## Deferred
 

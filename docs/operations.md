@@ -72,8 +72,18 @@ updates inside the VM go through `make rebuild`.
 tarball); `make gce/upload GCE_BUCKET=<bucket> GCE_PROJECT=<project>` uploads
 it and registers a Compute image (gcloud runs via `nix run`, no local
 install). The image is generic — one build deploys to many instances, taking
-hostname and IP from GCE metadata/DHCP at boot, and it authorizes `keys/` for
-`mich`.
+hostname and IP from GCE metadata/DHCP at boot. Containers use podman, not
+docker.
+
+Access, in order of preference — you should never be locked out:
+
+- **The baked `mich` key** (`keys/`) always works: `ssh mich@<ip>`.
+- **OS Login** (IAM-based) works once you set the instance/project metadata
+  `enable-oslogin=TRUE` and grant the caller `roles/compute.osLogin`.
+- **Metadata SSH keys**, the console SSH button and `gcloud compute ssh`
+  work via the guest agent. This is why the image runs with mutable users —
+  a deliberate exception to the fleet's immutable-users policy, scoped to
+  cloud images, so standard GCP access is always available as a fallback.
 
 `GCE_ARCH` selects `x86_64-linux` (default, cloud standard) or
 `aarch64-linux` (Graviton/Axion). The disk-image build needs the `kvm`
