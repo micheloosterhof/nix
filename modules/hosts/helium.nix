@@ -7,6 +7,7 @@
     modules = [
       config.flake.modules.nixos.base
       config.flake.modules.nixos.server
+      config.flake.modules.nixos.plex
 
       inputs.disko.nixosModules.disko
 
@@ -77,16 +78,8 @@
         };
       }
 
-      # Services: Plex media server + openHAB home automation.
+      # Services: openHAB home automation.
       {
-        # Plex is unfree.
-        nixpkgs.config.allowUnfree = true;
-
-        services.plex = {
-          enable = true;
-          openFirewall = true;
-        };
-
         # openHAB isn't packaged in nixpkgs, so run the official image via the
         # docker backend (enabled in server.nix). Host networking lets it
         # auto-discover devices (UPnP/mDNS/KNX); its data lives under

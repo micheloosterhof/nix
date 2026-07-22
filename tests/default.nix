@@ -170,6 +170,11 @@ lib.runTests {
     expr = builtins.hasAttr "bogons" helium.networking.nftables.tables;
     expected = false;
   };
+  # The home-automation services are feature aggregates helium composes.
+  testPlexAggregate = {
+    expr = self.modules.nixos ? plex;
+    expected = true;
+  };
   testHeliumPlex = {
     expr = helium.services.plex.enable;
     expected = true;
