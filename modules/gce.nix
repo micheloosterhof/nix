@@ -26,6 +26,14 @@
       # assignment wins.
       networking.firewall.enable = true;
 
+      # UEFI boot so the image can run as a Shielded VM (vTPM + integrity
+      # monitoring). Registering the image needs the UEFI_COMPATIBLE guest OS
+      # feature (make gce/upload adds it). Shielded VM's Secure Boot option
+      # additionally needs signed boot components, which stock NixOS doesn't
+      # provide — create instances with Secure Boot off until a lanzaboote
+      # signing setup exists; vTPM and integrity monitoring work regardless.
+      virtualisation.googleComputeImage.efi = true;
+
       # Standard GCP login as a fallback alongside the baked mich key, so a
       # fresh instance is never a lockout and behaves like a normal GCE VM:
       #   - OS Login (security.googleOsLogin, enabled unconditionally by the

@@ -121,8 +121,9 @@ fusion/utm equivalent (identical package sets; only merge order differs).
 - **gce-image** builds (x86_64 green in CI) but has not been booted on GCE;
   the guest-agent, OS Login, DHCP and serial-console wiring come from the
   upstream `google-compute-image` module but are unverified against a real
-  instance. The image is legacy-BIOS (GRUB); Shielded VM (Secure Boot) would
-  need `virtualisation.googleComputeImage.efi = true`.
+  instance. The image is UEFI (`efi = true`) so it can run as a Shielded VM
+  with vTPM + integrity monitoring; Shielded VM's Secure Boot option would
+  additionally need signed boot components (lanzaboote), not yet set up.
 
 ## Deferred
 

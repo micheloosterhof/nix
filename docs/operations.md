@@ -85,6 +85,12 @@ Access, in order of preference — you should never be locked out:
   a deliberate exception to the fleet's immutable-users policy, scoped to
   cloud images, so standard GCP access is always available as a fallback.
 
+The image is UEFI, and `gce/upload` registers it with the `UEFI_COMPATIBLE`
+guest OS feature, so instances can run as Shielded VMs. Create them with
+`--shielded-vtpm --shielded-integrity-monitoring`; leave
+`--shielded-secure-boot` off until signed boot components exist (stock NixOS
+boot binaries aren't signed for GCP's Secure Boot db).
+
 `GCE_ARCH` selects `x86_64-linux` (default, cloud standard) or
 `aarch64-linux` (Graviton/Axion). The disk-image build needs the `kvm`
 feature (make-disk-image runs a qemu VM), so it must run on a KVM-capable

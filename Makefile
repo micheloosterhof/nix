@@ -250,4 +250,5 @@ gce/upload: ## Upload + register the GCE image (set GCE_BUCKET, GCE_PROJECT)
 		nix run nixpkgs#google-cloud-sdk -- storage cp "$$TARBALL" "gs://$(GCE_BUCKET)/" && \
 		nix run nixpkgs#google-cloud-sdk -- compute images create "$(GCE_IMAGE_NAME)" \
 			--project "$(GCE_PROJECT)" \
+			--guest-os-features=UEFI_COMPATIBLE \
 			--source-uri "gs://$(GCE_BUCKET)/$$(basename "$$TARBALL")"
