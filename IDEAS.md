@@ -59,6 +59,37 @@
 
 ---
 
+# Ideas harvested from Misterio77/Foundry (2026-07-22)
+
+Foundry is the successor monorepo to `Misterio77/nix-config`, already covered
+by the six-config survey below — the committed-host-pubkeys knownHosts item,
+the `inputs.self ? rev` dirty-tree guard, the lock-bump commit convention,
+and the `sops.age.sshKeyPaths` secrets bootstrap all carry over unchanged.
+Genuinely new in Foundry:
+
+- **Pull-based auto-upgrade from CI**
+  (`modules/nixos/hydra-auto-upgrade.nix`): each host runs a timer polling
+  the CI instance for the latest successful build of its own toplevel job,
+  fetches the store path straight from the binary cache (no eval, no repo on
+  the host), refuses downgrades by comparing flake `lastModified` timestamps
+  (`IGNORE_TIMESTAMP=true` to override), prints an `nvd diff`, then
+  test-activates and sets the system profile + bootloader entry. The same
+  script doubles as an admin CLI (`cached-nixos-rebuild diff|test|switch|boot`).
+  Our version would poll GitHub Actions + cachix instead of Hydra.
+  Composes three items already listed: the adopted build-every-closure CI,
+  Mic92's pre-warm-next-closure (the fetch half of the same idea), and the
+  dirty-tree guard (his upgrade timer disables itself on dirty checkouts).
+  Prerequisite: per-host closures pushed to cachix.
+
+- **`ifTheyExist` group filter** (`hosts/common/users/gabriel`):
+  `extraGroups = ifTheyExist [ ... ]` with `ifTheyExist = groups:
+  builtins.filter (g: builtins.hasAttr g config.users.groups) groups` — one
+  user definition lists every group it might want, and hosts that don't
+  define a group just skip it. Fits `users/mich/nixos.nix` serving servers
+  and workstations from a single file.
+
+---
+
 # Ideas harvested from arianvp/nixos-stuff (2026-07-10)
 
 ## Tier 2 — higher value, bigger change or a real decision
