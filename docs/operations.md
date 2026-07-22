@@ -66,6 +66,22 @@ updates inside the VM go through `make rebuild`.
 
 `make wsl` builds the installer tarball; import it with `wsl --import`.
 
+### Cloud images (GCE)
+
+`make gce/image` builds a headless server GCE image (a GCS-uploadable
+tarball); `make gce/upload GCE_BUCKET=<bucket> GCE_PROJECT=<project>` uploads
+it and registers a Compute image (gcloud runs via `nix run`, no local
+install). The image is generic — one build deploys to many instances, taking
+hostname and IP from GCE metadata/DHCP at boot, and it authorizes `keys/` for
+`mich`.
+
+`GCE_ARCH` selects `x86_64-linux` (default, cloud standard) or
+`aarch64-linux` (Graviton/Axion). Only aarch64 builds on the Mac's
+linux-builder; x86_64 needs a native x86_64 builder, so build that arch in CI
+(`build.yml` builds both on native runners) or with an x86_64 remote builder.
+An instance that gets an external IP wants the internet-facing posture
+layered on; the base image leaves it off but keeps the host firewall on.
+
 ## Maintenance
 
 | Target | Purpose |

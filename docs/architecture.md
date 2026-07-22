@@ -75,7 +75,7 @@ Cross-cutting interactions resolve themselves:
 
 ## Output families
 
-Two fundamentally different build products, not to be forced onto one axis:
+Three fundamentally different build products, not to be forced onto one axis:
 
 1. **Bootable hosts** — `nixosConfigurations` / `darwinConfigurations`, one
    file each under `modules/hosts/`. Currently: vm-aarch64-fusion (VMware,
@@ -92,6 +92,15 @@ Two fundamentally different build products, not to be forced onto one axis:
    Deliberately a bare base (no user, ssh or services yet) — workloads get
    layered on next. Starts at `stateVersion = "26.05"` (new artifact family,
    no 2020-era state to preserve).
+
+3. **Cloud images** — `packages.<linux-system>.gce-image`
+   (`modules/gce.nix`): a headless server-profile GCE disk image, built for
+   both x86_64 and aarch64. Generic and reusable — hostname and IP come from
+   GCE metadata/DHCP at boot, so one image deploys to many instances. The
+   `flake.modules.nixos.gce` aggregate (the upstream google-compute-image
+   module + eth0 DHCP + host firewall + gcloud) doubles as a platform a
+   per-host cloud config could compose later. The internet-facing posture
+   (bogons, tighter rules) is layered per-deployment, not baked.
 
 ## Validation
 
