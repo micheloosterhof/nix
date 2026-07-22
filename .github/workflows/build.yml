@@ -49,6 +49,13 @@ jobs:
           - host: neon
             runner: macos-latest
             attr: darwinConfigurations.neon.system
+          # Cloud image family: prove the GCE image builds on both arches.
+          - host: gce-image-x86_64
+            runner: ubuntu-latest
+            attr: packages.x86_64-linux.gce-image
+          - host: gce-image-aarch64
+            runner: ubuntu-24.04-arm
+            attr: packages.aarch64-linux.gce-image
     steps:
       - uses: actions/checkout@v5
 
