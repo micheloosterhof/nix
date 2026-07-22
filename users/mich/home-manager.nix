@@ -90,6 +90,7 @@ in
     pkgs.p7zip
     pkgs.pre-commit
     pkgs.python314
+    pkgs.qpdf
     pkgs.restic
     pkgs.ripgrep
     pkgs.rtorrent
