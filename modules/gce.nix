@@ -68,7 +68,11 @@
             config.flake.modules.nixos.gce
             ../users/mich/nixos.nix
             { my.profile = "server"; }
-            { config._module.args = { inputs = inputs; }; }
+            {
+              config._module.args = {
+                inputs = inputs;
+              };
+            }
           ];
         }).config.system.build.googleComputeImage;
     };
