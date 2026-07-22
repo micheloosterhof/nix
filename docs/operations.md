@@ -91,6 +91,28 @@ guest OS feature, so instances can run as Shielded VMs. Create them with
 `--shielded-secure-boot` off until signed boot components exist (stock NixOS
 boot binaries aren't signed for GCP's Secure Boot db).
 
+Keep the image and its GCS object **project-private** (the `gce/upload`
+defaults do this). The image bakes `mich` (authorized `keys/`, the rotated
+console password hash) and trusts the cachix cache — nothing secret, but it
+is identity, so don't share it publicly.
+
+Launching an instance (adjust project/zone/network). The `enable-oslogin`
+and `serial-port-enable` metadata make OS Login and boot-log access work;
+the first is required to log in via OS Login, the second is invaluable for
+the first boot-test:
+
+```
+gcloud compute instances create nixos-test \
+    --project=<project> --zone=<zone> \
+    --image=<image-name> --image-project=<project> \
+    --shielded-vtpm --shielded-integrity-monitoring \
+    --metadata=enable-oslogin=TRUE,serial-port-enable=TRUE
+# boot log:  gcloud compute instances get-serial-port-output nixos-test --zone=<zone>
+```
+
+Access is still never a lockout: if OS Login IAM isn't set up, `ssh
+mich@<ip>` with the baked key works.
+
 `GCE_ARCH` selects `x86_64-linux` (default, cloud standard) or
 `aarch64-linux` (Graviton/Axion). The disk-image build needs the `kvm`
 feature (make-disk-image runs a qemu VM), so it must run on a KVM-capable
