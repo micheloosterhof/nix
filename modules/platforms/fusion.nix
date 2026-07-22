@@ -28,6 +28,16 @@
               Super-x: Ctrl-x
       '';
 
+      # sway port of xcwd: the focused window's newest child process (its shell)
+      # tells us the directory the user is working in, so new terminals open
+      # there; falls back to $HOME when there is no usable focused window.
+      # via: https://www.reddit.com/r/swaywm/comments/ayedi1/opening_terminals_at_the_same_directory/ei7i1dl/
+      windowcwd = pkgs.writeShellScript "windowcwd" ''
+        pid=$(${pkgs.sway}/bin/swaymsg -t get_tree | ${pkgs.jq}/bin/jq '.. | select(.type?) | select(.type=="con") | select(.focused==true).pid')
+        ppid=$(${pkgs.procps}/bin/pgrep --newest --parent "$pid")
+        ${pkgs.coreutils}/bin/readlink "/proc/$ppid/cwd" || echo "$HOME"
+      '';
+
       swayConfig = pkgs.writeText "sway-config" ''
         set $mod Mod4
         set $term ${pkgs.ghostty}/bin/ghostty
@@ -36,7 +46,7 @@
         # The X11 desktop runs dpi 220 (~2x), so scale the Wayland output to match.
         output * scale 2
 
-        bindsym $mod+Return exec $term
+        bindsym $mod+Return exec $term --working-directory="$(${windowcwd})"
         bindsym $mod+d exec $menu
         bindsym $mod+q kill
         bindsym $mod+Shift+e exec swaymsg exit
