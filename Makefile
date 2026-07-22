@@ -229,3 +229,25 @@ vm/launch: ## Build VMDK and drop into a Fusion .vmwarevm bundle
 .PHONY: wsl
 wsl: ## Build a WSL installer tarball
 	 nix build ".#nixosConfigurations.wsl.config.system.build.installer"
+
+# Build a Google Compute Engine image (a GCS-uploadable tarball). aarch64
+# builds on the Mac's linux-builder; x86_64 needs a native x86_64 builder,
+# so build that arch in CI (or with an x86_64 remote builder).
+GCE_ARCH ?= x86_64-linux
+.PHONY: gce/image
+gce/image: ## Build a GCE image; prints /nix/store path (GCE_ARCH=x86_64-linux|aarch64-linux)
+	@nix build --no-link --print-out-paths ".#packages.$(GCE_ARCH).gce-image"
+
+# Upload the built image to a GCS bucket and register it as a Compute image.
+# Set GCE_BUCKET and GCE_PROJECT. gcloud/gsutil run via nix (no local install).
+GCE_IMAGE_NAME ?= nixos-$(GCE_ARCH)
+.PHONY: gce/upload
+gce/upload: ## Upload + register the GCE image (set GCE_BUCKET, GCE_PROJECT)
+	@test -n "$(GCE_BUCKET)" || { echo "set GCE_BUCKET=<gcs-bucket>"; exit 1; }
+	@test -n "$(GCE_PROJECT)" || { echo "set GCE_PROJECT=<gcp-project>"; exit 1; }
+	IMG=$$($(MAKE) --no-print-directory gce/image) && \
+		TARBALL=$$(ls "$$IMG"/*.tar.gz) && \
+		nix run nixpkgs#google-cloud-sdk -- storage cp "$$TARBALL" "gs://$(GCE_BUCKET)/" && \
+		nix run nixpkgs#google-cloud-sdk -- compute images create "$(GCE_IMAGE_NAME)" \
+			--project "$(GCE_PROJECT)" \
+			--source-uri "gs://$(GCE_BUCKET)/$$(basename "$$TARBALL")"
