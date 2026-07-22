@@ -49,13 +49,15 @@ jobs:
           - host: neon
             runner: macos-latest
             attr: darwinConfigurations.neon.system
-          # Cloud image family: prove the GCE image builds on both arches.
+          # Cloud image family. Only x86_64 is built here: the disk-image
+          # derivation requires the kvm feature (make-disk-image runs a qemu
+          # VM), which GitHub's x86_64 runners expose via nested virt but the
+          # free arm64 runners do not. The packages.aarch64-linux.gce-image
+          # output is still valid and builds on any kvm-capable aarch64 host
+          # (Graviton/Axion metal); it just can't be CI-gated on free runners.
           - host: gce-image-x86_64
             runner: ubuntu-latest
             attr: packages.x86_64-linux.gce-image
-          - host: gce-image-aarch64
-            runner: ubuntu-24.04-arm
-            attr: packages.aarch64-linux.gce-image
     steps:
       - uses: actions/checkout@v5
 

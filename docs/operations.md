@@ -76,11 +76,15 @@ hostname and IP from GCE metadata/DHCP at boot, and it authorizes `keys/` for
 `mich`.
 
 `GCE_ARCH` selects `x86_64-linux` (default, cloud standard) or
-`aarch64-linux` (Graviton/Axion). Only aarch64 builds on the Mac's
-linux-builder; x86_64 needs a native x86_64 builder, so build that arch in CI
-(`build.yml` builds both on native runners) or with an x86_64 remote builder.
-An instance that gets an external IP wants the internet-facing posture
-layered on; the base image leaves it off but keeps the host firewall on.
+`aarch64-linux` (Graviton/Axion). The disk-image build needs the `kvm`
+feature (make-disk-image runs a qemu VM), so it must run on a KVM-capable
+builder of the target arch: x86_64 builds in CI (`build.yml`, on a runner
+with nested KVM) or on any x86_64 Linux host; aarch64 builds on KVM-capable
+aarch64 metal. Neither the Apple-silicon linux-builder nor GitHub's free
+arm64 runners expose KVM, so the aarch64 image is not CI-gated — the output
+is valid, it just needs the right builder. An instance that gets an external
+IP wants the internet-facing posture layered on; the base image leaves it off
+but keeps the host firewall on.
 
 ## Maintenance
 
