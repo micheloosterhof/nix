@@ -179,6 +179,10 @@ lib.runTests {
     expr = helium.services.plex.enable;
     expected = true;
   };
+  testOpenhabAggregate = {
+    expr = self.modules.nixos ? openhab;
+    expected = true;
+  };
   testHeliumOpenhabContainer = {
     expr = helium.virtualisation.oci-containers.containers.openhab.autoStart;
     expected = true;

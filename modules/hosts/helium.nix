@@ -8,6 +8,7 @@
       config.flake.modules.nixos.base
       config.flake.modules.nixos.server
       config.flake.modules.nixos.plex
+      config.flake.modules.nixos.openhab
 
       inputs.disko.nixosModules.disko
 
@@ -18,6 +19,12 @@
         networking.hostName = "helium";
         # Onboard NIC.
         networking.interfaces.eno2.useDHCP = true;
+
+        # openHAB discovers devices over multicast (mDNS 5353, SSDP/UPnP 1900)
+        # and binds many random UDP ports that can't be enumerated for rules.
+        # helium is a home-automation hub on the trusted home LAN, so trust that
+        # interface wholesale; the kernel hardening still applies.
+        networking.firewall.trustedInterfaces = [ "eno2" ];
       }
 
       # Hardware (bare-metal Coffee Lake, nvme, UEFI).
@@ -76,49 +83,6 @@
             };
           };
         };
-      }
-
-      # Services: openHAB home automation.
-      {
-        # openHAB isn't packaged in nixpkgs, so run the official image via the
-        # docker backend (enabled in server.nix). Host networking lets it
-        # auto-discover devices (UPnP/mDNS/KNX); its data lives under
-        # /var/lib/openhab (restore the old install's conf/userdata there).
-        # TODO: pin to a specific version/digest instead of latest.
-        virtualisation.oci-containers = {
-          backend = "docker";
-          containers.openhab = {
-            image = "openhab/openhab:latest";
-            autoStart = true;
-            extraOptions = [
-              "--net=host"
-              "--tty"
-            ];
-            volumes = [
-              "/var/lib/openhab/conf:/openhab/conf"
-              "/var/lib/openhab/userdata:/openhab/userdata"
-              "/var/lib/openhab/addons:/openhab/addons"
-              "/etc/localtime:/etc/localtime:ro"
-            ];
-            environment = {
-              OPENHAB_HTTP_PORT = "8080";
-              OPENHAB_HTTPS_PORT = "8443";
-            };
-          };
-        };
-
-        # openHAB runs with host networking, so open its UI ports on the host
-        # (also reachable over tailscale, which this doesn't cover per-interface).
-        networking.firewall.allowedTCPPorts = [
-          8080
-          8443
-        ];
-
-        # openHAB discovers devices over multicast (mDNS 5353, SSDP/UPnP 1900)
-        # and binds many random UDP ports that can't be enumerated for rules.
-        # helium is a home-automation hub on the trusted home LAN, so trust that
-        # interface wholesale; the kernel hardening still applies.
-        networking.firewall.trustedInterfaces = [ "eno2" ];
       }
 
       { config._module.args = { inherit inputs; }; }
