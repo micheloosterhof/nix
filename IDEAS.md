@@ -1,3 +1,22 @@
+# Roadmap (self-originated)
+
+- **GPU GCE image variant (`gce-gpu`)** — a separate x86_64 image for GCP GPU
+  instances (T4/L4/V100/A100/H100; GCP has no aarch64 GPUs), layering the
+  NVIDIA datacenter driver + CUDA onto the existing base+server+gce
+  composition. Deliberately NOT baked into the generic `gce-image`: the
+  driver is unfree, a large closure, and pinned to a kernel+CUDA version per
+  GPU generation. Shape: a `gpu` aggregate (`hardware.nvidia.package =
+  config.boot.kernelPackages.nvidiaPackages.dc` or `.production`,
+  `hardware.graphics.enable`, `nixpkgs.config.allowUnfree = true`, headless —
+  no xserver, just the kernel module + `nvidia-smi` + CUDA libs) plus
+  `packages.x86_64-linux.gce-gpu-image`. Open decisions: driver channel
+  (`dc` datacenter vs `production`), and whether to bake the CUDA runtime
+  into the image (turnkey but big) or leave it to per-workload nix shells
+  (lean). Raised 2026-07-22 during the GCE image work; build after the base
+  image is boot-tested.
+
+---
+
 # Ideas harvested from arianvp/nixos-stuff (2026-07-10)
 
 ## Tier 2 — higher value, bigger change or a real decision
