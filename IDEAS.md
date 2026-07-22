@@ -90,6 +90,42 @@ Genuinely new in Foundry:
 
 ---
 
+# Ideas harvested from shazow/nixfiles (2026-07-22)
+
+- **agentspace — sandboxed agent microVMs** (`vms/agentspace/`, library at
+  `github:shazow/agentspace`): run coding agents in full-autonomy mode
+  inside a QEMU/KVM microVM instead of on the workstation. `mkSandbox`
+  composes: per-project "spaces" mounted into `$WORKSPACE` (one sandbox per
+  project, or cwd by default), the host `/nix/store` shared read-only over
+  virtiofs with an overlay on top (guest gets the whole host package
+  universe, no image bloat, `nix run nixpkgs#foo` mostly cached), file
+  injection over a guest-agent socket, host notifications on
+  suspend/resume, per-VM persistence dirs, and the agent harness + toolchain
+  baked in. A sandbox-specific AGENTS.md tells the agent it's in a VM
+  ("never nix-collect-garbage, the store is overlayfs"). Bonus helper:
+  `packagesFromDevShell` concatenates a project devShell's buildInputs into
+  the VM's systemPackages so the sandbox carries the project toolchain
+  automatically. Constraint: x86_64-linux/KVM — no nested virt under Fusion
+  on Apple Silicon, so the natural home is helium; the concept also ports
+  to the Apple container/Virtualization.framework route already parked
+  (halfwhey/nix-apple-container, arianvp section).
+
+- **Socket-activated virtiofsd `/nix/store` share**
+  (`modules/virtiofsd-nix-store.nix`): the supporting piece — a
+  systemd-hardened, socket-activated virtiofsd serving `/nix/store`
+  read-only to local VMs; his microvm variant shows a rootless 9p fallback.
+  Independently useful for fast throwaway VMs on any Linux host.
+
+- **Private outer flake for sensitive config** (`templates/nixos-device` +
+  `mkSystemConfigurations`): the public repo exposes a constructor; a
+  private outer flake instantiates it with the sensitive bits (hashed
+  password, disk/FDE layout). A no-crypto fifth option for the standing
+  secrets decision — directly addresses the committed `hashedPassword`
+  wart. Cost: a second repo and template drift; closest cousin is
+  dustinlyons' private-repo-as-input (six-config survey, secrets bullet).
+
+---
+
 # Ideas harvested from arianvp/nixos-stuff (2026-07-10)
 
 ## Tier 2 — higher value, bigger change or a real decision
