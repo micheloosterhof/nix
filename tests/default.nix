@@ -158,6 +158,20 @@ lib.runTests {
     expr = oxygen.networking.firewall.allowedTCPPorts;
     expected = [ 4444 ];
   };
+  # oxygen is a tailscale exit node: kernel forwarding on (via
+  # useRoutingFeatures = "server") and the advertisement applied each boot.
+  testOxygenExitNodeForwarding4 = {
+    expr = oxygen.boot.kernel.sysctl."net.ipv4.conf.all.forwarding";
+    expected = true;
+  };
+  testOxygenExitNodeForwarding6 = {
+    expr = oxygen.boot.kernel.sysctl."net.ipv6.conf.all.forwarding";
+    expected = true;
+  };
+  testOxygenExitNodeAdvertised = {
+    expr = oxygen.services.tailscale.extraSetFlags;
+    expected = [ "--advertise-exit-node" ];
+  };
 
   # helium sits behind NAT on the trusted home LAN: the onboard NIC is a
   # trusted interface (openHAB multicast discovery), no bogon filtering, and

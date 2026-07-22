@@ -28,6 +28,13 @@
 
         # Non-standard ssh port (openFirewall follows it, so 22 closes).
         services.openssh.ports = [ 4444 ];
+
+        # Tailscale exit node: tailnet clients can route their internet
+        # traffic out through this box. "server" turns on the kernel
+        # forwarding sysctls; the set-flag is re-applied by tailscaled-set
+        # on every boot. Needs one-time approval in the admin console.
+        services.tailscale.useRoutingFeatures = "server";
+        services.tailscale.extraSetFlags = [ "--advertise-exit-node" ];
       }
 
       # Hardware (QEMU/KVM guest, virtio, BIOS). The qemu-guest profile pulls in
