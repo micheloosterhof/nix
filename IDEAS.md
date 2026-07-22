@@ -15,6 +15,48 @@
   (lean). Raised 2026-07-22 during the GCE image work; build after the base
   image is boot-tested.
 
+- **GCE image lifecycle — families + labels** (cheap). Register in
+  `gce/upload` with `--family=nixos` so instances reference
+  `--image-family=nixos` and always get the latest while old versions stay
+  for rollback (the standard GCP image-lifecycle pattern), and
+  `--labels=git-rev=<rev>,built=<date>` for provenance (know exactly what's
+  deployed). A few lines in the Makefile target.
+
+- **gVNIC networking** (cheap). The image is virtio-net (eth0), which caps it
+  to older machine families (N1/N2/E2) at ~32 Gbps. Newer families (C3, H3,
+  N4, Titanium) use/require gVNIC. Register the image with the `GVNIC` guest
+  OS feature (the `gve` module is already in the kernel) to unlock those
+  machine types and higher bandwidth. Verify eth0/DHCP naming still holds
+  under gVNIC.
+
+- **Confidential VM** (security; the standout). GCP encrypts VM memory in
+  hardware — AMD SEV / SEV-SNP (N2D, C3D) or Intel TDX (C3). Register the
+  image with `SEV_CAPABLE` (and/or `SEV_SNP_CAPABLE` / `TDX_CAPABLE`) so
+  instances can launch as Confidential VMs, opaque even to the hypervisor —
+  a real step up for an internet-facing hardened box. Mostly a guest-OS
+  feature + machine-type choice; confirm the NixOS kernel has the needed
+  SEV/TDX guest config.
+
+- **Secure Boot via lanzaboote** (completes Shielded VM). UEFI is on (vTPM +
+  integrity monitoring work); the Secure Boot leg needs signed boot
+  components. lanzaboote + custom keys enrolled in the image's UEFI db is the
+  path. Bigger project; then create instances with `--shielded-secure-boot`.
+
+- **Tailscale auto-join on first boot** (highest-leverage for fleet deploy;
+  needs the secrets decision first). `base` enables tailscaled but it's inert
+  until `tailscale up`. A small boot service that pulls an auth key from GCP
+  Secret Manager (or instance metadata) and runs `tailscale up` makes every
+  instance self-join the tailnet — the turnkey "deploy many places" property.
+  Depends on picking a secrets story (agenix/sops or GCP Secret Manager).
+
+- **Spot/preemption graceful drain** (only if running Spot VMs). Spot
+  instances get a ~30s notice via the metadata server; a systemd watcher can
+  drain/flush before the ACPI soft-off.
+
+- **Cloud Ops Agent / logging** (production observability, heavier). Ship
+  metrics + logs to Cloud Monitoring/Logging. No clean nixpkgs module (Google
+  binary), so this is the most involved of the set.
+
 ---
 
 # Ideas harvested from arianvp/nixos-stuff (2026-07-10)
