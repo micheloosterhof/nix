@@ -241,6 +241,17 @@ lib.runTests {
     expected = true;
   };
 
+  # The GCE image output family: a headless server image builds on both the
+  # cloud-default x86_64 and aarch64 (Graviton/Axion).
+  testGceImageX86IsDrv = {
+    expr = lib.isDerivation self.packages.x86_64-linux.gce-image;
+    expected = true;
+  };
+  testGceImageArmIsDrv = {
+    expr = lib.isDerivation self.packages.aarch64-linux.gce-image;
+    expected = true;
+  };
+
   # modules/nix-settings.nix: the personal cachix cache is a substituter on
   # every host (CI substitutes the linux-builder image from it for neon).
   testCachixSubstituterNixos = {
