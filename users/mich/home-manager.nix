@@ -78,6 +78,8 @@ in
     pkgs.golangci-lint
     pkgs.hashcat
     pkgs.htop
+    # Review-first terminal diff viewer; not in nixpkgs, from its upstream flake.
+    inputs.hunk.packages.${pkgs.stdenv.hostPlatform.system}.hunk
     pkgs.jadx
     pkgs.jq
     pkgs.kubo
