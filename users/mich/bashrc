@@ -43,7 +43,7 @@ PROMPT_COMMAND="osc_prompt${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
 
 # less
 ##############################################################################
-export LESS='iFMQRWX'
+export LESS='inFMQRWX'
 export LESSHISTFILE='-'
 export LESSCHARSET='utf-8'
 type lesspipe >/dev/null 2>&1 && eval `lesspipe`

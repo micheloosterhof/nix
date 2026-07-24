@@ -54,7 +54,7 @@ osc7-pwd
 
 # less
 ##############################################################################
-export LESS='iFMQRWX'
+export LESS='inFMQRWX'
 export LESSHISTFILE='-'
 export LESSCHARSET='utf-8'
 which lesspipe >/dev/null && eval `lesspipe`
