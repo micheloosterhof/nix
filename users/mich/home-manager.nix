@@ -172,6 +172,13 @@ in
   # Global agent instructions, version-controlled and synced across hosts.
   home.file.".claude/CLAUDE.md".source = ./claude/CLAUDE.md;
 
+  # Skills stay a real directory (recursive) so ad-hoc skills can be
+  # drafted in place before being promoted into the repo.
+  home.file.".claude/skills" = {
+    source = ./claude/skills;
+    recursive = true;
+  };
+
   # Keep Zed from phoning home: no AI features, no telemetry.
   home.file.".config/zed/settings.json".text = builtins.toJSON {
     disable_ai = true;
