@@ -53,6 +53,37 @@ lib.runTests {
     expected = true;
   };
 
+  # The HM package set is profile-tiered: servers carry only the lean CLI
+  # set, workstations the full toolkit.
+  testServerHomeLacksWorkstationTools =
+    let
+      names = map (p: p.pname or p.name) helium.home-manager.users.mich.home.packages;
+    in
+    {
+      expr = lib.filter (n: lib.elem n names) [
+        "hashcat"
+        "claude-code"
+        "ffmpeg"
+      ];
+      expected = [ ];
+    };
+  testServerHomeKeepsLeanTools = {
+    expr =
+      let
+        names = map (p: p.pname or p.name) helium.home-manager.users.mich.home.packages;
+      in
+      lib.all (n: lib.elem n names) [
+        "ripgrep"
+        "htop"
+        "jq"
+      ];
+    expected = true;
+  };
+  testWorkstationHomeKeepsFullToolkit = {
+    expr = lib.any (p: (p.pname or p.name) == "hashcat") fusion.home-manager.users.mich.home.packages;
+    expected = true;
+  };
+
   # The NixOS-WSL module is composed in and configured by the wsl host file.
   testWslEnabled = {
     expr = wsl.wsl.enable;

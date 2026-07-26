@@ -16,6 +16,11 @@ let
   # the GUI capability on. `or false` keeps this safe on darwin where the
   # my.gui option isn't defined.
   gui = isLinux && (osConfig.my.gui.enable or false);
+
+  # Servers get the lean CLI set only; the full toolkit is for hosts worked
+  # on interactively. `or "workstation"` keeps this safe on darwin where the
+  # my.profile option isn't defined.
+  server = isLinux && (osConfig.my.profile or "workstation") == "server";
 in
 {
   imports = [ inputs.nix-index-database.homeModules.nix-index ];
@@ -56,7 +61,26 @@ in
   # to every host on both Linux and macOS. Reserve machines/vm-shared.nix
   # for Linux system-level packages and users/mich/darwin.nix homebrew for
   # macOS GUI apps. Don't list a package in more than one layer.
+  #
+  # The base list is the lean set every host gets, servers included; the
+  # workstation list is the interactive toolkit and stays off servers to
+  # keep server/cloud-image closures small.
   home.packages = [
+    pkgs.dnsutils
+    pkgs.dust
+    pkgs.fd
+    pkgs.fzf
+    pkgs.git
+    pkgs.htop
+    pkgs.jq
+    pkgs.ripgrep
+    pkgs.tree
+    pkgs.watch
+    pkgs.wget
+    pkgs.xz
+    pkgs.zstd
+  ]
+  ++ (lib.optionals (!server) [
     pkgs.act
     pkgs.asciinema
     pkgs.ast-grep
@@ -67,19 +91,12 @@ in
     pkgs.coreutils-prefixed
     pkgs.cosign
     pkgs.croc
-    pkgs.dnsutils
     pkgs.duckdb
-    pkgs.dust
-    pkgs.fd
     pkgs.ffmpeg
-    pkgs.fzf
-    pkgs.git
     pkgs.gitleaks
     pkgs.golangci-lint
     pkgs.hashcat
-    pkgs.htop
     pkgs.jadx
-    pkgs.jq
     pkgs.kubo
     pkgs.miller
     pkgs.nix-du # store disk-usage graph (pipe to graphviz `dot`)
@@ -92,27 +109,20 @@ in
     pkgs.python314
     pkgs.qpdf
     pkgs.restic
-    pkgs.ripgrep
     pkgs.rtorrent
     pkgs.rustc
     pkgs.rustfmt
-    pkgs.sioyek
     pkgs.tor
     pkgs.torsocks
-    pkgs.tree
     pkgs.unicorn
     pkgs.visidata
-    pkgs.watch
-    pkgs.wget
-    pkgs.xz
     pkgs.yubikey-manager
-    pkgs.zstd
 
     pkgs.gopls
 
     # Node is required for Copilot.vim
     pkgs.nodejs_24
-  ]
+  ])
   ++ (lib.optionals isDarwin [
     # programs.gpg is Linux-only here, so provide the gnupg binary on darwin.
     pkgs.gnupg
@@ -136,10 +146,11 @@ in
     pkgs.zathura
     pkgs.xfce4-terminal
   ])
-  # GUI editor from nix on Linux graphical workstations and on macOS (preferred
+  # GUI apps from nix on Linux graphical workstations and on macOS (preferred
   # over a manually-installed Zed.app so the version is declarative and current);
   # not on headless hosts (WSL, apple-vm) which have nothing to draw to.
   ++ (lib.optionals (gui || isDarwin) [
+    pkgs.sioyek
     pkgs.zed-editor
   ]);
 
