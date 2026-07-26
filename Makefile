@@ -240,7 +240,8 @@ gce/image: ## Build a GCE image; prints /nix/store path (GCE_ARCH=x86_64-linux|a
 
 # Upload the built image to a GCS bucket and register it as a Compute image.
 # Set GCE_BUCKET and GCE_PROJECT. gcloud/gsutil run via nix (no local install).
-GCE_IMAGE_NAME ?= nixos-$(GCE_ARCH)
+# GCE resource names forbid underscores, so the arch is dash-mangled.
+GCE_IMAGE_NAME ?= nixos-$(subst _,-,$(GCE_ARCH))
 # Confidential VM feature tags (x86_64 only: SEV on N2D/C2D, SEV-SNP on
 # N2D/C3D, TDX on C3) so instances can launch with hardware memory
 # encryption. The stock nixpkgs kernel carries the guest support
