@@ -52,13 +52,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Review-first terminal diff viewer for agent-authored changesets.
-    # Not in nixpkgs, so consumed via its upstream flake (bun2nix build).
-    hunk = {
-      url = "github:modem-dev/hunk";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # One formatter/linter front-end: `nix fmt` and the formatting check
     # (nixfmt, deadnix, shellcheck, shfmt, actionlint) share one config.
     treefmt-nix = {
