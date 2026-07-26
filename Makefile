@@ -241,6 +241,16 @@ gce/image: ## Build a GCE image; prints /nix/store path (GCE_ARCH=x86_64-linux|a
 # Upload the built image to a GCS bucket and register it as a Compute image.
 # Set GCE_BUCKET and GCE_PROJECT. gcloud/gsutil run via nix (no local install).
 GCE_IMAGE_NAME ?= nixos-$(GCE_ARCH)
+# Confidential VM feature tags (x86_64 only: SEV on N2D/C2D, SEV-SNP on
+# N2D/C3D, TDX on C3) so instances can launch with hardware memory
+# encryption. The stock nixpkgs kernel carries the guest support
+# (AMD_MEM_ENCRYPT, SEV_GUEST, INTEL_TDX_GUEST; live migration and TDX need
+# kernel >= 6.6). SNP/TDX machine series additionally require registering
+# the GVNIC feature before instances will launch.
+GCE_GUEST_OS_FEATURES = UEFI_COMPATIBLE
+ifeq ($(GCE_ARCH),x86_64-linux)
+GCE_GUEST_OS_FEATURES := $(GCE_GUEST_OS_FEATURES),SEV_CAPABLE,SEV_LIVE_MIGRATABLE_V2,SEV_SNP_CAPABLE,TDX_CAPABLE
+endif
 .PHONY: gce/upload
 gce/upload: ## Upload + register the GCE image (set GCE_BUCKET, GCE_PROJECT)
 	@test -n "$(GCE_BUCKET)" || { echo "set GCE_BUCKET=<gcs-bucket>"; exit 1; }
@@ -250,5 +260,5 @@ gce/upload: ## Upload + register the GCE image (set GCE_BUCKET, GCE_PROJECT)
 		nix run nixpkgs#google-cloud-sdk -- storage cp "$$TARBALL" "gs://$(GCE_BUCKET)/" && \
 		nix run nixpkgs#google-cloud-sdk -- compute images create "$(GCE_IMAGE_NAME)" \
 			--project "$(GCE_PROJECT)" \
-			--guest-os-features=UEFI_COMPATIBLE \
+			--guest-os-features=$(GCE_GUEST_OS_FEATURES) \
 			--source-uri "gs://$(GCE_BUCKET)/$$(basename "$$TARBALL")"

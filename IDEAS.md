@@ -29,13 +29,19 @@
   machine types and higher bandwidth. Verify eth0/DHCP naming still holds
   under gVNIC.
 
-- **Confidential VM** (security; the standout). GCP encrypts VM memory in
-  hardware — AMD SEV / SEV-SNP (N2D, C3D) or Intel TDX (C3). Register the
-  image with `SEV_CAPABLE` (and/or `SEV_SNP_CAPABLE` / `TDX_CAPABLE`) so
-  instances can launch as Confidential VMs, opaque even to the hypervisor —
-  a real step up for an internet-facing hardened box. Mostly a guest-OS
-  feature + machine-type choice; confirm the NixOS kernel has the needed
-  SEV/TDX guest config.
+- **Confidential VM** (security; the standout) — done. `gce/upload` now
+  registers x86_64 images with `SEV_CAPABLE`, `SEV_LIVE_MIGRATABLE_V2`,
+  `SEV_SNP_CAPABLE` and `TDX_CAPABLE`, so instances can launch as
+  Confidential VMs (memory encrypted in hardware, opaque to the
+  hypervisor). Kernel side verified against GCP's requirements: nixpkgs
+  builds every x86_64 kernel with `AMD_MEM_ENCRYPT`, the `SEV_GUEST`
+  attestation driver and `INTEL_TDX_GUEST`, `gve` is built as a module,
+  and `linuxPackages_latest` (6.18) clears the 6.6 floor for TDX and SEV
+  live migration. Remaining: SEV-SNP (C3D) and TDX (C3) machine series
+  require gVNIC, so those two stay unlaunchable until the gVNIC item above
+  lands; SEV on N2D works now. Launch verification still pending
+  (`--confidential-compute-type=SEV` on an N2D instance, check `dmesg` for
+  "Memory Encryption Features active: AMD SEV").
 
 - **Secure Boot via lanzaboote** (completes Shielded VM). UEFI is on (vTPM +
   integrity monitoring work); the Secure Boot leg needs signed boot
