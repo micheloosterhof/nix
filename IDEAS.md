@@ -41,12 +41,41 @@
   require gVNIC, so those two stay unlaunchable until the gVNIC item above
   lands; SEV on N2D works now. Launch verification still pending
   (`--confidential-compute-type=SEV` on an N2D instance, check `dmesg` for
-  "Memory Encryption Features active: AMD SEV").
+  "Memory Encryption Features active: AMD SEV") — blocked in the
+  moosterhof-splunk project by the org policy
+  `constraints/compute.requireShieldedVm`, which refuses any instance
+  whose image can't do Secure Boot; unblocks when the lanzaboote item
+  below lands (2026-07-26).
 
-- **Secure Boot via lanzaboote** (completes Shielded VM). UEFI is on (vTPM +
-  integrity monitoring work); the Secure Boot leg needs signed boot
-  components. lanzaboote + custom keys enrolled in the image's UEFI db is the
-  path. Bigger project; then create instances with `--shielded-secure-boot`.
+- **Secure Boot for the GCE image** (completes Shielded VM; now required —
+  the moosterhof-splunk org policy enforces it for every instance). UEFI is
+  on (vTPM + integrity monitoring work); the Secure Boot leg needs signed
+  boot components. Research findings (2026-07-26):
+  - GCP enrolls custom keys at image registration: `gcloud compute images
+    create --platform-key-file (one DER X.509) --key-exchange-key-file
+    --signature-database-file --forbidden-database-file` (db entries can mix
+    our cert with Microsoft/Google certs). No firmware setup-mode dance —
+    the image carries its UEFI trust state. Instances then launch with
+    `--shielded-secure-boot`.
+  - lanzaboote is v1.1.0 (2026-06-22, mature) but signs at
+    bootloader-install time via `lzbt` reading `pkiBundle` (sbctl keys at
+    /var/lib/sbctl). For a make-disk-image build that install step runs
+    inside the build VM, so the private db key would have to enter the nix
+    store — leaked into the image and any cache. lanzaboote therefore fits
+    installed systems that rebuild in place (keys on the host), NOT
+    image pipelines.
+  - Proposed image path instead: boot the image via a single signed UKI
+    (nixpkgs `boot.uki` / systemd-stub bundles kernel+initrd+cmdline —
+    initrd integrity included, which plain signed systemd-boot lacks) as
+    `EFI/BOOT/BOOTX64.EFI`, and `sbsign` that one PE on the build host as
+    an image post-processing step. Keys never touch the store; signing is
+    idempotent and stays out of the nix sandbox.
+  - lanzaboote proper remains the path for pet hosts that `nixos-rebuild`
+    in place (physical/VMs, or cloud pets once a secrets mechanism can
+    deliver the pkiBundle).
+  - Key custody is the open decision and ties into the standing secrets
+    decision: PK/KEK/db are long-lived fleet identity. Interim: generate
+    with `sbctl create-keys` on the build host, back up offline.
 
 - **Tailscale auto-join on first boot** (highest-leverage for fleet deploy;
   needs the secrets decision first). `base` enables tailscaled but it's inert
