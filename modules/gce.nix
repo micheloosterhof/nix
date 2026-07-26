@@ -34,6 +34,12 @@
       # signing setup exists; vTPM and integrity monitoring work regardless.
       virtualisation.googleComputeImage.efi = true;
 
+      # Explicit image size: the default "auto" sizes the filesystem to the
+      # closure plus 512 MiB, which ext4 metadata overhead exceeds at this
+      # closure size (~11 GiB), failing the build in cptofs. The root
+      # partition grows to the instance's boot disk on first boot.
+      virtualisation.diskSize = 16 * 1024;
+
       # Standard GCP login as a fallback alongside the baked mich key, so a
       # fresh instance is never a lockout and behaves like a normal GCE VM:
       #   - OS Login (security.googleOsLogin, enabled unconditionally by the
