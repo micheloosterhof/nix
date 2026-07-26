@@ -19,6 +19,8 @@ let
   oxygen = self.nixosConfigurations.oxygen.config;
   mac = self.darwinConfigurations.neon.config;
 
+  serverHomePackageNames = map (p: p.pname or p.name) helium.home-manager.users.mich.home.packages;
+
   # Same import the flake overlay does, so the overlay tests compare the
   # final pkgs against the source of truth rather than a hardcoded version.
   unstable =
@@ -55,28 +57,20 @@ lib.runTests {
 
   # The HM package set is profile-tiered: servers carry only the lean CLI
   # set, workstations the full toolkit.
-  testServerHomeLacksWorkstationTools =
-    let
-      names = map (p: p.pname or p.name) helium.home-manager.users.mich.home.packages;
-    in
-    {
-      expr = lib.filter (n: lib.elem n names) [
-        "hashcat"
-        "claude-code"
-        "ffmpeg"
-      ];
-      expected = [ ];
-    };
+  testServerHomeLacksWorkstationTools = {
+    expr = lib.filter (n: lib.elem n serverHomePackageNames) [
+      "hashcat"
+      "claude-code"
+      "ffmpeg"
+    ];
+    expected = [ ];
+  };
   testServerHomeKeepsLeanTools = {
-    expr =
-      let
-        names = map (p: p.pname or p.name) helium.home-manager.users.mich.home.packages;
-      in
-      lib.all (n: lib.elem n names) [
-        "ripgrep"
-        "htop"
-        "jq"
-      ];
+    expr = lib.all (n: lib.elem n serverHomePackageNames) [
+      "ripgrep"
+      "htop"
+      "jq"
+    ];
     expected = true;
   };
   testWorkstationHomeKeepsFullToolkit = {
