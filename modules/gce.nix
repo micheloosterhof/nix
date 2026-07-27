@@ -8,10 +8,16 @@
 { config, inputs, ... }:
 {
   flake.modules.nixos.gce =
-    { pkgs, lib, ... }:
+    {
+      config,
+      pkgs,
+      lib,
+      ...
+    }:
     {
       imports = [
-        "${inputs.nixpkgs}/nixos/modules/virtualisation/google-compute-image.nix"
+        "${inputs.nixpkgs}/nixos/modules/virtualisation/google-compute-config.nix"
+        "${inputs.nixpkgs}/nixos/modules/image/repart.nix"
       ];
 
       # Dynamic addressing: DHCP on the single GCE NIC (predictable names are
@@ -26,19 +32,50 @@
       # assignment wins.
       networking.firewall.enable = true;
 
-      # UEFI boot so the image can run as a Shielded VM (vTPM + integrity
-      # monitoring). Registering the image needs the UEFI_COMPATIBLE guest OS
-      # feature (make gce/upload adds it). Shielded VM's Secure Boot option
-      # additionally needs signed boot components, which stock NixOS doesn't
-      # provide — create instances with Secure Boot off until a lanzaboote
-      # signing setup exists; vTPM and integrity monitoring work regardless.
-      virtualisation.googleComputeImage.efi = true;
+      # Secure Boot via a single signed UKI (kernel + initrd + cmdline in one
+      # PE binary, so the whole boot path is verified) at the removable UEFI
+      # path. The signing key is ephemeral: generated inside the signedUki
+      # derivation, discarded with its build directory; only the certificate
+      # survives, and `make gce/upload` enrolls it as the image's UEFI
+      # PK/KEK/db. Instances launch with --shielded-secure-boot; all three
+      # Shielded VM legs (Secure Boot, vTPM, integrity monitoring) work.
+      # There is no bootloader and no generation menu: boot changes ship as
+      # a new image, not via nixos-rebuild on the instance.
+      boot.loader.grub.enable = lib.mkForce false;
 
-      # Explicit image size: the default "auto" allots only 512 MiB of slack
-      # over the closure, and ext4 metadata overhead can exceed that as the
-      # closure grows, aborting the build in cptofs. The root partition
-      # grows to the instance's boot disk on first boot.
-      virtualisation.diskSize = 16 * 1024;
+      # The image is assembled by systemd-repart directly from the closure —
+      # no build VM, no KVM requirement. The root filesystem label matches
+      # the fileSystems."/" device set by google-compute-config, and the
+      # partition auto-grows to the instance's boot disk on first boot
+      # (boot.growPartition + autoResize, also from that profile).
+      image.repart = {
+        name = "nixos-gce";
+        partitions = {
+          "10-esp" = {
+            contents = {
+              "/EFI/BOOT/BOOT${lib.toUpper pkgs.stdenv.hostPlatform.efiArch}.EFI".source =
+                "${config.system.build.signedUki}/uki.efi";
+            };
+            repartConfig = {
+              Type = "esp";
+              Format = "vfat";
+              SizeMinBytes = "512M";
+            };
+          };
+          "20-root" = {
+            storePaths = [ config.system.build.toplevel ];
+            repartConfig = {
+              Type = "root";
+              Format = "ext4";
+              Label = "nixos";
+              Minimize = "guess";
+            };
+          };
+        };
+      };
+      # The filesystem label (not just the GPT label) must be "nixos": the
+      # GCE profile mounts / by /dev/disk/by-label/nixos.
+      image.repart.mkfsOptions.ext4 = [ "-L nixos" ];
 
       # Standard GCP login as a fallback alongside the baked mich key, so a
       # fresh instance is never a lockout and behaves like a normal GCE VM:
@@ -69,6 +106,52 @@
       # gcloud / gsutil on the instance (base components only, no extras).
       environment.systemPackages = [ pkgs.google-cloud-sdk ];
 
+      # The stock UKI (system.build.uki) signed with a keypair that exists
+      # only inside this build: the private key is never an output, so it
+      # cannot reach the store, the image, or a cache. cert.der is the
+      # public certificate for UEFI enrollment at image registration.
+      system.build.signedUki =
+        pkgs.runCommand "gce-signed-uki"
+          {
+            nativeBuildInputs = [
+              pkgs.openssl
+              pkgs.buildPackages.systemdUkify
+            ];
+          }
+          ''
+            openssl req -x509 -newkey rsa:4096 -nodes -days 3650 \
+              -subj "/CN=nixos-gce-secureboot/" \
+              -keyout key.pem -out cert.pem
+            mkdir -p $out
+            systemd-sbsign sign \
+              --private-key key.pem \
+              --certificate cert.pem \
+              --output $out/uki.efi \
+              ${config.system.build.uki}/${config.system.boot.loader.ukiFile}
+            openssl x509 -in cert.pem -outform DER -out $out/cert.der
+          '';
+
+      # GCE upload format: a tar.gz containing disk.raw, padded to a whole
+      # GiB as the images API requires (sparse, so padding is free). The
+      # enrollment certificate rides along for make gce/upload.
+      system.build.gceImage =
+        pkgs.runCommand "gce-image"
+          {
+            nativeBuildInputs = [ pkgs.gnutar ];
+          }
+          ''
+            mkdir -p $out
+            cp --sparse=always \
+              ${config.system.build.image}/${config.image.repart.name}.raw disk.raw
+            chmod u+w disk.raw
+            size=$(stat -Lc %s disk.raw)
+            gib=$(( (size + 1073741823) / 1073741824 ))
+            truncate -s $(( gib * 1073741824 )) disk.raw
+            tar -Sc disk.raw | gzip -3 > \
+              "$out/${config.image.repart.name}-${pkgs.stdenv.hostPlatform.system}.raw.tar.gz"
+            cp ${config.system.build.signedUki}/cert.der $out/cert.der
+          '';
+
       # system.stateVersion comes from the server aggregate (server.nix); the
       # image always composes it, so it is not repeated here.
     };
@@ -96,6 +179,6 @@
   perSystem =
     { system, ... }:
     inputs.nixpkgs.lib.optionalAttrs (inputs.nixpkgs.lib.hasSuffix "linux" system) {
-      packages.gce-image = (config.flake.lib.gceSystem system).config.system.build.googleComputeImage;
+      packages.gce-image = (config.flake.lib.gceSystem system).config.system.build.gceImage;
     };
 }

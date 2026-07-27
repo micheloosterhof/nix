@@ -230,9 +230,9 @@ vm/launch: ## Build VMDK and drop into a Fusion .vmwarevm bundle
 wsl: ## Build a WSL installer tarball
 	 nix build ".#nixosConfigurations.wsl.config.system.build.installer"
 
-# Build a Google Compute Engine image (a GCS-uploadable tarball). aarch64
-# builds on the Mac's linux-builder; x86_64 needs a native x86_64 builder,
-# so build that arch in CI (or with an x86_64 remote builder).
+# Build a Google Compute Engine image (a GCS-uploadable tarball). Assembled
+# by systemd-repart — no KVM needed, any builder of the right arch works:
+# aarch64 on the Mac's linux-builder, x86_64 in CI or on an x86_64 box.
 GCE_ARCH ?= x86_64-linux
 .PHONY: gce/image
 gce/image: ## Build a GCE image; prints /nix/store path (GCE_ARCH=x86_64-linux|aarch64-linux)
@@ -262,4 +262,7 @@ gce/upload: ## Upload + register the GCE image (set GCE_BUCKET, GCE_PROJECT)
 		nix run nixpkgs#google-cloud-sdk -- compute images create "$(GCE_IMAGE_NAME)" \
 			--project "$(GCE_PROJECT)" \
 			--guest-os-features=$(GCE_GUEST_OS_FEATURES) \
+			--platform-key-file="$$IMG/cert.der" \
+			--key-exchange-key-file="$$IMG/cert.der" \
+			--signature-database-file="$$IMG/cert.der" \
 			--source-uri "gs://$(GCE_BUCKET)/$$(basename "$$TARBALL")"

@@ -88,6 +88,33 @@ lib.runTests {
     expected = true;
   };
 
+  # The GCE image boots a single signed UKI from the removable EFI path;
+  # no bootloader is installed and the image is assembled with repart.
+  testGceNoBootloader = {
+    expr = {
+      systemdBoot = gce.boot.loader.systemd-boot.enable;
+      grub = gce.boot.loader.grub.enable;
+    };
+    expected = {
+      systemdBoot = false;
+      grub = false;
+    };
+  };
+  testGceEspCarriesUki = {
+    expr = builtins.hasAttr "/EFI/BOOT/BOOTX64.EFI" gce.image.repart.partitions."10-esp".contents;
+    expected = true;
+  };
+  testGceRootPartitionFromClosure = {
+    expr =
+      gce.image.repart.partitions."20-root".storePaths == [ gce.system.build.toplevel ]
+      && gce.image.repart.partitions."20-root".repartConfig.Format == "ext4";
+    expected = true;
+  };
+  testGceImageOutputsExist = {
+    expr = (gce.system.build ? signedUki) && (gce.system.build ? gceImage);
+    expected = true;
+  };
+
   # The NixOS-WSL module is composed in and configured by the wsl host file.
   testWslEnabled = {
     expr = wsl.wsl.enable;
