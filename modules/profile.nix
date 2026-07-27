@@ -1,5 +1,5 @@
-# ABOUTME: Declares the host-shape options (my.profile, my.gui.enable) and turns
-# ABOUTME: the profile into capability defaults: a workstation gets a GUI, a server not.
+# ABOUTME: Declares the host-shape options (my.profile, my.gui.enable, my.tools.full)
+# ABOUTME: and turns the profile into capability defaults: workstation GUI on, server off.
 { ... }:
 let
   shared =

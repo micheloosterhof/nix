@@ -59,7 +59,7 @@ in
   # not a huge list.
   #
   # This is the default home for any cross-platform CLI tool: it applies
-  # to every host on both Linux and macOS. Reserve machines/vm-shared.nix
+  # to every host on both Linux and macOS. Reserve the modules/ aggregates
   # for Linux system-level packages and users/mich/darwin.nix homebrew for
   # macOS GUI apps. Don't list a package in more than one layer.
   #
