@@ -158,7 +158,10 @@
       system.build.gceImage =
         pkgs.runCommand "gce-image"
           {
-            nativeBuildInputs = [ pkgs.gnutar ];
+            nativeBuildInputs = [
+              pkgs.gnutar
+              pkgs.gptfdisk
+            ];
           }
           ''
             mkdir -p $out
@@ -168,6 +171,10 @@
             size=$(stat -Lc %s disk.raw)
             gib=$(( (size + 1073741823) / 1073741824 ))
             truncate -s $(( gib * 1073741824 )) disk.raw
+            # The padding grew the disk past where repart wrote the backup
+            # GPT header; move it to the new disk end or the kernel logs
+            # GPT errors on every fresh boot.
+            sgdisk -e disk.raw
             tar -Sc disk.raw | gzip -3 > \
               "$out/${config.image.repart.name}-${pkgs.stdenv.hostPlatform.system}.raw.tar.gz"
             cp ${config.system.build.signedUki}/cert.der $out/cert.der
