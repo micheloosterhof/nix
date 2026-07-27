@@ -123,7 +123,7 @@
               -subj "/CN=nixos-gce-secureboot/" \
               -keyout key.pem -out cert.pem
             mkdir -p $out
-            systemd-sbsign sign \
+            ${pkgs.buildPackages.systemdUkify}/lib/systemd/systemd-sbsign sign \
               --private-key key.pem \
               --certificate cert.pem \
               --output $out/uki.efi \
