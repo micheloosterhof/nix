@@ -64,6 +64,12 @@
           };
           "20-root" = {
             storePaths = [ config.system.build.toplevel ];
+            # repart copies store contents but not the Nix database; ship
+            # the closure registration and load it on first boot (below),
+            # or every nix operation sees an unregistered store.
+            contents."/nix-path-registration".source = "${
+              pkgs.closureInfo { rootPaths = [ config.system.build.toplevel ]; }
+            }/registration";
             repartConfig = {
               Type = "root";
               Format = "ext4";
@@ -76,6 +82,15 @@
       # The filesystem label (not just the GPT label) must be "nixos": the
       # GCE profile mounts / by /dev/disk/by-label/nixos.
       image.repart.mkfsOptions.ext4 = [ "-L nixos" ];
+
+      # First boot: register the baked closure in the Nix database, then
+      # drop the file so this runs once.
+      boot.postBootCommands = ''
+        if [ -f /nix-path-registration ]; then
+          ${config.nix.package.out}/bin/nix-store --load-db < /nix-path-registration &&
+            rm -f /nix-path-registration
+        fi
+      '';
 
       # Standard GCP login as a fallback alongside the baked mich key, so a
       # fresh instance is never a lockout and behaves like a normal GCE VM:

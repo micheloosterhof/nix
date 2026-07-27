@@ -114,6 +114,15 @@ lib.runTests {
     expr = (gce.system.build ? signedUki) && (gce.system.build ? gceImage);
     expected = true;
   };
+  # The image must carry the closure's store-db registration and load it on
+  # first boot; without it every nix operation on the instance sees an
+  # unregistered store (HM activation is the first casualty).
+  testGceStoreDbRegistration = {
+    expr =
+      (builtins.hasAttr "/nix-path-registration" gce.image.repart.partitions."20-root".contents)
+      && (lib.hasInfix "nix-path-registration" gce.boot.postBootCommands);
+    expected = true;
+  };
 
   # The NixOS-WSL module is composed in and configured by the wsl host file.
   testWslEnabled = {
