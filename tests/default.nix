@@ -19,7 +19,9 @@ let
   oxygen = self.nixosConfigurations.oxygen.config;
   mac = self.darwinConfigurations.neon.config;
 
-  serverHomePackageNames = map (p: p.pname or p.name) helium.home-manager.users.mich.home.packages;
+  gce = (self.lib.gceSystem "x86_64-linux").config;
+
+  homePackageNames = cfg: map (p: p.pname or p.name) cfg.home-manager.users.mich.home.packages;
 
   # Same import the flake overlay does, so the overlay tests compare the
   # final pkgs against the source of truth rather than a hardcoded version.
@@ -55,21 +57,29 @@ lib.runTests {
     expected = true;
   };
 
-  # The HM package set is profile-tiered: servers carry only the lean CLI
-  # set, workstations the full toolkit.
-  testServerHomeLacksWorkstationTools = {
-    expr = lib.filter (n: lib.elem n serverHomePackageNames) [
+  # The HM package set is tiered by my.tools.full: interactive hosts —
+  # workstations and pet servers alike — carry the full toolkit; appliance
+  # images (GCE) carry only the lean CLI set.
+  testApplianceHomeLacksFullToolkit = {
+    expr = lib.filter (n: lib.elem n (homePackageNames gce)) [
       "hashcat"
       "claude-code"
       "ffmpeg"
     ];
     expected = [ ];
   };
-  testServerHomeKeepsLeanTools = {
-    expr = lib.all (n: lib.elem n serverHomePackageNames) [
+  testApplianceHomeKeepsLeanTools = {
+    expr = lib.all (n: lib.elem n (homePackageNames gce)) [
       "ripgrep"
       "htop"
       "jq"
+    ];
+    expected = true;
+  };
+  testPetServerKeepsFullToolkit = {
+    expr = lib.all (n: lib.elem n (homePackageNames helium)) [
+      "hashcat"
+      "ast-grep"
     ];
     expected = true;
   };

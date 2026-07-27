@@ -54,6 +54,9 @@
       # guest-agent users (IAM- or key-gated) can authenticate too.
       services.openssh.settings.AllowUsers = lib.mkForce null;
 
+      # Appliance image: only the lean CLI set in the user environment.
+      my.tools.full = false;
+
       # Generic cloud image: containers via podman, not docker. The server
       # aggregate enables docker (for the container-running pet servers);
       # a generic cloud base shouldn't carry the daemon.
@@ -70,24 +73,29 @@
       # image always composes it, so it is not repeated here.
     };
 
+  # Exposed as flake lib so the eval tests can assert on the composed image
+  # config (it is not a nixosConfiguration).
+  flake.lib.gceSystem =
+    system:
+    inputs.nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = [
+        config.flake.modules.nixos.base
+        config.flake.modules.nixos.server
+        config.flake.modules.nixos.gce
+        ../users/mich/nixos.nix
+        { my.profile = "server"; }
+        {
+          config._module.args = {
+            inputs = inputs;
+          };
+        }
+      ];
+    };
+
   perSystem =
     { system, ... }:
     inputs.nixpkgs.lib.optionalAttrs (inputs.nixpkgs.lib.hasSuffix "linux" system) {
-      packages.gce-image =
-        (inputs.nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            config.flake.modules.nixos.base
-            config.flake.modules.nixos.server
-            config.flake.modules.nixos.gce
-            ../users/mich/nixos.nix
-            { my.profile = "server"; }
-            {
-              config._module.args = {
-                inputs = inputs;
-              };
-            }
-          ];
-        }).config.system.build.googleComputeImage;
+      packages.gce-image = (config.flake.lib.gceSystem system).config.system.build.googleComputeImage;
     };
 }

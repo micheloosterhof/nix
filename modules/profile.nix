@@ -23,6 +23,17 @@ let
             it, and a hardware platform can force it off with mkForce.
           '';
         };
+
+        tools.full = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = ''
+            Whether mich's home environment carries the full interactive CLI
+            toolkit. On for every host that gets worked on directly, including
+            headless pet servers; appliance images (cloud, container) turn it
+            off to keep their closures lean.
+          '';
+        };
       };
 
       config.my.gui.enable = lib.mkDefault (config.my.profile == "workstation");

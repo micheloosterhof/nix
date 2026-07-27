@@ -17,10 +17,11 @@ let
   # my.gui option isn't defined.
   gui = isLinux && (osConfig.my.gui.enable or false);
 
-  # Servers get the lean CLI set only; the full toolkit is for hosts worked
-  # on interactively. `or "workstation"` keeps this safe on darwin where the
-  # my.profile option isn't defined.
-  server = isLinux && (osConfig.my.profile or "workstation") == "server";
+  # Appliance images get the lean CLI set only; every host worked on
+  # directly — workstations and headless pet servers alike — carries the
+  # full toolkit. `or true` keeps this safe on darwin where the my.tools
+  # option isn't defined.
+  fullTools = !isLinux || (osConfig.my.tools.full or true);
 in
 {
   imports = [ inputs.nix-index-database.homeModules.nix-index ];
@@ -62,9 +63,9 @@ in
   # for Linux system-level packages and users/mich/darwin.nix homebrew for
   # macOS GUI apps. Don't list a package in more than one layer.
   #
-  # The base list is the lean set every host gets, servers included; the
-  # workstation list is the interactive toolkit and stays off servers to
-  # keep server/cloud-image closures small.
+  # The base list is the lean set every host gets, appliance images
+  # included; the second list is the interactive toolkit and stays off
+  # appliance images to keep their closures small.
   home.packages = [
     pkgs.dnsutils
     pkgs.dust
@@ -80,7 +81,7 @@ in
     pkgs.xz
     pkgs.zstd
   ]
-  ++ (lib.optionals (!server) [
+  ++ (lib.optionals fullTools [
     pkgs.act
     pkgs.asciinema
     pkgs.ast-grep
