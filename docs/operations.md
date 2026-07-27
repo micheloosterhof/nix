@@ -85,11 +85,14 @@ Access, in order of preference — you should never be locked out:
   a deliberate exception to the fleet's immutable-users policy, scoped to
   cloud images, so standard GCP access is always available as a fallback.
 
-The image is UEFI, and `gce/upload` registers it with the `UEFI_COMPATIBLE`
-guest OS feature, so instances can run as Shielded VMs. Create them with
-`--shielded-vtpm --shielded-integrity-monitoring`; leave
-`--shielded-secure-boot` off until signed boot components exist (stock NixOS
-boot binaries aren't signed for GCP's Secure Boot db).
+The image boots a single signed UKI: an ephemeral per-build key signs it,
+and `gce/upload` enrolls the matching certificate as the image's UEFI
+PK/KEK/db alongside the `UEFI_COMPATIBLE` and Confidential VM guest OS
+features. Instances run with all three Shielded VM legs
+(`--shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring`)
+and can additionally launch as Confidential VMs
+(`--confidential-compute-type=SEV` on N2D). There is no bootloader menu on
+the instance: kernel/initrd changes ship as a new image.
 
 Keep the image and its GCS object **project-private** (the `gce/upload`
 defaults do this). The image bakes `mich` (authorized `keys/`, the rotated
@@ -105,22 +108,21 @@ the first boot-test:
 gcloud compute instances create nixos-test \
     --project=<project> --zone=<zone> \
     --image=<image-name> --image-project=<project> \
-    --shielded-vtpm --shielded-integrity-monitoring \
+    --shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
     --metadata=enable-oslogin=TRUE,serial-port-enable=TRUE
 # boot log:  gcloud compute instances get-serial-port-output nixos-test --zone=<zone>
 ```
 
-Access is still never a lockout: if OS Login IAM isn't set up, `ssh
-mich@<ip>` with the baked key works.
+Access is still never a lockout, but the two login paths are exclusive:
+while OS Login is enabled (the metadata above) its PAM denies local users,
+so IAM admins log in and sudo; `ssh mich@<ip>` with the baked key works
+only on instances created with `enable-oslogin=FALSE`.
 
 `GCE_ARCH` selects `x86_64-linux` (default, cloud standard) or
-`aarch64-linux` (Graviton/Axion). The disk-image build needs the `kvm`
-feature (make-disk-image runs a qemu VM), so it must run on a KVM-capable
-builder of the target arch: x86_64 builds in CI (`build.yml`, on a runner
-with nested KVM) or on any x86_64 Linux host; aarch64 builds on KVM-capable
-aarch64 metal. Neither the Apple-silicon linux-builder nor GitHub's free
-arm64 runners expose KVM, so the aarch64 image is not CI-gated — the output
-is valid, it just needs the right builder. An instance that gets an external
+`aarch64-linux` (Graviton/Axion). The image is assembled by systemd-repart
+— no VM, no KVM feature — so any builder of the target arch works: x86_64
+in CI or on an x86_64 Linux host, aarch64 on the Apple-silicon
+linux-builder or an arm64 runner. An instance that gets an external
 IP wants the internet-facing posture layered on; the base image leaves it off
 but keeps the host firewall on.
 
