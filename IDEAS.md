@@ -39,18 +39,28 @@
   and `linuxPackages_latest` (6.18) clears the 6.6 floor for TDX and SEV
   live migration. Remaining: SEV-SNP (C3D) and TDX (C3) machine series
   require gVNIC, so those two stay unlaunchable until the gVNIC item above
-  lands; SEV on N2D works now. Launch verification still pending
-  (`--confidential-compute-type=SEV` on an N2D instance, check `dmesg` for
-  "Memory Encryption Features active: AMD SEV") — blocked in the
-  moosterhof-splunk project by the org policy
-  `constraints/compute.requireShieldedVm`, which refuses any instance
-  whose image can't do Secure Boot; unblocks when the lanzaboote item
-  below lands (2026-07-26).
+  lands; SEV on N2D works now. Launch-verified 2026-07-27 on an N2D
+  Confidential VM: dmesg shows "Memory Encryption Features active: AMD
+  SEV" and "live migration enabled in EFI" (SEV_LIVE_MIGRATABLE_V2
+  functional).
 
-- **Secure Boot for the GCE image** (completes Shielded VM; now required —
-  the moosterhof-splunk org policy enforces it for every instance). UEFI is
-  on (vTPM + integrity monitoring work); the Secure Boot leg needs signed
-  boot components. Research findings (2026-07-26):
+- **Secure Boot for the GCE image** — done 2026-07-27. The image boots a
+  single UKI signed inside the build with an ephemeral RSA-4096 key; the
+  certificate ships beside the tarball and `make gce/upload` enrolls it
+  as the image's UEFI PK/KEK/db. Assembly moved from make-disk-image to
+  systemd-repart (no KVM anywhere in the pipeline — aarch64 images now
+  build on the linux-builder and plain CI runners). Verified on a
+  Shielded + SEV Confidential VM: "Secure Boot: enabled (user)",
+  "Measured UKI: yes", all three Shielded legs plus SEV. Tradeoff
+  accepted: no bootloader/generations on instances; boot changes ship as
+  a new image. Login model: OS Login is the admin path (its PAM denies
+  local users; execWheelOnly relaxed on this image so IAM admins can
+  sudo); the baked mich key works only where enable-oslogin=FALSE.
+  lanzaboote remains the right tool for pet hosts that rebuild in place —
+  not used for image pipelines (its install-time signing would put the
+  key in the store). Follow-ups: build.yml still gates the x86_64 image
+  on a nested-virt runner comment that is now stale; CI could also build
+  the aarch64 image. Original research notes:
   - GCP enrolls custom keys at image registration: `gcloud compute images
     create --platform-key-file (one DER X.509) --key-exchange-key-file
     --signature-database-file --forbidden-database-file` (db entries can mix
