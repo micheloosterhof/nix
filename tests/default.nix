@@ -114,6 +114,20 @@ lib.runTests {
     expr = (gce.system.build ? signedUki) && (gce.system.build ? gceImage);
     expected = true;
   };
+  # OS Login is the image's admin path (PAM denies local users while it is
+  # enabled), so IAM admins must be able to execute sudo: the wheel-only
+  # sudo binary from hardening.nix is relaxed on this image.
+  testGceOsLoginSudo = {
+    expr = {
+      osLogin = gce.security.googleOsLogin.enable;
+      wheelOnly = gce.security.sudo.execWheelOnly;
+    };
+    expected = {
+      osLogin = true;
+      wheelOnly = false;
+    };
+  };
+
   # The image must carry the closure's store-db registration and load it on
   # first boot; without it every nix operation on the instance sees an
   # unregistered store (HM activation is the first casualty).

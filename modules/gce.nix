@@ -105,6 +105,12 @@
       # hardening.nix restricts logins to mich; relax it so OS Login and
       # guest-agent users (IAM- or key-gated) can authenticate too.
       services.openssh.settings.AllowUsers = lib.mkForce null;
+      # While OS Login is enabled its PAM account module denies local users,
+      # so IAM admins are the working login path and need a sudo binary they
+      # can execute: relax hardening.nix's wheel-only restriction here. The
+      # baked mich key only works on instances that set the metadata
+      # enable-oslogin=FALSE.
+      security.sudo.execWheelOnly = lib.mkForce false;
 
       # Appliance image: only the lean CLI set in the user environment.
       my.tools.full = false;
