@@ -58,9 +58,8 @@
   sudo); the baked mich key works only where enable-oslogin=FALSE.
   lanzaboote remains the right tool for pet hosts that rebuild in place —
   not used for image pipelines (its install-time signing would put the
-  key in the store). Follow-ups: build.yml still gates the x86_64 image
-  on a nested-virt runner comment that is now stale; CI could also build
-  the aarch64 image. Original research notes:
+  key in the store). build.yml builds both arch images on stock runners
+  (no KVM gate left). Original research notes:
   - GCP enrolls custom keys at image registration: `gcloud compute images
     create --platform-key-file (one DER X.509) --key-exchange-key-file
     --signature-database-file --forbidden-database-file` (db entries can mix

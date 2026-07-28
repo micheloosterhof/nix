@@ -97,10 +97,11 @@ Three fundamentally different build products, not to be forced onto one axis:
    (`modules/gce.nix`): a headless server-profile GCE disk image, built for
    both x86_64 and aarch64. Generic and reusable — hostname and IP come from
    GCE metadata/DHCP at boot, so one image deploys to many instances. The
-   `flake.modules.nixos.gce` aggregate (the upstream google-compute-image
-   module + eth0 DHCP + host firewall + gcloud) doubles as a platform a
-   per-host cloud config could compose later. The internet-facing posture
-   (bogons, tighter rules) is layered per-deployment, not baked.
+   `flake.modules.nixos.gce` aggregate (the upstream google-compute-config
+   module + systemd-repart image assembly + a signed-UKI Secure Boot chain +
+   eth0 DHCP + host firewall + gcloud) doubles as a platform a per-host
+   cloud config could compose later. The internet-facing posture (bogons,
+   tighter rules) is layered per-deployment, not baked.
 
 ## Validation
 
@@ -118,12 +119,11 @@ fusion/utm equivalent (identical package sets; only merge order differs).
 - **container-server** builds to a correct rootfs (verified: `/init`,
   `activate`, nix store) but running systemd as PID 1 under each runtime is
   untested.
-- **gce-image** builds (x86_64 green in CI) but has not been booted on GCE;
-  the guest-agent, OS Login, DHCP and serial-console wiring come from the
-  upstream `google-compute-image` module but are unverified against a real
-  instance. The image is UEFI (`efi = true`) so it can run as a Shielded VM
-  with vTPM + integrity monitoring; Shielded VM's Secure Boot option would
-  additionally need signed boot components (lanzaboote), not yet set up.
+- **gce-image (aarch64)** builds in CI but has never been launched on an
+  arm instance. The x86_64 image is launch-verified on a Shielded + SEV
+  Confidential VM (Secure Boot enabled with the enrolled custom cert,
+  vTPM, integrity monitoring, OS Login, serial console); the aarch64
+  variant shares the composition but none of that is confirmed on T2A.
 
 ## Deferred
 
