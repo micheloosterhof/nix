@@ -100,6 +100,9 @@ lib.runTests {
       grub = false;
     };
   };
+  # BOOTX64.EFI is the x86_64 removable path; correct while `gce` above is
+  # the x86_64 composition only. An aarch64 assertion would need BOOTAA64.EFI
+  # (the image derives it from hostPlatform.efiArch).
   testGceEspCarriesUki = {
     expr = builtins.hasAttr "/EFI/BOOT/BOOTX64.EFI" gce.image.repart.partitions."10-esp".contents;
     expected = true;
