@@ -134,10 +134,7 @@
       system.build.signedUki =
         pkgs.runCommand "gce-signed-uki"
           {
-            nativeBuildInputs = [
-              pkgs.openssl
-              pkgs.buildPackages.systemdUkify
-            ];
+            nativeBuildInputs = [ pkgs.openssl ];
           }
           ''
             openssl req -x509 -newkey rsa:4096 -nodes -days 3650 \
