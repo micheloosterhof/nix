@@ -38,11 +38,7 @@
             "${inputs.nixpkgs}/nixos/modules/profiles/docker-container.nix"
             config.flake.modules.nixos.container
             { my.profile = "server"; }
-            {
-              config._module.args = {
-                inputs = inputs;
-              };
-            }
+            { config._module.args = { inherit inputs; }; }
           ];
         }).config.system.build.tarball;
     };
