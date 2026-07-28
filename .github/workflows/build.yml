@@ -60,6 +60,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # The repart image build runs `unshare --map-root-user` inside the Nix
+      # sandbox; Ubuntu 24.04's AppArmor default strips capabilities from
+      # unprivileged user namespaces, failing the uid_map write. Lift the
+      # restriction on Linux runners so systemd-repart can assemble images.
+      - name: allow unprivileged user namespaces
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       # The token avoids GitHub API rate limits when fetching flake inputs.
       - uses: cachix/install-nix-action@v31
         with:
