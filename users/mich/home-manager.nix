@@ -289,6 +289,10 @@ in
   programs.delta = {
     enable = true;
     enableGitIntegration = true;
+    options = {
+      hunk-header-style = "omit";
+      side-by-side = true;
+    };
   };
 
   programs.git = {
