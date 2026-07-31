@@ -95,12 +95,12 @@ jobs:
       # references, so a diff says nothing — skip them.
       - name: diff closure against main
         if: startsWith(github.ref, 'refs/heads/flake-lock/') && !startsWith(matrix.host, 'gce-image')
-        env:
-          NO_COLOR: "1"
         run: |
+          set -euo pipefail
           new=$(nix build --no-link --print-out-paths ".#${{ matrix.attr }}")
           old=$(nix build --fallback --no-link --print-out-paths "./base#${{ matrix.attr }}")
-          nix store diff-closures "$old" "$new" | tee diff.txt
+          # diff-closures colors unconditionally (ignores NO_COLOR and tty)
+          nix store diff-closures "$old" "$new" | perl -pe 's/\e\[[0-9;]*m//g' | tee diff.txt
           {
             echo "### ${{ matrix.host }}"
             echo '```'
