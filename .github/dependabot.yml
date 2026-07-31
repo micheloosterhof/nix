@@ -1,0 +1,10 @@
+# ABOUTME: Dependabot config keeping GitHub Actions versions current.
+# ABOUTME: Nix flake inputs are bumped separately by update-lock.yml.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
