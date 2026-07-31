@@ -63,9 +63,9 @@ jobs:
             runner: ubuntu-24.04-arm
             attr: packages.aarch64-linux.gce-image
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: startsWith(github.ref, 'refs/heads/flake-lock/')
         with:
           ref: main
