@@ -124,7 +124,7 @@ jobs:
     steps:
       - run: test "${{ needs.closure.result }}" = "success"
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: startsWith(github.ref, 'refs/heads/flake-lock/')
         with:
           pattern: diff-*
