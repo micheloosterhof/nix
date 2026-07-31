@@ -79,3 +79,13 @@ jobs:
       - name: build system closure
         run: |
           nix build -L --fallback --no-link --print-out-paths ".#${{ matrix.attr }}"
+
+  # Single context for the main ruleset's required checks: rules list checks
+  # by exact job name and the matrix names change as hosts come and go, so
+  # the rule points here instead. Green iff every matrix build is green.
+  closures:
+    needs: closure
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.closure.result }}" = "success"
