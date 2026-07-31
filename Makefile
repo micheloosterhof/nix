@@ -40,7 +40,7 @@ fmt/check: ## Check formatting without writing changes
 
 .PHONY: lint
 lint: ## Run flake checks (formatting + eval-tests)
-	nix flake check
+	nix flake check --all-systems
 
 .PHONY: hooks
 hooks: ## Install the git pre-commit hooks
