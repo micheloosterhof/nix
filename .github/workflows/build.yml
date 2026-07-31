@@ -7,6 +7,10 @@
 # image (an aarch64-linux derivation a macOS runner cannot build). After a
 # flake.lock bump changes that image, run `make cachix/seed` from the Mac —
 # until then the neon job fails on the missing image, which is the signal.
+#
+# On flake-lock/* branches each host job also realizes main's closure and
+# diffs the two; the closures job collects the diffs into one PR comment so
+# a lock bump can be reviewed by what actually changes on each machine.
 name: build
 
 on:
@@ -15,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: build-${{ github.ref }}
@@ -60,6 +65,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/checkout@v5
+        if: startsWith(github.ref, 'refs/heads/flake-lock/')
+        with:
+          ref: main
+          path: base
+
       # The repart image build runs `unshare --map-root-user` inside the Nix
       # sandbox; Ubuntu 24.04's AppArmor default strips capabilities from
       # unprivileged user namespaces, failing the uid_map write. Lift the
@@ -80,6 +91,29 @@ jobs:
         run: |
           nix build -L --fallback --no-link --print-out-paths ".#${{ matrix.attr }}"
 
+      # gce-image outputs are compressed artifacts whose closures carry no
+      # references, so a diff says nothing — skip them.
+      - name: diff closure against main
+        if: startsWith(github.ref, 'refs/heads/flake-lock/') && !startsWith(matrix.host, 'gce-image')
+        env:
+          NO_COLOR: "1"
+        run: |
+          new=$(nix build --no-link --print-out-paths ".#${{ matrix.attr }}")
+          old=$(nix build --fallback --no-link --print-out-paths "./base#${{ matrix.attr }}")
+          nix store diff-closures "$old" "$new" | tee diff.txt
+          {
+            echo "### ${{ matrix.host }}"
+            echo '```'
+            cat diff.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/heads/flake-lock/') && !startsWith(matrix.host, 'gce-image')
+        with:
+          name: diff-${{ matrix.host }}
+          path: diff.txt
+
   # Single context for the main ruleset's required checks: rules list checks
   # by exact job name and the matrix names change as hosts come and go, so
   # the rule points here instead. Green iff every matrix build is green.
@@ -89,3 +123,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: test "${{ needs.closure.result }}" = "success"
+
+      - uses: actions/download-artifact@v4
+        if: startsWith(github.ref, 'refs/heads/flake-lock/')
+        with:
+          pattern: diff-*
+          path: diffs
+
+      # continue-on-error keeps this required check green iff the builds are
+      # green; a commenting hiccup must not block the merge.
+      - name: comment closure diffs on PR
+        if: startsWith(github.ref, 'refs/heads/flake-lock/')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          {
+            echo "Closure diffs against main (\`nix store diff-closures\`):"
+            for d in diffs/diff-*/diff.txt; do
+              host=$(basename "$(dirname "$d")")
+              echo
+              echo "<details><summary>${host#diff-}</summary>"
+              echo
+              echo '```'
+              cat "$d"
+              echo '```'
+              echo '</details>'
+            done
+          } > comment.md
+          pr=$(gh pr list --head "$GITHUB_REF_NAME" --json number --jq '.[0].number')
+          if [ -n "$pr" ]; then
+            gh pr comment "$pr" --body-file comment.md
+          fi
