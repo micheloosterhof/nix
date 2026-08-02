@@ -131,6 +131,9 @@ in
     pkgs.poppler-utils
     # unrar is unfree; keep it off the free-only Linux hosts.
     pkgs.unrar
+    # Set Launch Services file associations (also used by home.activation
+    # below); in PATH for ad-hoc `duti -x md` style queries.
+    pkgs.duti
     # CLI to switch audio I/O devices; macOS-only.
     pkgs.switchaudio-osx
     # Sudoless performance monitoring CLI for Apple Silicon (CPU/GPU/power).
