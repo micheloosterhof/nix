@@ -200,6 +200,31 @@ in
     load_direnv = "direct";
   };
 
+  # macOS file associations: register Zed as the default app for these
+  # types with Launch Services. duti resolves the bundle ID (dev.zed.Zed),
+  # so this is independent of the app's store path. Roles: viewer, editor,
+  # or all (all also claims Finder double-click). Add lines to claim more
+  # types; removing a line does not un-claim it — reassign it instead.
+  home.activation.fileAssociations = lib.mkIf isDarwin (
+    let
+      dutiSettings = pkgs.writeText "duti-settings" ''
+        # bundle-id    UTI or .extension            role
+        dev.zed.Zed    net.daringfireball.markdown  all
+        dev.zed.Zed    .md                          all
+        dev.zed.Zed    .markdown                    all
+      '';
+      # lsregister forces Launch Services to index the copied app bundles;
+      # without it duti fails on a first activation where the app has never
+      # been seen (bundle ID not yet known).
+      lsregister = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister";
+    in
+    lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      run ${lsregister} -f -R "$HOME/Applications/Home Manager Apps" || true
+      run ${pkgs.duti}/bin/duti ${dutiSettings} \
+        || echo "warning: duti could not apply all file associations"
+    ''
+  );
+
   #---------------------------------------------------------------------
   # Programs
   #---------------------------------------------------------------------
