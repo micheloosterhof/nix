@@ -15,6 +15,10 @@
           # Set in Sept 2024 as part of the macOS Sequoia release.
           system.stateVersion = 5;
 
+          # The machine's name, enforced by nix-darwin and checked by the
+          # hostname guard (modules/hostname-guard.nix).
+          networking.hostName = "neon";
+
           # Match the nixbld gid used by the upstream nixos.org installer (30000).
           # nix-darwin's default is 350, which would trip its gid-mismatch assertion.
           ids.gids.nixbld = 30000;

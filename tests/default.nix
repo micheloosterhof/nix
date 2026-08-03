@@ -51,6 +51,36 @@ lib.runTests {
     expected = 5;
   };
 
+  # modules/hostname-guard.nix: hosts with an explicit hostname refuse to
+  # activate on a machine with a different one (wrong-host deploy guard).
+  testHostnameGuardServer = {
+    expr = lib.hasInfix "oxygen" (oxygen.system.preSwitchChecks.hostnameGuard or "");
+    expected = true;
+  };
+  # Anchored on the assignment: a bare "dev" would also match /dev paths.
+  testHostnameGuardVm = {
+    expr = lib.hasInfix "expected=dev" (fusion.system.preSwitchChecks.hostnameGuard or "");
+    expected = true;
+  };
+  # wsl leaves networking.hostName at its default (WSL owns the hostname),
+  # so it must not be guarded.
+  testHostnameGuardSkipsUnnamedHost = {
+    expr = wsl.system.preSwitchChecks ? hostnameGuard;
+    expected = false;
+  };
+  # The GCE image is generic: instances get their hostname from metadata,
+  # so the image must not pin one.
+  testHostnameGuardSkipsGce = {
+    expr = gce.system.preSwitchChecks ? hostnameGuard;
+    expected = false;
+  };
+  testHostnameGuardDarwin = {
+    expr =
+      mac.networking.hostName == "neon"
+      && lib.hasInfix "hostname guard" mac.system.activationScripts.preActivation.text;
+    expected = true;
+  };
+
   # users/mich/nixos.nix is composed into every NixOS host.
   testUserAccount = {
     expr = fusion.users.users.mich.isNormalUser;
