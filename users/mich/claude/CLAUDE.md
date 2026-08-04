@@ -52,6 +52,7 @@ When asked to do something, just do it - including obvious follow-up actions nee
     4. Run the test to confirm success
     5. Refactor if needed while keeping tests green
 - If a change has no testable behavior (documentation, pure configuration), say so explicitly instead of skipping TDD silently.
+- A trivial fix (typo, obvious one-liner) doesn't require a new failing test first. Run the existing tests, and state that you judged it trivial — so Michel can push back if he disagrees.
 
 ## Writing code
 
