@@ -9,7 +9,7 @@ description: Python engineering standards - ruff/mypy config, typing, testing wi
 
 - ruff for linting AND formatting; strict rule set: A, B, E, F, I, UP,
   T20, Q, RUF, TC, TRY, PYI
-- mypy with gradually increasing strictness
+- ty for typing (exception: cowrie uses mypy)
 - `from __future__ import annotations` in every file
 - Type hints on all function signatures
 - No `typing.Any` without justification
@@ -21,6 +21,7 @@ description: Python engineering standards - ruff/mypy config, typing, testing wi
 
 ## Testing
 
+- for little one-off scripts, don't use external test file, have a selftest option
 - `tests/` directory with pytest; `conftest.py` for shared fixtures
 - `tox` as the test runner to standardize environments
 - CI matrix: multiple Python versions (3.12+), amd64 + arm64
