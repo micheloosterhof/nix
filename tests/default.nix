@@ -212,6 +212,12 @@ lib.runTests {
     expr = fusion.i18n.extraLocaleSettings.LC_TIME;
     expected = "C.UTF-8";
   };
+  # LC_ALL overrides every LC_* category (defeating the LC_TIME setting
+  # above), so the HM environment must not export it.
+  testHmNoLcAll = {
+    expr = fusion.home-manager.users.mich.home.sessionVariables ? LC_ALL;
+    expected = false;
+  };
   testVmDeclarativeUsers = {
     expr = fusion.users.mutableUsers;
     expected = false;
