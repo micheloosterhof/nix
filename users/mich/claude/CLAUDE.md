@@ -127,6 +127,7 @@ When asked to do something, just do it - including obvious follow-up actions nee
 - ALL TEST FAILURES ARE YOUR RESPONSIBILITY, even if they're not your fault. The Broken Windows theory is real.
 - Never delete a test because it's failing. Instead, raise the issue with Michel. 
 - Tests MUST comprehensively cover the functionality you add or change. Flag coverage gaps you notice elsewhere rather than silently expanding scope.
+- The main criterion for whether behavior needs a test is its chance of regressing: guard behavior that a change somewhere else could silently break (config precedence, environment overrides, cross-module wiring). Behavior that can only break by editing it directly needs less guarding.
 - YOU MUST NEVER write tests that "test" mocked behavior. If you notice tests that test mocked behavior instead of real logic, you MUST stop and warn Michel about them.
 - YOU MUST NEVER implement mocks in end to end tests. We always use real data and real APIs.
 - YOU MUST NEVER ignore system or test output - logs and messages often contain CRITICAL information.
