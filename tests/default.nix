@@ -256,7 +256,7 @@ lib.runTests {
   };
   testNitrogenSshPort = {
     expr = nitrogen.services.openssh.ports;
-    expected = [ 4444 ];
+    expected = [ 3333 ];
   };
   testNitrogenSshPort22Closed = {
     expr = builtins.elem 22 nitrogen.networking.firewall.allowedTCPPorts;
@@ -274,7 +274,7 @@ lib.runTests {
   # opening (via openFirewall); the dropped Tor relay's 9001 is gone.
   testNitrogenNoExtraPorts = {
     expr = nitrogen.networking.firewall.allowedTCPPorts;
-    expected = [ 4444 ];
+    expected = [ 3333 ];
   };
   # nitrogen is a tailscale exit node: kernel forwarding on (via
   # useRoutingFeatures = "server") and the advertisement applied each boot.

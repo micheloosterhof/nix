@@ -27,7 +27,9 @@
         services.qemuGuest.enable = true;
 
         # Non-standard ssh port (openFirewall follows it, so 22 closes).
-        services.openssh.ports = [ 4444 ];
+        # 3333, not 4444: the home ISP silently drops outbound TCP to 4444
+        # (verified by on-box tcpdump), which is why oxygen used 3333 too.
+        services.openssh.ports = [ 3333 ];
 
         # Tailscale exit node: tailnet clients can route their internet
         # traffic out through this box. "server" turns on the kernel
