@@ -38,7 +38,7 @@ File paths under `modules/` carry no mechanical meaning; paths containing
 templates).
 
 Current systems: `vm-aarch64-fusion`, `vm-aarch64-utm`, `vm-aarch64-apple`
-(workstation VMs), `wsl` (server), `helium`, `oxygen` (headless servers),
+(workstation VMs), `wsl` (server), `helium`, `nitrogen` (headless servers),
 `neon` (nix-darwin), plus the `container-server` rootfs-tarball
 package and the `installer-iso` package.
 
@@ -71,7 +71,7 @@ push.
   `nix shell nixpkgs#…` or per-project flakes + direnv, never `nix-env -iA`.
   Don't list a package in more than one layer.
 - **Naming**: VMs are `vm-<arch>-<hypervisor>`; servers get element names
-  (helium, oxygen).
+  (helium, nitrogen).
 - **Shell**: bash/zsh only.
 - **Commits**: imperative, lowercase, terse — match the existing log
   (`remove cruft`, `set timezone`). No AI attribution, no

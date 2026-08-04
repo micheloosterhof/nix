@@ -81,7 +81,7 @@ Three fundamentally different build products, not to be forced onto one axis:
    file each under `modules/hosts/`. Currently: vm-aarch64-fusion (VMware,
    workstation), vm-aarch64-utm (UTM, workstation), vm-aarch64-apple (Apple
    Virtualization.framework "container machine", workstation but headless by
-   platform), wsl (server), helium and oxygen (servers), neon (darwin).
+   platform), wsl (server), helium and nitrogen (servers), neon (darwin).
 
 2. **Container images** — `packages.<linux-system>.container-server`
    (`modules/container.nix`): NixOS as a root-filesystem tarball on top of

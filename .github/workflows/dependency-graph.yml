@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        host: [oxygen]
+        host: [nitrogen]
     steps:
       - uses: actions/checkout@v7
 

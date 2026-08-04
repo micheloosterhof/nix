@@ -48,9 +48,9 @@ jobs:
           - host: helium
             runner: ubuntu-latest
             attr: nixosConfigurations.helium.config.system.build.toplevel
-          - host: oxygen
+          - host: nitrogen
             runner: ubuntu-latest
-            attr: nixosConfigurations.oxygen.config.system.build.toplevel
+            attr: nixosConfigurations.nitrogen.config.system.build.toplevel
           - host: neon
             runner: macos-latest
             attr: darwinConfigurations.neon.system

@@ -194,7 +194,7 @@ Genuinely new in Foundry:
   so losing one token doesn't lock him out. Servers trust the concatenated CA
   pubkeys (`TrustedUserCAKeys`) plus a revocation list (KRL) in git — no
   per-machine authorized_keys sprawl. A new machine means signing one cert,
-  zero server-side changes. Our version: the NixOS hosts (helium, oxygen,
+  zero server-side changes. Our version: the NixOS hosts (helium, nitrogen,
   VMs) trust a CA, and each Mac's enclave key gets a cert. His ~20-line
   `authorizedPrincipals` module (`modules/ssh-authorized-principals.nix`) is
   liftable as-is. Complementary: Mic92's *host* CA (one `knownHosts` entry

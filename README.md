@@ -6,7 +6,7 @@ The active user is `mich`.
 
 Hosts: `neon` (nix-darwin), `vm-aarch64-{fusion,utm,apple}`
 (NixOS workstation VMs), `wsl`, and the headless servers `helium` and
-`oxygen`. The flake also builds a `container-server` rootfs tarball and a
+`nitrogen`. The flake also builds a `container-server` rootfs tarball and a
 provisioning `installer-iso`.
 
 All operations go through `make`. Run `make` with no arguments for the menu.

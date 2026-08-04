@@ -16,7 +16,7 @@ let
   apple = self.nixosConfigurations.vm-aarch64-apple.config;
   wsl = self.nixosConfigurations.wsl.config;
   helium = self.nixosConfigurations.helium.config;
-  oxygen = self.nixosConfigurations.oxygen.config;
+  nitrogen = self.nixosConfigurations.nitrogen.config;
   mac = self.darwinConfigurations.neon.config;
 
   gce = (self.lib.gceSystem "x86_64-linux").config;
@@ -54,7 +54,7 @@ lib.runTests {
   # modules/hostname-guard.nix: hosts with an explicit hostname refuse to
   # activate on a machine with a different one (wrong-host deploy guard).
   testHostnameGuardServer = {
-    expr = lib.hasInfix "oxygen" (oxygen.system.preSwitchChecks.hostnameGuard or "");
+    expr = lib.hasInfix "nitrogen" (nitrogen.system.preSwitchChecks.hostnameGuard or "");
     expected = true;
   };
   # Anchored on the assignment: a bare "dev" would also match /dev paths.
@@ -222,72 +222,72 @@ lib.runTests {
     expr = helium.my.profile;
     expected = "server";
   };
-  testOxygenProfile = {
-    expr = oxygen.my.profile;
+  testNitrogenProfile = {
+    expr = nitrogen.my.profile;
     expected = "server";
   };
-  testOxygenGuiOff = {
-    expr = oxygen.my.gui.enable;
+  testNitrogenGuiOff = {
+    expr = nitrogen.my.gui.enable;
     expected = false;
   };
   testServerHardeningApplied = {
-    expr = oxygen.boot.kernel.sysctl."kernel.kptr_restrict";
+    expr = nitrogen.boot.kernel.sysctl."kernel.kptr_restrict";
     expected = 2;
   };
   testServerSshKeyOnly = {
-    expr = oxygen.services.openssh.settings.PasswordAuthentication;
+    expr = nitrogen.services.openssh.settings.PasswordAuthentication;
     expected = false;
   };
   testServerSshNoRootLogin = {
-    expr = oxygen.services.openssh.settings.PermitRootLogin;
+    expr = nitrogen.services.openssh.settings.PermitRootLogin;
     expected = "no";
   };
 
-  # oxygen is internet-facing: firewall on, bogon sources dropped, sshd only
+  # nitrogen is internet-facing: firewall on, bogon sources dropped, sshd only
   # on the non-standard port (openFirewall follows ports, so 22 is closed),
   # and nothing trusted beyond the tailnet.
-  testOxygenFirewallOn = {
-    expr = oxygen.networking.firewall.enable;
+  testNitrogenFirewallOn = {
+    expr = nitrogen.networking.firewall.enable;
     expected = true;
   };
-  testOxygenBogonsWired = {
-    expr = builtins.hasAttr "bogons" oxygen.networking.nftables.tables;
+  testNitrogenBogonsWired = {
+    expr = builtins.hasAttr "bogons" nitrogen.networking.nftables.tables;
     expected = true;
   };
-  testOxygenSshPort = {
-    expr = oxygen.services.openssh.ports;
+  testNitrogenSshPort = {
+    expr = nitrogen.services.openssh.ports;
     expected = [ 4444 ];
   };
-  testOxygenSshPort22Closed = {
-    expr = builtins.elem 22 oxygen.networking.firewall.allowedTCPPorts;
+  testNitrogenSshPort22Closed = {
+    expr = builtins.elem 22 nitrogen.networking.firewall.allowedTCPPorts;
     expected = false;
   };
   # (the firewall module itself trusts loopback)
-  testOxygenTrustsOnlyTailnet = {
+  testNitrogenTrustsOnlyTailnet = {
     expr = lib.subtractLists [
       "lo"
       "tailscale0"
-    ] oxygen.networking.firewall.trustedInterfaces;
+    ] nitrogen.networking.firewall.trustedInterfaces;
     expected = [ ];
   };
-  # oxygen runs no relay/public service: sshd's port is the only inbound
+  # nitrogen runs no relay/public service: sshd's port is the only inbound
   # opening (via openFirewall); the dropped Tor relay's 9001 is gone.
-  testOxygenNoExtraPorts = {
-    expr = oxygen.networking.firewall.allowedTCPPorts;
+  testNitrogenNoExtraPorts = {
+    expr = nitrogen.networking.firewall.allowedTCPPorts;
     expected = [ 4444 ];
   };
-  # oxygen is a tailscale exit node: kernel forwarding on (via
+  # nitrogen is a tailscale exit node: kernel forwarding on (via
   # useRoutingFeatures = "server") and the advertisement applied each boot.
-  testOxygenExitNodeForwarding4 = {
-    expr = oxygen.boot.kernel.sysctl."net.ipv4.conf.all.forwarding";
+  testNitrogenExitNodeForwarding4 = {
+    expr = nitrogen.boot.kernel.sysctl."net.ipv4.conf.all.forwarding";
     expected = true;
   };
-  testOxygenExitNodeForwarding6 = {
-    expr = oxygen.boot.kernel.sysctl."net.ipv6.conf.all.forwarding";
+  testNitrogenExitNodeForwarding6 = {
+    expr = nitrogen.boot.kernel.sysctl."net.ipv6.conf.all.forwarding";
     expected = true;
   };
-  testOxygenExitNodeAdvertised = {
-    expr = oxygen.services.tailscale.extraSetFlags;
+  testNitrogenExitNodeAdvertised = {
+    expr = nitrogen.services.tailscale.extraSetFlags;
     expected = [ "--advertise-exit-node" ];
   };
 

@@ -1,8 +1,8 @@
-# ABOUTME: oxygen — cloud x86_64 headless server (old KVM guest, 1 core, 1 GB,
+# ABOUTME: nitrogen — cloud x86_64 headless server (old KVM guest, 1 core, 1 GB,
 # ABOUTME: BIOS, virtio). Clean NixOS install; disko owns the disk layout.
 { config, inputs, ... }:
 {
-  flake.nixosConfigurations.oxygen = inputs.nixpkgs.lib.nixosSystem {
+  flake.nixosConfigurations.nitrogen = inputs.nixpkgs.lib.nixosSystem {
     system = "x86_64-linux";
     modules = [
       config.flake.modules.nixos.base
@@ -15,7 +15,7 @@
 
       {
         my.profile = "server";
-        networking.hostName = "oxygen";
+        networking.hostName = "nitrogen";
         # The provider names the virtio NIC eth0 via a systemd .link file that
         # won't exist on NixOS; keep kernel-style names so the interface below
         # actually matches (predictable naming would rename it ens3/enp0s3 and

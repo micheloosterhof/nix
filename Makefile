@@ -10,7 +10,7 @@ MAKEFILE_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 UNAME := $(shell uname)
 
 # NIXNAME identifies the remote host's nixosConfiguration (used by vm/* targets,
-# which despite the prefix work for any ssh-reachable host: the VMs, helium, oxygen).
+# which despite the prefix work for any ssh-reachable host: the VMs, helium, nitrogen).
 NIXNAME ?= vm-aarch64-fusion
 
 # LOCAL_NAME identifies the config for the LOCAL host's rebuild/test targets.
@@ -151,7 +151,7 @@ secrets/restore: ## Untar backup.tar.gz back into ~
 # VM, or a running distro that nixos-anywhere kexecs into the installer).
 # Partitions per the disko spec in the host file, installs the flake config and
 # reboots. Set NIXADDR + NIXNAME (+ NIXPORT). Afterwards run vm/secrets.
-# NOTE: nixos-anywhere kexec needs enough RAM; a tiny host (oxygen, ~1 GB) needs
+# NOTE: nixos-anywhere kexec needs enough RAM; a tiny host (nitrogen, ~1 GB) needs
 # nixos-infect instead.
 vm/provision: ## Install NixOS onto a remote host via nixos-anywhere + disko
 	nix run github:nix-community/nixos-anywhere -- \

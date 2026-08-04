@@ -21,7 +21,7 @@ reboot advisable (`modules/needs-reboot.nix`).
 ## Remote hosts
 
 The `vm/*` targets work for any ssh-reachable NixOS host — the VMs, helium,
-oxygen — despite the prefix. They are parameterized by environment variables
+nitrogen — despite the prefix. They are parameterized by environment variables
 (pass them on the command line or export them):
 
 - `NIXNAME` — the nixosConfiguration to build (default `vm-aarch64-fusion`)
@@ -43,7 +43,7 @@ oxygen — despite the prefix. They are parameterized by environment variables
 ssh-reachable Linux (an ISO-booted VM, or a running distro it kexecs into the
 installer): disko partitions per the spec in the host file, the flake config
 is installed, and the machine reboots into it. Afterwards run `make
-vm/secrets`. Caveat: the kexec needs enough RAM — a tiny host (oxygen, ~1 GB)
+vm/secrets`. Caveat: the kexec needs enough RAM — a tiny host (nitrogen, ~1 GB)
 needs nixos-infect instead.
 
 `packages.<system>.installer-iso` builds a minimal installer ISO with the
@@ -158,7 +158,7 @@ evaluates every host config, catching eval breakage before deploy.
 CI (`.github/workflows/check.yml`) runs the same `nix flake check` on every
 push. `.github/workflows/build.yml` builds every host closure on a natively
 matching runner (`ubuntu-24.04-arm` for the aarch64 VMs, `ubuntu-latest`
-for wsl/helium/oxygen, `macos-latest` for neon), so a green check means
+for wsl/helium/nitrogen, `macos-latest` for neon), so a green check means
 each machine provably builds. neon's job substitutes the linux-builder
 image from the cachix cache (see Binary cache below).
 `.github/workflows/update-lock.yml` opens a weekly flake.lock bump PR with

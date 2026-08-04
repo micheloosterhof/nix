@@ -1,5 +1,5 @@
 # ABOUTME: Base for bare-metal and cloud NixOS servers (non-VM): UTC time,
-# ABOUTME: per-host networking. Composed by the helium/oxygen hosts.
+# ABOUTME: per-host networking. Composed by the helium/nitrogen hosts.
 # ssh/docker/locale/kernel/accounts are shared feature files; tailscale is
 # on the shared base.
 { ... }:
