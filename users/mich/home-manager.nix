@@ -122,7 +122,7 @@ in
     pkgs.gopls
 
     # Node is required for Copilot.vim
-    pkgs.nodejs_24
+    pkgs.nodejs_26
   ])
   ++ (lib.optionals isDarwin [
     # programs.gpg is Linux-only here, so provide the gnupg binary on darwin.
