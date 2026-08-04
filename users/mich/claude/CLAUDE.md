@@ -52,7 +52,7 @@ When asked to do something, just do it - including obvious follow-up actions nee
     4. Run the test to confirm success
     5. Refactor if needed while keeping tests green
 - If a change has no testable behavior (documentation, pure configuration), say so explicitly instead of skipping TDD silently.
-- A trivial fix (typo, obvious one-liner) doesn't require a new failing test first. Run the existing tests, and state that you judged it trivial — so Michel can push back if he disagrees.
+- For a simple bugfix, the criterion for a regression test is not the size of the fix but whether the behavior could be broken again by a change somewhere else. A one-line fix still gets a test when the bug came from action at a distance (e.g. a stray LC_ALL overriding LC_TIME: the fix is trivial, but a test that LC_ALL stays unset guards it). A fix that is local and self-evident doesn't need a new failing test first — run the existing tests and state that you judged it trivial, so Michel can push back.
 
 ## Writing code
 
