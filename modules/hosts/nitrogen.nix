@@ -1,4 +1,4 @@
-# ABOUTME: nitrogen — cloud x86_64 headless server (old KVM guest, 1 core, 1 GB,
+# ABOUTME: nitrogen — cloud x86_64 headless server (KVM guest, 1 core, 2 GB,
 # ABOUTME: BIOS, virtio). Clean NixOS install; disko owns the disk layout.
 { config, inputs, ... }:
 {
@@ -16,10 +16,10 @@
       {
         my.profile = "server";
         networking.hostName = "nitrogen";
-        # The provider names the virtio NIC eth0 via a systemd .link file that
-        # won't exist on NixOS; keep kernel-style names so the interface below
-        # actually matches (predictable naming would rename it ens3/enp0s3 and
-        # leave the box with no network).
+        # Kernel-style names make the single virtio NIC always eth0; predictable
+        # naming would call it ens3 and tie the config to the VM's PCI layout —
+        # a mismatch after a provider-side change would leave the box with no
+        # network.
         networking.usePredictableInterfaceNames = false;
         networking.interfaces.eth0.useDHCP = true;
 
@@ -60,7 +60,7 @@
       )
 
       # Disk: GPT with a 1 MiB BIOS-boot partition (for grub), 2 GiB swap
-      # (only 1 GB RAM), and an ext4 root over the rest.
+      # (only 2 GB RAM), and an ext4 root over the rest.
       {
         disko.devices.disk.main = {
           device = "/dev/vda";

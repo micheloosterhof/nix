@@ -43,7 +43,7 @@ nitrogen — despite the prefix. They are parameterized by environment variables
 ssh-reachable Linux (an ISO-booted VM, or a running distro it kexecs into the
 installer): disko partitions per the spec in the host file, the flake config
 is installed, and the machine reboots into it. Afterwards run `make
-vm/secrets`. Caveat: the kexec needs enough RAM — a tiny host (nitrogen, ~1 GB)
+vm/secrets`. Caveat: the kexec needs enough RAM — a tiny host (~1 GB)
 needs nixos-infect instead.
 
 `packages.<system>.installer-iso` builds a minimal installer ISO with the
