@@ -207,6 +207,11 @@ lib.runTests {
     expr = fusion.i18n.supportedLocales;
     expected = [ "en_US.UTF-8/UTF-8" ];
   };
+  # LC_TIME diverges from the en_US default so timestamps render 24-hour.
+  testVmLcTime24h = {
+    expr = fusion.i18n.extraLocaleSettings.LC_TIME;
+    expected = "C.UTF-8";
+  };
   testVmDeclarativeUsers = {
     expr = fusion.users.mutableUsers;
     expected = false;
