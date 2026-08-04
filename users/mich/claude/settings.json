@@ -7,6 +7,9 @@
   "permissions": {
     "defaultMode": "auto"
   },
+  "env": {
+    "SHELL": "/bin/bash"
+  },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
     "clangd-lsp@claude-plugins-official": true,
