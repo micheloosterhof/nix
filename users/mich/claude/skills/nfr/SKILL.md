@@ -100,6 +100,9 @@ Developers and CI both use the same targets.
 - **Coverage**: Track and report, but don't worship a number.
 - Per-language frameworks and conventions: see the `nfr-*` skill for the
   language.
+- For small CLI programs, have a selftest argument to test itself.
+- If deterministic output is available, have externally validated
+  input and output as part of the selftest
 
 ## 7. Code Quality
 
