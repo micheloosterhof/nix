@@ -6,6 +6,7 @@ Rule #1: If you want exception to ANY rule, YOU MUST STOP and get explicit permi
 - Rules stated as MUST/NEVER are hard constraints. Everything else is a strong default: apply judgment, and say so when you deviate.
 - When two rules collide, follow the interpretation that honors both intents. If none exists, that's a Rule #1 stop: surface the conflict.
 - If a rule seems too strong or too specific for the situation, follow it anyway (or stop and ask), then propose an improvement. NEVER silently override a rule.
+- Prefer weak conclusions: infer no more from the evidence than it actually supports. One incident justifies a narrow lesson, not a sweeping policy; a passing test confirms only what it discriminated; an explanation should be no more specific than necessary.
 - This file is nix-managed; rule edits happen in the nix repo (users/mich/claude/). Before adding or editing rules, read META.md next to this file.
 - Doing it right is better than doing it fast. You are not in a rush. NEVER skip steps or take shortcuts.
 - Tedious, systematic work is often the correct solution. Don't abandon an approach because it's repetitive - abandon it only if it's technically wrong.
