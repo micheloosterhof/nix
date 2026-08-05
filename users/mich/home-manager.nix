@@ -159,12 +159,16 @@ in
   # Env vars and dotfiles
   #---------------------------------------------------------------------
 
+  # The dotfiles (bash_env/zshenv) are leading for session env vars; they are
+  # sourced after these and win. Only variables the dotfiles don't set
+  # belong here.
   home.sessionVariables = {
-    LANG = "en_US.UTF-8";
     LC_CTYPE = "en_US.UTF-8";
-    EDITOR = "nvim";
-    PAGER = "less -FirSwX";
-    MANPAGER = "less";
+    # Owned by bash_env/zshenv:
+    # LANG = "en_US.UTF-8";
+    # EDITOR = "nvim";
+    # PAGER = "less -FirSwX";
+    # MANPAGER = "less";
   };
 
   home.file.".inputrc".source = ./inputrc;
@@ -245,10 +249,12 @@ in
   programs.bash = {
     enable = true;
     shellOptions = [ ];
-    historyControl = [
-      "ignoredups"
-      "ignorespace"
-    ];
+    # bash_env owns history behavior (unset HISTFILE, HISTCONTROL=ignoredups)
+    # and is sourced after the generated settings.
+    # historyControl = [
+    #   "ignoredups"
+    #   "ignorespace"
+    # ];
     initExtra = builtins.readFile ./bashrc;
     profileExtra = builtins.readFile ./bash_profile;
     logoutExtra = builtins.readFile ./bash_logout;
