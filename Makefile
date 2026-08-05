@@ -9,8 +9,8 @@ MAKEFILE_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 # We need to do some OS switching below.
 UNAME := $(shell uname)
 
-# NIXNAME identifies the remote host's nixosConfiguration (used by vm/* targets,
-# which despite the prefix work for any ssh-reachable host: the VMs, helium, nitrogen).
+# NIXNAME identifies the remote host's nixosConfiguration, used by the
+# remote/* targets (any ssh-reachable host: the VMs, helium, nitrogen).
 NIXNAME ?= vm-aarch64-fusion
 
 # LOCAL_NAME identifies the config for the LOCAL host's rebuild/test targets.
@@ -91,16 +91,17 @@ rollback: ## Roll back to the previous system generation
 ifeq ($(UNAME), Darwin)
 	sudo darwin-rebuild --rollback
 else
-	sudo nixos-rebuild switch --rollback --flake ".#${LOCAL_NAME}"
+	sudo nixos-rebuild switch --rollback
 endif
 
 .PHONY: repl
 repl: ## Open a nix repl with this flake's outputs in scope
 	nix repl .
 
+# 30d matches the declarative weekly GC policy (nix-settings.nix).
 .PHONY: gc
-gc: ## Delete system generations older than 7d and collect store garbage
-	sudo nix profile wipe-history --profile $(SYSTEM_PROFILE) --older-than 7d
+gc: ## Delete system generations older than 30d and collect store garbage
+	sudo nix profile wipe-history --profile $(SYSTEM_PROFILE) --older-than 30d
 	nix store gc
 
 # The customized linux-builder image is an aarch64-linux derivation that
@@ -147,23 +148,23 @@ secrets/restore: ## Untar backup.tar.gz back into ~
 	chmod 600 $(HOME)/.ssh/* || true
 	chmod 700 $(HOME)/.gnupg/* || true
 
-# Every vm/* remote target refuses to run against the NIXADDR placeholder;
+# Every remote/* target refuses to run against the NIXADDR placeholder;
 # a stale or forgotten NIXADDR must fail here, not on the wrong machine.
-.PHONY: vm/check-addr
-vm/check-addr:
+.PHONY: remote/check-addr
+remote/check-addr:
 	@test "$(NIXADDR)" != "unset" || { \
 		echo "error: NIXADDR is not set; pass NIXADDR=<host>"; exit 1; }
 
 # Provision a fresh NixOS install onto any ssh-reachable Linux (an ISO-booted
 # VM, or a running distro that nixos-anywhere kexecs into the installer).
 # Partitions per the disko spec in the host file, installs the flake config and
-# reboots. Set NIXADDR + NIXNAME (+ NIXPORT). Afterwards run vm/secrets.
+# reboots. Set NIXADDR + NIXNAME (+ NIXPORT). Afterwards run remote/secrets.
 # NOTE: nixos-anywhere kexec needs enough RAM; a tiny host (~1 GB) needs
 # nixos-infect instead.
-.PHONY: vm/provision
-vm/provision: vm/check-addr ## Install NixOS onto a remote host via nixos-anywhere + disko
+.PHONY: remote/provision
+remote/provision: remote/check-addr ## Install NixOS onto a remote host via nixos-anywhere + disko
 	@test "$(origin NIXNAME)" = "command line" || { \
-		echo "error: vm/provision ERASES the target's disks;"; \
+		echo "error: remote/provision ERASES the target's disks;"; \
 		echo "       pass NIXNAME=<host> explicitly (the default is not accepted here)"; exit 1; }
 	@echo "Provisioning root@$(NIXADDR) as $(NIXNAME): disks will be repartitioned per its disko spec."
 	nix run github:nix-community/nixos-anywhere -- \
@@ -172,8 +173,8 @@ vm/provision: vm/check-addr ## Install NixOS onto a remote host via nixos-anywhe
 		root@$(NIXADDR)
 
 # copy our secrets into the remote host
-.PHONY: vm/secrets
-vm/secrets: vm/check-addr ## rsync ~/.gnupg and ~/.ssh to the remote host
+.PHONY: remote/secrets
+remote/secrets: remote/check-addr ## rsync ~/.gnupg and ~/.ssh to the remote host
 	# GPG keyring
 	rsync -av -e 'ssh $(SSH_OPTIONS)' \
 		--exclude='.#*' \
@@ -188,33 +189,21 @@ vm/secrets: vm/check-addr ## rsync ~/.gnupg and ~/.ssh to the remote host
 # copy the Nix configurations into the remote host. --delete keeps /nix-config an
 # exact mirror: stale files from earlier copies would otherwise be
 # auto-imported by import-tree and break evaluation.
-.PHONY: vm/copy
-vm/copy: vm/check-addr ## rsync this repo into the remote host at /nix-config
+.PHONY: remote/copy
+remote/copy: remote/check-addr ## rsync this repo into the remote host at /nix-config
 	rsync -av --delete -e 'ssh $(SSH_OPTIONS) -p$(NIXPORT)' \
-		--exclude='vendor/' \
 		--exclude='.git/' \
-		--exclude='.git-crypt/' \
 		--exclude='.jj/' \
-		--exclude='iso/' \
 		--rsync-path="sudo rsync" \
 		$(MAKEFILE_DIR)/ $(NIXUSER)@$(NIXADDR):/nix-config
 
 # run the nixos-rebuild switch command. This does NOT copy files so you
-# have to run vm/copy before.
-.PHONY: vm/rebuild
-vm/rebuild: vm/check-addr ## Run nixos-rebuild switch on the remote host (vm/copy first)
+# have to run remote/copy before.
+.PHONY: remote/rebuild
+remote/rebuild: remote/check-addr ## Run nixos-rebuild switch on the remote host (remote/copy first)
 	ssh $(SSH_OPTIONS) -p$(NIXPORT) $(NIXUSER)@$(NIXADDR) " \
                 sudo NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 nixos-rebuild switch --flake \"/nix-config#${NIXNAME}\" \
 	"
-
-# Bump flake.lock to current branch tips and roll the remote host forward.
-# Note: nix flake update rewrites the whole lockfile, so the next local
-# `make rebuild` will pick up the same bumps.
-.PHONY: vm/update
-vm/update: ## Bump flake.lock and rebuild the remote host
-	nix flake update
-	$(MAKE) vm/copy
-	$(MAKE) vm/rebuild
 
 # Build the VMware VMDK and print its /nix/store path. No `result`
 # symlink (--no-link), so old builds GC automatically without manual
@@ -239,11 +228,6 @@ vm/launch: ## Build VMDK and drop into a Fusion .vmwarevm bundle
 		cp "$(MAKEFILE_DIR)/modules/hosts/$(VM_NAME).vmx" "$(VM_BUNDLE)/$(VM_NAME).vmx"
 	@echo "VM bundle: $(VM_BUNDLE)"
 	@echo "Start: open '$(VM_BUNDLE)'   or   vmrun start '$(VM_BUNDLE)/$(VM_NAME).vmx'"
-
-# Build a WSL installer
-.PHONY: wsl
-wsl: ## Build a WSL installer tarball
-	 nix build ".#nixosConfigurations.wsl.config.system.build.installer"
 
 # Build a Google Compute Engine image (a GCS-uploadable tarball). Assembled
 # by systemd-repart — no KVM needed, any builder of the right arch works:

@@ -31,19 +31,18 @@ nitrogen — despite the prefix. They are parameterized by environment variables
 
 | Target | Purpose |
 |---|---|
-| `make vm/copy` | rsync this repo into the remote host at `/nix-config` (`--delete`: stale files would be auto-imported by import-tree and break evaluation) |
-| `make vm/rebuild` | `nixos-rebuild switch` on the remote host (`vm/copy` first) |
-| `make vm/update` | Bump `flake.lock` to branch tips, then copy + rebuild the remote host |
-| `make vm/secrets` | rsync `~/.gnupg` and `~/.ssh` to the remote host |
+| `make remote/copy` | rsync this repo into the remote host at `/nix-config` (`--delete`: stale files would be auto-imported by import-tree and break evaluation) |
+| `make remote/rebuild` | `nixos-rebuild switch` on the remote host (`remote/copy` first) |
+| `make remote/secrets` | rsync `~/.gnupg` and `~/.ssh` to the remote host |
 
 ## Provisioning a new host
 
-`make vm/provision NIXADDR=… NIXNAME=…` runs
+`make remote/provision NIXADDR=… NIXNAME=…` runs
 [nixos-anywhere](https://github.com/nix-community/nixos-anywhere) against any
 ssh-reachable Linux (an ISO-booted VM, or a running distro it kexecs into the
 installer): disko partitions per the spec in the host file, the flake config
 is installed, and the machine reboots into it. Afterwards run `make
-vm/secrets`. Caveat: the kexec needs enough RAM — a tiny host (~1 GB)
+remote/secrets`. Caveat: the kexec needs enough RAM — a tiny host (~1 GB)
 needs nixos-infect instead.
 
 `packages.<system>.installer-iso` builds a minimal installer ISO with the
@@ -64,7 +63,8 @@ updates inside the VM go through `make rebuild`.
 
 ### WSL
 
-`make wsl` builds the installer tarball; import it with `wsl --import`.
+`nix build ".#nixosConfigurations.wsl.config.system.build.installer"` builds
+the installer tarball; import it with `wsl --import`.
 
 ### Cloud images (GCE)
 

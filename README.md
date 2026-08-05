@@ -48,7 +48,7 @@ sets hostname `dev`. For ongoing updates from inside the VM: `make rebuild`.
 ### WSL
 
 ```
-make wsl
+nix build ".#nixosConfigurations.wsl.config.system.build.installer"
 ```
 
 Produces a tarball you import with `wsl --import`.
@@ -58,7 +58,7 @@ Produces a tarball you import with `wsl --import`.
 Fresh installs go through nixos-anywhere + disko:
 
 ```
-make vm/provision NIXADDR=<address> NIXNAME=<host>
+make remote/provision NIXADDR=<address> NIXNAME=<host>
 ```
 
 ## Documentation
