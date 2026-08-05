@@ -36,7 +36,7 @@ export PATH=${MY_PATH%:}; unset MY_PATH; unset PATHS
 
 # ksh/bash specific
 unset HISTFILE
-export HISTCONTROL=ignoredups
+export HISTCONTROL=ignoredups:ignorespace
 unset TMOUT
 unset TIMEOUT
 export IGNOREEOF=1
@@ -48,8 +48,9 @@ export BLOCKSIZE=1K
 export LANG=C.UTF-8
 export PAPERSIZE=a4
 
-export VISUAL=vi
+export VISUAL=nvim
 export EDITOR=${VISUAL}
+# plain less: the options live in $LESS (bashrc/zshrc)
 export PAGER=less
 
 # Don’t clear the screen after quitting a manual page

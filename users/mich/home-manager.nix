@@ -164,11 +164,7 @@ in
   # belong here.
   home.sessionVariables = {
     LC_CTYPE = "en_US.UTF-8";
-    # Owned by bash_env/zshenv:
-    # LANG = "en_US.UTF-8";
-    # EDITOR = "nvim";
-    # PAGER = "less -FirSwX";
-    # MANPAGER = "less";
+    # Owned by bash_env/zshenv: LANG, VISUAL/EDITOR, PAGER, MANPAGER.
   };
 
   home.file.".inputrc".source = ./inputrc;
@@ -207,7 +203,7 @@ in
   # Programs
   #---------------------------------------------------------------------
 
-  # neovim on every host (EDITOR is already nvim above).
+  # neovim on every host (the dotfiles set VISUAL/EDITOR to nvim).
   programs.neovim.enable = true;
 
   programs.gpg.enable = !isDarwin;
