@@ -1,6 +1,13 @@
 # ABOUTME: The VMware Fusion development VM: a workstation on the fusion
 # ABOUTME: platform, plus this instance's disks and filesystems.
 { config, inputs, ... }:
+let
+  # Partition labels: written by disko when provisioning, referenced by the
+  # mounted filesystems (the vmware-image module defines the fstab entries).
+  # The assertion below keeps the two sides in agreement.
+  espLabel = "ESP";
+  rootLabel = "nixos";
+in
 {
   flake.nixosConfigurations.vm-aarch64-fusion = inputs.nixpkgs.lib.nixosSystem {
     system = "aarch64-linux";
@@ -42,7 +49,7 @@
                   format = "vfat";
                   extraArgs = [
                     "-n"
-                    "ESP"
+                    espLabel
                   ];
                   mountpoint = "/boot";
                 };
@@ -54,7 +61,7 @@
                   format = "ext4";
                   extraArgs = [
                     "-L"
-                    "nixos"
+                    rootLabel
                   ];
                   mountpoint = "/";
                 };
@@ -91,6 +98,24 @@
           };
 
           swapDevices = [ ];
+        }
+      )
+
+      # A disko-provisioned disk carries the labels above, so the running
+      # system must mount by exactly those labels — otherwise a provisioned
+      # VM boots with /boot (or /) unmounted and rebuilds write kernels
+      # nowhere.
+      (
+        { config, ... }:
+        {
+          assertions = [
+            {
+              assertion =
+                config.fileSystems."/".device == "/dev/disk/by-label/${rootLabel}"
+                && config.fileSystems."/boot".device == "/dev/disk/by-label/${espLabel}";
+              message = "vm-aarch64-fusion: fileSystems mount labels diverge from the disko partition labels (${rootLabel}/${espLabel}).";
+            }
+          ];
         }
       )
 

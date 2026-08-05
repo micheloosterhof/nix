@@ -87,6 +87,19 @@ lib.runTests {
     expected = true;
   };
 
+  # The silent-misconfig assertions stay wired: an empty keys/ must refuse to
+  # build (ssh is key-only), and the fusion disko labels must match the
+  # mounted filesystems. Only the wiring is asserted here; the assertions
+  # themselves are enforced when CI builds the toplevels.
+  testKeysAssertionWired = {
+    expr = lib.any (a: lib.hasInfix "keys/" a.message) nitrogen.assertions;
+    expected = true;
+  };
+  testDiskoLabelAssertionWired = {
+    expr = lib.any (a: lib.hasInfix "disko partition labels" a.message) fusion.assertions;
+    expected = true;
+  };
+
   # The HM package set is tiered by my.tools.full: interactive hosts —
   # workstations and pet servers alike — carry the full toolkit; appliance
   # images (GCE) carry only the lean CLI set.

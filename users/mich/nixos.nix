@@ -15,6 +15,16 @@ let
   ];
 in
 {
+  # sshd is key-only, so a host built with an empty key list is unreachable.
+  # The realistic trap: keys/ files that were never `git add`ed are invisible
+  # to the flake and silently drop out of the list.
+  assertions = [
+    {
+      assertion = authorizedKeyFiles != [ ];
+      message = "keys/ contains no *.pub files in the flake source (untracked files are invisible); refusing to build an unreachable key-only system.";
+    }
+  ];
+
   # Add ~/.local/bin to PATH
   environment.localBinInPath = true;
 
