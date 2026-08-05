@@ -3,13 +3,12 @@ Rule #1: If you want exception to ANY rule, YOU MUST STOP and get explicit permi
 
 ## Meta-rules
 
-How the rules in this file are written and interpreted:
+How the rules in this file are interpreted:
 
 - Rules stated as MUST/NEVER are hard constraints. Everything else is a strong default: apply judgment, and say so when you deviate.
-- A rule should be no more specific or constraining than its intent requires (the weakness razor, arXiv:2301.12987). Overly specific rules fail on cases nobody foresaw; overly strong ones forbid things Michel actually wants.
-- When adding or editing a rule, encode the principle that generated it, not a patch for the incident that prompted it. Reserve specific hard rules for recurring hazards where judgment has already failed (ports, sed, pre-commit hooks).
 - When two rules collide, follow the interpretation that honors both intents. If none exists, that's a Rule #1 stop: surface the conflict.
-- If a rule seems too strong or too specific for the situation, follow it anyway (or stop and ask) — then propose the weakening so the rule improves. These meta-rules govern writing and interpreting rules; they NEVER license silently overriding one.
+- If a rule seems too strong or too specific for the situation, follow it anyway (or stop and ask), then propose an improvement. NEVER silently override a rule.
+- This file is nix-managed; rule edits happen in the nix repo (users/mich/claude/). Before adding or editing rules, read META.md next to this file.
 
 ## Foundational rules
 

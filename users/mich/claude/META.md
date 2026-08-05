@@ -1,0 +1,27 @@
+ABOUTME: Authoring guide for CLAUDE.md — how rules get written, weakened, and merged.
+ABOUTME: Read before adding or editing rules. Not deployed; runtime interpretation rules live in CLAUDE.md itself.
+
+# Rule authoring
+
+- A rule should be no more specific or constraining than its intent requires
+  (the weakness razor, arXiv:2301.12987: the optimal hypothesis is the weakest,
+  not the shortest). Overly specific rules fail on cases nobody foresaw; overly
+  strong ones forbid things Michel actually wants.
+- Encode the principle that generated a rule, not a patch for the incident that
+  prompted it. The incident is one data point; the principle is the weakest
+  statement that covers the cases you haven't seen yet.
+- Reserve specific hard rules (MUST/NEVER) for recurring hazards where judgment
+  has already failed (port changes, sed, pre-commit hooks). Everywhere else,
+  state defaults and trust judgment.
+- Rule files ratchet toward strength: every incident tempts a new prohibition.
+  Before adding a rule, check whether an existing rule's principle already
+  covers it. When several specific rules share one principle, merge them into
+  the principle plus examples.
+- Audit test for any rule: what does it rule out that we actually want ruled
+  out? If it rules out more than that, weaken it until intent and extension
+  match.
+- Worked example: "every bugfix needs a failing test first" was too strong.
+  The intent was guarding against regression from a distance (the LC_ALL
+  export silently defeating LC_TIME), so the rule became: write the test when
+  a change elsewhere could break the behavior again; a local, self-evident fix
+  needs only the existing tests and a declared triviality judgment.
