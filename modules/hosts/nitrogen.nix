@@ -16,6 +16,7 @@
       {
         my.profile = "server";
         networking.hostName = "nitrogen";
+        my.hostnameGuard = true;
         # Kernel-style names make the single virtio NIC always eth0; predictable
         # naming would call it ens3 and tie the config to the VM's PCI layout —
         # a mismatch after a provider-side change would leave the box with no

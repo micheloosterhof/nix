@@ -17,6 +17,7 @@
 
       # Define your hostname.
       networking.hostName = "dev";
+      my.hostnameGuard = true;
 
       # Set your time zone.
       time.timeZone = "Asia/Singapore";

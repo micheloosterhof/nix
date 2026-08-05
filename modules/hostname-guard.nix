@@ -2,57 +2,52 @@
 # ABOUTME: differs from the config's, catching wrong-host deploys.
 { lib, ... }:
 {
-  # Guard only hosts that explicitly name themselves (networking.hostName set
-  # below option-default priority). Unnamed hosts (wsl: WSL owns the hostname)
-  # and generic images that take an empty hostname from DHCP/metadata (gce)
-  # stay unguarded. Wrong-host deploys happen when NIXADDR and NIXNAME (or a
-  # defaulted NIXNAME on a local `make rebuild`) disagree.
+  # Singleton configs — owned by exactly one machine — set my.hostnameGuard
+  # beside their networking.hostName. Template images (gce, container-server,
+  # installer-iso) and unnamed instances (wsl: WSL owns the hostname) never
+  # enable it: they activate on machines they have never heard of, by design.
+  # Wrong-host deploys happen when NIXADDR and NIXNAME (or a defaulted
+  # NIXNAME on a local `make rebuild`) disagree.
   flake.modules.nixos.base =
+    { config, pkgs, ... }:
     {
-      config,
-      options,
-      pkgs,
-      ...
-    }:
-    {
-      system.preSwitchChecks.hostnameGuard =
-        lib.mkIf
-          (
-            options.networking.hostName.highestPrio < (lib.mkOptionDefault { }).priority
-            && config.networking.hostName != ""
-          )
-          ''
-            # An override marker allows an intentional rename ($1/$2 are the
-            # new system path and action verb; sudo and systemd-run strip
-            # custom environment variables, so a file beats an env var here).
-            if [ -e /run/hostname-guard-override ]; then
-              exit 0
-            fi
+      options.my.hostnameGuard = lib.mkEnableOption "the wrong-host activation guard for singleton configs";
 
-            # nixos-install and nixos-anywhere activate in a chroot where the
-            # kernel hostname belongs to the installer, not this config.
-            if ${pkgs.systemd}/bin/systemd-detect-virt --chroot --quiet; then
-              exit 0
-            fi
+      config.system.preSwitchChecks.hostnameGuard = lib.mkIf config.my.hostnameGuard ''
+        # An override marker allows an intentional rename ($1/$2 are the
+        # new system path and action verb; sudo and systemd-run strip
+        # custom environment variables, so a file beats an env var here).
+        if [ -e /run/hostname-guard-override ]; then
+          exit 0
+        fi
 
-            read -r running < /proc/sys/kernel/hostname
-            expected=${lib.escapeShellArg config.networking.hostName}
-            if [ "$running" != "$expected" ]; then
-              echo "hostname guard: this configuration is for $expected but this machine is '$running'."
-              echo "Refusing to activate a wrong-host deploy. For an intentional rename, run:"
-              echo "  sudo touch /run/hostname-guard-override"
-              exit 1
-            fi
-          '';
+        # nixos-install and nixos-anywhere activate in a chroot where the
+        # kernel hostname belongs to the installer, not this config.
+        if ${pkgs.systemd}/bin/systemd-detect-virt --chroot --quiet; then
+          exit 0
+        fi
+
+        read -r running < /proc/sys/kernel/hostname
+        expected=${lib.escapeShellArg config.networking.hostName}
+        if [ "$running" != "$expected" ]; then
+          echo "hostname guard: this configuration is for $expected but this machine is '$running'."
+          echo "Refusing to activate a wrong-host deploy. For an intentional rename, run:"
+          echo "  sudo touch /run/hostname-guard-override"
+          exit 1
+        fi
+      '';
     };
 
   # Darwin: same guard, in the pre-activation hook (aborts the set -e
-  # activation script before any mutation). Applies once networking.hostName
-  # is set; the override marker mirrors the NixOS one.
+  # activation script before any mutation). On a fresh Mac the first
+  # activation trips it (the hostname is still the factory one); the
+  # override marker in the error message is the accepted bootstrap step.
   flake.modules.darwin.base =
     { config, ... }:
     {
-      system.activationScripts.preActivation.text = lib.mkIf (config.networking.hostName != null) ''
+      options.my.hostnameGuard = lib.mkEnableOption "the wrong-host activation guard for singleton configs";
+
+      config.system.activationScripts.preActivation.text = lib.mkIf config.my.hostnameGuard ''
         if [ ! -e /var/run/hostname-guard-override ]; then
           running=$(/bin/hostname -s)
           expected=${lib.escapeShellArg config.networking.hostName}

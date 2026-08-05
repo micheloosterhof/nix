@@ -17,6 +17,7 @@
       {
         my.profile = "server";
         networking.hostName = "helium";
+        my.hostnameGuard = true;
         # Onboard NIC.
         networking.interfaces.eno2.useDHCP = true;
 
