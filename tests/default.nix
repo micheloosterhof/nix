@@ -218,6 +218,29 @@ lib.runTests {
     expr = fusion.home-manager.users.mich.home.sessionVariables ? LC_ALL;
     expected = false;
   };
+  # The dotfiles are leading for session env vars (sourced after HM's), so
+  # a stray LC_ALL export there would defeat LC_TIME the same way. Lists the
+  # offending files on failure. Function-local `local LC_ALL=...` is fine.
+  testDotfilesNoLcAll = {
+    expr =
+      lib.filter
+        (
+          f:
+          let
+            text = builtins.readFile (../users/mich + "/${f}");
+          in
+          lib.hasInfix "export LC_ALL" text || lib.hasInfix "\nLC_ALL=" text
+        )
+        [
+          "bash_env"
+          "bash_profile"
+          "bashrc"
+          "zshenv"
+          "zprofile"
+          "zshrc"
+        ];
+    expected = [ ];
+  };
   testVmDeclarativeUsers = {
     expr = fusion.users.mutableUsers;
     expected = false;
