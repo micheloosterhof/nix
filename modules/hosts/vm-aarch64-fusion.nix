@@ -25,7 +25,7 @@ in
       { my.profile = "workstation"; }
 
       # Declarative disk layout, consumed by nixos-anywhere when provisioning
-      # a fresh VM (make vm/provision). enableConfig = false: the running
+      # a fresh VM (make remote/provision). enableConfig = false: the running
       # system keeps mounting by the labels below (the vmware-image module
       # defines the fstab entries); disko only partitions and formats, with
       # matching labels, so a disko-provisioned disk and an image-stamped

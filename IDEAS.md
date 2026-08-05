@@ -646,7 +646,7 @@ personalization excluded, diff against what we already have before adopting.
 
 - **`nixos-rebuild --target-host` instead of rsync + remote rebuild** —
   ryan4yin deploys his fleet with colmena (overkill for one VM), but the
-  lightweight version of the same idea replaces our `vm/copy` + `vm/rebuild`
+  lightweight version of the same idea replaces our `remote/copy` + `remote/rebuild`
   pair: `nixos-rebuild switch --flake .#vm-aarch64-fusion --target-host
   mich@$NIXADDR --use-remote-sudo` builds on the Mac (we already have
   `nix.linux-builder`) and pushes the closure over SSH. No `/nix-config`
@@ -698,7 +698,7 @@ stack and don't port to ours.
   `disko.devices` spec (1 GiB ESP + ext4 root, labels `ESP`/`nixos`) lives in the
   fusion host file with `disko.enableConfig = false` so the runtime fstab is
   unchanged and the host's toplevel derivation stays byte-identical. `make
-  vm/provision` runs nixos-anywhere against an ISO-booted VM, replacing the
+  remote/provision` runs nixos-anywhere against an ISO-booted VM, replacing the
   `vm/bootstrap0`/`vm/bootstrap` shell (both deleted). A keyed
   `packages.<linux>.installer-iso` supplies the target. Verified end-to-end
   (partition → systemd-boot → reboot); the run also surfaced + fixed a real bug

@@ -1,5 +1,5 @@
 # ABOUTME: Minimal NixOS installer ISO with the provisioning ssh key authorized
-# ABOUTME: for root, so nixos-anywhere (make vm/provision) needs no console steps.
+# ABOUTME: for root, so nixos-anywhere (make remote/provision) needs no console steps.
 { inputs, ... }:
 {
   perSystem =
