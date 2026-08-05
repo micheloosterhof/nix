@@ -481,6 +481,14 @@ lib.runTests {
     expected = true;
   };
 
+  # hosts/neon.nix: the Linux builder advertises nixos-test in
+  # /etc/nix/machines so VM tests (checks.aarch64-linux.*) are accepted
+  # without a per-invocation feature override.
+  testLinuxBuilderNixosTest = {
+    expr = builtins.elem "nixos-test" (lib.head mac.nix.buildMachines).supportedFeatures;
+    expected = true;
+  };
+
   # modules/nix-settings.nix: daemon builds run at background/idle priority
   # so they never compete with interactive work.
   testDaemonQosDarwin = {

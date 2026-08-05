@@ -50,6 +50,16 @@
               enable = true;
               ephemeral = true;
               maxJobs = 8;
+              # The defaults plus nixos-test, so NixOS VM tests
+              # (checks.aarch64-linux.*) are accepted without a per-invocation
+              # feature override. The M1 has no nested virtualization, so
+              # those tests run under qemu TCG: correct, just slow.
+              supportedFeatures = [
+                "kvm"
+                "benchmark"
+                "big-parallel"
+                "nixos-test"
+              ];
               config = (
                 { pkgs, ... }:
                 {
