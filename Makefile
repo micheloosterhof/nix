@@ -147,20 +147,33 @@ secrets/restore: ## Untar backup.tar.gz back into ~
 	chmod 600 $(HOME)/.ssh/* || true
 	chmod 700 $(HOME)/.gnupg/* || true
 
+# Every vm/* remote target refuses to run against the NIXADDR placeholder;
+# a stale or forgotten NIXADDR must fail here, not on the wrong machine.
+.PHONY: vm/check-addr
+vm/check-addr:
+	@test "$(NIXADDR)" != "unset" || { \
+		echo "error: NIXADDR is not set; pass NIXADDR=<host>"; exit 1; }
+
 # Provision a fresh NixOS install onto any ssh-reachable Linux (an ISO-booted
 # VM, or a running distro that nixos-anywhere kexecs into the installer).
 # Partitions per the disko spec in the host file, installs the flake config and
 # reboots. Set NIXADDR + NIXNAME (+ NIXPORT). Afterwards run vm/secrets.
 # NOTE: nixos-anywhere kexec needs enough RAM; a tiny host (~1 GB) needs
 # nixos-infect instead.
-vm/provision: ## Install NixOS onto a remote host via nixos-anywhere + disko
+.PHONY: vm/provision
+vm/provision: vm/check-addr ## Install NixOS onto a remote host via nixos-anywhere + disko
+	@test "$(origin NIXNAME)" = "command line" || { \
+		echo "error: vm/provision ERASES the target's disks;"; \
+		echo "       pass NIXNAME=<host> explicitly (the default is not accepted here)"; exit 1; }
+	@echo "Provisioning root@$(NIXADDR) as $(NIXNAME): disks will be repartitioned per its disko spec."
 	nix run github:nix-community/nixos-anywhere -- \
 		--flake ".#$(NIXNAME)" \
 		--ssh-port $(NIXPORT) \
 		root@$(NIXADDR)
 
 # copy our secrets into the remote host
-vm/secrets: ## rsync ~/.gnupg and ~/.ssh to the remote host
+.PHONY: vm/secrets
+vm/secrets: vm/check-addr ## rsync ~/.gnupg and ~/.ssh to the remote host
 	# GPG keyring
 	rsync -av -e 'ssh $(SSH_OPTIONS)' \
 		--exclude='.#*' \
@@ -175,7 +188,8 @@ vm/secrets: ## rsync ~/.gnupg and ~/.ssh to the remote host
 # copy the Nix configurations into the remote host. --delete keeps /nix-config an
 # exact mirror: stale files from earlier copies would otherwise be
 # auto-imported by import-tree and break evaluation.
-vm/copy: ## rsync this repo into the remote host at /nix-config
+.PHONY: vm/copy
+vm/copy: vm/check-addr ## rsync this repo into the remote host at /nix-config
 	rsync -av --delete -e 'ssh $(SSH_OPTIONS) -p$(NIXPORT)' \
 		--exclude='vendor/' \
 		--exclude='.git/' \
@@ -187,7 +201,8 @@ vm/copy: ## rsync this repo into the remote host at /nix-config
 
 # run the nixos-rebuild switch command. This does NOT copy files so you
 # have to run vm/copy before.
-vm/rebuild: ## Run nixos-rebuild switch on the remote host (vm/copy first)
+.PHONY: vm/rebuild
+vm/rebuild: vm/check-addr ## Run nixos-rebuild switch on the remote host (vm/copy first)
 	ssh $(SSH_OPTIONS) -p$(NIXPORT) $(NIXUSER)@$(NIXADDR) " \
                 sudo NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 nixos-rebuild switch --flake \"/nix-config#${NIXNAME}\" \
 	"
