@@ -71,35 +71,24 @@ in
         };
       }
 
-      # Instance hardware (originally nixos-generate-config output).
-      (
-        { lib, ... }:
-        {
-          boot.initrd.availableKernelModules = [
-            "uhci_hcd"
-            "ahci"
-            "xhci_pci"
-            "nvme"
-            "usbhid"
-            "sr_mod"
-          ];
-          boot.initrd.kernelModules = [ ];
-          boot.kernelModules = [ ];
-          boot.extraModulePackages = [ ];
+      # Instance hardware (originally nixos-generate-config output). The
+      # fileSystems come from the vmware-image module, which mounts by the
+      # same labels disko writes.
+      {
+        boot.initrd.availableKernelModules = [
+          "uhci_hcd"
+          "ahci"
+          "xhci_pci"
+          "nvme"
+          "usbhid"
+          "sr_mod"
+        ];
+        boot.initrd.kernelModules = [ ];
+        boot.kernelModules = [ ];
+        boot.extraModulePackages = [ ];
 
-          fileSystems."/" = lib.mkDefault {
-            device = "/dev/disk/by-label/nixos";
-            fsType = "ext4";
-          };
-
-          fileSystems."/boot" = lib.mkDefault {
-            device = "/dev/disk/by-label/boot";
-            fsType = "vfat";
-          };
-
-          swapDevices = [ ];
-        }
-      )
+        swapDevices = [ ];
+      }
 
       # A disko-provisioned disk carries the labels above, so the running
       # system must mount by exactly those labels — otherwise a provisioned
