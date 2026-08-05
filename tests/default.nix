@@ -287,6 +287,22 @@ lib.runTests {
     expr = nitrogen.networking.firewall.allowedTCPPorts;
     expected = [ 3333 ];
   };
+  # Servers resolve over Quad9 DoT via systemd-resolved (modules/dns.nix), so
+  # name resolution works without a DHCP-provided or tailscale-forwarded
+  # resolver (the datacenter DHCP registered nothing on one boot, and the
+  # tailscale 1.98.10 MagicDNS forwarder stopped answering).
+  testServerResolvedEnabled = {
+    expr = nitrogen.services.resolved.enable;
+    expected = true;
+  };
+  testServerNameservers = {
+    expr = nitrogen.networking.nameservers;
+    expected = [
+      "9.9.9.9#dns.quad9.net"
+      "149.112.112.112#dns.quad9.net"
+    ];
+  };
+
   # nitrogen is a tailscale exit node: kernel forwarding on (via
   # useRoutingFeatures = "server") and the advertisement applied each boot.
   testNitrogenExitNodeForwarding4 = {
@@ -420,7 +436,7 @@ lib.runTests {
     expected = true;
   };
 
-  # modules/vm.nix: VM DNS is strict DoT to Quad9 with no plaintext fallback
+  # modules/dns.nix: VM DNS is strict DoT to Quad9 with no plaintext fallback
   # (fails closed rather than leaking to the NAT gateway's resolver).
   testVmDnsOverTls = {
     expr = fusion.services.resolved.settings.Resolve.DNSOverTLS;

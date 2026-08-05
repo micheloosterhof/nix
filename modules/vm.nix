@@ -25,28 +25,6 @@
       # unpredictable enpXsY names, so we don't hardcode one.
       networking.useDHCP = true;
 
-      # Resolve over DNS-over-TLS to Quad9 so lookups are encrypted end-to-end
-      # (the ISP and the NAT can't read or tamper with them) and malware-filtered.
-      # Both addresses are Quad9's filtering resolvers, so filtering persists on
-      # failover; strict TLS makes resolution fail closed rather than leak to
-      # plaintext. The "#dns.quad9.net" suffix is the TLS certificate name.
-      services.resolved = {
-        enable = true;
-        settings.Resolve = {
-          DNSOverTLS = "true";
-          # No built-in plaintext Cloudflare/Google fallback.
-          FallbackDNS = [ ];
-        };
-      };
-      networking.nameservers = [
-        "9.9.9.9#dns.quad9.net"
-        "149.112.112.112#dns.quad9.net"
-      ];
-
-      # Strict DoT requires every resolver to speak TLS, so stop DHCP from
-      # injecting the NAT gateway's plain-53 server into resolved.
-      networking.dhcpcd.extraConfig = "nohook resolv.conf";
-
       # Default is [ perl rsync strace ]. We don't need perl; keep the rest.
       environment.defaultPackages = with pkgs; [
         rsync
