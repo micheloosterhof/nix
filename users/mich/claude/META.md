@@ -20,6 +20,22 @@ ABOUTME: Read before adding or editing rules. Not deployed; runtime interpretati
 - Audit test for any rule: what does it rule out that we actually want ruled
   out? If it rules out more than that, weaken it until intent and extension
   match.
+- Place rules by position: instructions at the start and end of a prompt are
+  followed best, the middle sags ("lost in the middle"). Lead with identity
+  and hard constraints, end with the highest-stakes procedures, park
+  low-stakes material in the middle.
+- State the desired behavior rather than prohibiting the undesired one;
+  negative instructions are followed less reliably. Keep NEVER for hazards
+  where the prohibition itself is the point.
+- A worked example constrains behavior more reliably than a paragraph of
+  description, but surface features get anchored on — label examples as
+  illustrative, not exhaustive.
+- Every rule is a proxy (Goodhart): when adding one, work out the cheapest
+  way to satisfy its letter while violating its intent, and close that path
+  in the same rule.
+- Rule count is itself a cost: per-rule compliance drops as rules accumulate,
+  and conflicting rules degrade even unrelated ones. Prefer merging into an
+  existing rule over adding a new one.
 - Worked example: "every bugfix needs a failing test first" was too strong.
   The intent was guarding against regression from a distance (the LC_ALL
   export silently defeating LC_TIME), so the rule became: write the test when
