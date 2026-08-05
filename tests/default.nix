@@ -265,6 +265,20 @@ lib.runTests {
     expr = builtins.hasAttr "bogons" nitrogen.networking.nftables.tables;
     expected = true;
   };
+  # modules/bogons.nix: the fullbogons lists contain loopback (127/8), CGNAT
+  # (100.64/10 — the tailnet), and RFC1918 (the docker bridge) space, so the
+  # drop chain must accept local/overlay interfaces first or it silences the
+  # resolved stub, all tailnet traffic, and container-to-host traffic.
+  testBogonsExemptLocalInterfaces = {
+    expr =
+      let
+        content = nitrogen.networking.nftables.tables.bogons.content;
+      in
+      lib.hasInfix ''iif "lo" accept'' content
+      && lib.hasInfix ''iifname "tailscale0" accept'' content
+      && lib.hasInfix ''iifname "docker0" accept'' content;
+    expected = true;
+  };
   testNitrogenSshPort = {
     expr = nitrogen.services.openssh.ports;
     expected = [ 3333 ];
