@@ -214,11 +214,15 @@ lib.runTests {
     expr = fusion.virtualisation.docker.enable;
     expected = true;
   };
-  # supportedLocales, not defaultLocale: the default of the latter is already
-  # en_US.UTF-8, so only the narrowed locale build proves locale.nix applied.
+  # The built locale set stays exactly the two locales the settings
+  # reference (nixpkgs computes it from defaultLocale + extraLocaleSettings);
+  # growth here means some module bloated the glibcLocales build.
   testVmLocale = {
     expr = fusion.i18n.supportedLocales;
-    expected = [ "en_US.UTF-8/UTF-8" ];
+    expected = [
+      "C.UTF-8/UTF-8"
+      "en_US.UTF-8/UTF-8"
+    ];
   };
   # LC_TIME diverges from the en_US default so timestamps render 24-hour.
   testVmLcTime24h = {
