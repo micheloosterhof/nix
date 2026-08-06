@@ -1,7 +1,7 @@
 # Architecture
 
-How this flake is organized: the dendritic pattern, the host-shape options, and
-the two output families.
+How this flake is organized: the dendritic pattern, the axes that describe a
+system, and the output families.
 
 ## The dendritic pattern
 
@@ -44,20 +44,58 @@ alongside with an underscore prefix (ignored by the auto-import). The only
 plain (non-top-level) files left are `users/mich/` — a blessed exception;
 they migrate into feature files progressively when touched.
 
-## Host-shape options
+## The axes of a system
 
-Two orthogonal axes describe a host:
+Every system is a composition along orthogonal axes:
 
-- **Platform (what it runs on)** — `flake.modules.nixos.{fusion,utm,apple-vm}`:
+**system = shared baseline + substrate + role + exposure + (identity | nothing)**
+
+- **Substrate (what it runs on)** — `flake.modules.nixos.{fusion,utm,apple-vm}`:
   hypervisor drivers, guest tools, host-integration glue. Chosen by each host
-  file at composition time (imports cannot depend on `config`).
-- **Profile + capabilities (what it's for)** — NixOS options declared in
-  `modules/profile.nix`:
+  file at composition time (imports cannot depend on `config`). GCE, WSL and
+  the container runtime are substrates too, currently encoded ad hoc
+  (`gce.nix`, inline in `wsl.nix`, `container.nix`).
+- **Role (what it's for)** — NixOS options declared in `modules/profile.nix`:
 
 ```nix
 my.profile    = "workstation" | "server";   # sets capability defaults
 my.gui.enable = bool;                        # workstation: on, server: off
 ```
+
+- **Identity (who it is)** — *singleton* configs are owned by exactly one
+  machine and set `my.hostnameGuard` beside their `networking.hostName`
+  (refusing wrong-host activation); *templates* (the image outputs) bake no
+  identity and receive it after deployment. The two convert: a template plus
+  an identity overlay is a singleton (GCE metadata names an instance at
+  boot), and an image stamped from a singleton carries its identity into
+  every clone (the fusion VMDK boots pre-named `dev`).
+- **Exposure (where it faces)** — substrate implies a default (a NATted VM
+  is not internet-facing; a TransIP KVM is), but position-dependent controls
+  are currently composed by hand: nitrogen composes `bogons`; the GCE image
+  deliberately bakes no posture. Zero-trust rule: exposure is *not* a
+  security tier — hardening, key-only ssh and sudo restrictions are
+  unconditional on every machine; exposure only gates controls whose
+  *correctness* depends on network position (bogon source-drops are wrong,
+  not merely unneeded, where legitimate traffic has RFC1918 sources).
+
+Architecture (arm/intel) is deliberately **not** an axis: `system` is a build
+parameter, and nothing branches on it (the GCE image builds both arches from
+one definition).
+
+The fleet along these axes:
+
+| system | arch | substrate | role | exposure | identity | output |
+|---|---|---|---|---|---|---|
+| vm-aarch64-fusion | arm | Fusion | workstation | lan (NATted) | singleton ("dev") | config + vmdk image |
+| vm-aarch64-utm | arm | UTM | workstation | lan (NATted) | singleton ("dev") | config |
+| vm-aarch64-apple | arm | Apple Virt | workstation | lan (NATted) | singleton ("dev") | config |
+| wsl | intel | WSL | server | lan (NATted) | unnamed instance | config + installer tarball |
+| helium | intel | metal/home | server | lan (home) | singleton | config |
+| nitrogen | intel | TransIP KVM | server | internet | singleton | config |
+| neon | arm | Mac metal | workstation | lan | singleton | config (darwin) |
+| gce-image | both | GCP | server | per-deploy (unbaked) | template | package |
+| container-server | arm/intel | container runtime | server | (host's) | template | package |
+| installer-iso | both | anywhere | (tool) | — | template | package |
 
 Priorities make the layering work: the profile sets `my.gui.enable` with
 `mkDefault` (1000), a host overrides with a plain assignment (100), and a
@@ -75,7 +113,11 @@ Cross-cutting interactions resolve themselves:
 
 ## Output families
 
-Three fundamentally different build products, not to be forced onto one axis:
+Four fundamentally different build products, not to be forced onto one axis.
+The identity axis shows up here structurally: singletons are
+`nixosConfigurations`/`darwinConfigurations`, templates are `packages`.
+(`flake.templates` — the per-project dev-shell scaffolds under `templates/` —
+are unrelated to the fleet.)
 
 1. **Bootable hosts** — `nixosConfigurations` / `darwinConfigurations`, one
    file each under `modules/hosts/`. Currently: vm-aarch64-fusion (VMware,
@@ -103,12 +145,21 @@ Three fundamentally different build products, not to be forced onto one axis:
    cloud config could compose later. The internet-facing posture (bogons,
    tighter rules) is layered per-deployment, not baked.
 
+4. **Installer ISO** — `packages.<linux-system>.installer-iso`
+   (`modules/installer-iso.nix`): a minimal installer image with the `keys/`
+   public keys authorized for root, so nixos-anywhere
+   (`make remote/provision`) can reach a fresh machine without console
+   steps.
+
 ## Validation
 
-`nix flake check --no-build` runs nixfmt, deadnix and the pure-eval tests in
-`tests/default.nix`, which assert the composition wiring (profiles, GUI
-gating incl. the apple-vm mkForce case, HM propagation, overlays, the
-container derivation). The migration itself was verified by derivation
+`make lint` (`nix flake check --all-systems`) builds the treefmt formatting
+check (nixfmt, deadnix, shellcheck, shfmt, actionlint) and runs the pure-eval
+tests in `tests/default.nix`, which assert the composition wiring (profiles,
+GUI gating incl. the apple-vm mkForce case, hostname-guard coverage, HM
+propagation, overlays, the container derivation). With `--no-build` only the
+eval tests still report — the formatting check is skipped, which is why
+formatting drift can pass locally and fail in CI. The migration itself was verified by derivation
 equality: wsl and the mac byte-identical across the conversion;
 fusion/utm equivalent (identical package sets; only merge order differs).
 
