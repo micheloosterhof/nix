@@ -13,6 +13,11 @@
 
       { my.profile = "workstation"; }
 
+      {
+        networking.hostName = "dev-apple";
+        my.hostnameGuard = true;
+      }
+
       # Instance hardware. Hand-authored (no nixos-generate-config run);
       # verify on first boot.
       (

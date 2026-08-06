@@ -15,9 +15,8 @@
       # the ESP from filling.
       boot.loader.systemd-boot.configurationLimit = 2;
 
-      # Define your hostname.
-      networking.hostName = "dev";
-      my.hostnameGuard = true;
+      # Identity (hostname + guard) is per-singleton and lives in each host
+      # file — the distinct names are what let the guard tell the VMs apart.
 
       # Set your time zone.
       time.timeZone = "Asia/Singapore";

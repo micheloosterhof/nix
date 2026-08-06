@@ -13,6 +13,11 @@
 
       { my.profile = "workstation"; }
 
+      {
+        networking.hostName = "dev-utm";
+        my.hostnameGuard = true;
+      }
+
       # Instance hardware (originally nixos-generate-config output).
       (
         { modulesPath, ... }:

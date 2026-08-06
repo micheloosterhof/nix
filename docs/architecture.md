@@ -87,8 +87,8 @@ The fleet along these axes:
 | system | arch | substrate | role | exposure | identity | output |
 |---|---|---|---|---|---|---|
 | vm-aarch64-fusion | arm | Fusion | workstation | lan (NATted) | singleton ("dev") | config + vmdk image |
-| vm-aarch64-utm | arm | UTM | workstation | lan (NATted) | singleton ("dev") | config |
-| vm-aarch64-apple | arm | Apple Virt | workstation | lan (NATted) | singleton ("dev") | config |
+| vm-aarch64-utm | arm | UTM | workstation | lan (NATted) | singleton ("dev-utm") | config |
+| vm-aarch64-apple | arm | Apple Virt | workstation | lan (NATted) | singleton ("dev-apple") | config |
 | wsl | intel | WSL | server | lan (NATted) | unnamed instance | config + installer tarball |
 | helium | intel | metal/home | server | lan (home) | singleton | config |
 | nitrogen | intel | TransIP KVM | server | internet | singleton | config |

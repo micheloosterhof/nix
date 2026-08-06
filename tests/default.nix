@@ -33,18 +33,20 @@ let
     };
 in
 lib.runTests {
-  # The vm aggregate is composed into every Linux VM host.
+  # Identity is per-singleton (host file), not in the vm aggregate: distinct
+  # hostnames are what let the guard catch a wrong-substrate deploy between
+  # the three VMs. Fusion keeps the historical "dev" (ssh alias, dev.vmx).
   testFusionHostname = {
     expr = fusion.networking.hostName;
     expected = "dev";
   };
   testUtmHostname = {
     expr = utm.networking.hostName;
-    expected = "dev";
+    expected = "dev-utm";
   };
   testAppleHostname = {
     expr = apple.networking.hostName;
-    expected = "dev";
+    expected = "dev-apple";
   };
   testDarwinStateVersion = {
     expr = mac.system.stateVersion;

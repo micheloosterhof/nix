@@ -24,6 +24,13 @@ in
 
       { my.profile = "workstation"; }
 
+      # Identity: the historical "dev" (the ssh alias, dev.vmx bundle and
+      # docs all mean this VM).
+      {
+        networking.hostName = "dev";
+        my.hostnameGuard = true;
+      }
+
       # Declarative disk layout, consumed by nixos-anywhere when provisioning
       # a fresh VM (make remote/provision). enableConfig = false: the running
       # system keeps mounting by the labels below (the vmware-image module
