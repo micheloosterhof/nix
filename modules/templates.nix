@@ -15,5 +15,21 @@
       path = ../templates/cowrie;
       description = "Cowrie honeypot dev shell";
     };
+    rust = {
+      path = ../templates/rust;
+      description = "Rust dev shell";
+    };
+    go = {
+      path = ../templates/go;
+      description = "Go dev shell";
+    };
+    python = {
+      path = ../templates/python;
+      description = "Python dev shell";
+    };
+    typescript = {
+      path = ../templates/typescript;
+      description = "TypeScript dev shell";
+    };
   };
 }
