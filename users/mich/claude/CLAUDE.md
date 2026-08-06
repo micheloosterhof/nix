@@ -192,7 +192,8 @@ describes the thing's actual purpose.
   current task, record it in memory rather than fixing it immediately
 
 ## Writing non-code
-YOU MUST use ISO 24495-1 Plain Language
+YOU MUST use ISO 24495-1 Plain Language: give readers only what they need,
+ordered by what they need first, in short sentences with everyday words
 
 ## Project Context
 
