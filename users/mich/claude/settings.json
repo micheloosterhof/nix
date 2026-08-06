@@ -84,8 +84,6 @@
       "Bash(wget * | bash)",
       "Bash(wget * | sh)",
       "Bash(wget * | zsh)",
-      "Bash(ssh *)",
-      "Bash(scp *)",
       "Bash(nc *)"
     ]
   },
