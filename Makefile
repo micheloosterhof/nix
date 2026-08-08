@@ -46,6 +46,7 @@ lint: ## Run flake checks (formatting + eval-tests)
 hooks: ## Install the git pre-commit hooks
 	pre-commit install
 
+.PHONY: rebuild
 rebuild: ## Build + activate the current host (Darwin or NixOS)
 ifeq ($(UNAME), Darwin)
 	sudo darwin-rebuild switch --flake "$$(pwd)#${LOCAL_NAME}"
@@ -53,6 +54,7 @@ else
 	sudo nixos-rebuild switch --flake ".#${LOCAL_NAME}"
 endif
 
+.PHONY: test
 test: ## Build + activate without persisting (no boot entry)
 ifeq ($(UNAME), Darwin)
 	sudo darwin-rebuild test --flake "$$(pwd)#${LOCAL_NAME}"
@@ -60,6 +62,7 @@ else
 	sudo nixos-rebuild test --flake ".#${LOCAL_NAME}"
 endif
 
+.PHONY: build
 build: ## Build the configuration only (no activation)
 ifeq ($(UNAME), Darwin)
 	darwin-rebuild build --flake "$$(pwd)#${LOCAL_NAME}"
@@ -67,6 +70,7 @@ else
 	nixos-rebuild build --flake ".#${LOCAL_NAME}"
 endif
 
+.PHONY: check
 check: ## Build + run activation checks without switching
 ifeq ($(UNAME), Darwin)
 	sudo darwin-rebuild check --flake "$$(pwd)#${LOCAL_NAME}"
