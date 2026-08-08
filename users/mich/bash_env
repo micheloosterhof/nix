@@ -80,6 +80,7 @@ export NETHACKOPTIONS='decgraphics,gender:male,dogname:Spot,pickup_types:$,race:
 export BLOCKSIZE=1K
 
 export LANG=C.UTF-8
+export LC_CTYPE=en_US.UTF-8
 export PAPERSIZE=a4
 
 export VISUAL=nvim

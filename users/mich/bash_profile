@@ -1,6 +1,10 @@
 #!/bin/bash
 # basic login script -*- shell-script -*-
 
+# home-manager's generated env (GNUPGHOME, XDG dirs, locale archive) —
+# sourced first so the settings in this file and .bash_env win.
+[ -f /etc/profiles/per-user/${USER}/etc/profile.d/hm-session-vars.sh ] && \. /etc/profiles/per-user/${USER}/etc/profile.d/hm-session-vars.sh
+
 [ -f ${HOME}/.bash_env ] && \. ${HOME}/.bash_env
 [ -f ${HOME}/.bashrc ] && \. ${HOME}/.bashrc
 

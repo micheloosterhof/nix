@@ -159,18 +159,18 @@ in
   # Env vars and dotfiles
   #---------------------------------------------------------------------
 
-  # The dotfiles (bash_env/zshenv) are leading for session env vars; they are
-  # sourced after these and win. Only variables the dotfiles don't set
-  # belong here.
-  home.sessionVariables = {
-    LC_CTYPE = "en_US.UTF-8";
-    # Owned by bash_env/zshenv: LANG, VISUAL/EDITOR, PAGER, MANPAGER.
-  };
-
+  # Both shells are fully dotfile-managed (no programs.bash/zsh): env vars,
+  # aliases, history and hooks live in the files below. bash_profile and
+  # zshenv source hm-session-vars.sh themselves for the HM-generated env
+  # (GNUPGHOME, XDG dirs, locale archive) — before their own exports, so
+  # the dotfiles win.
   home.file.".inputrc".source = ./inputrc;
   home.file.".vimrc".source = ./vimrc;
   home.file.".tmux.conf".source = ./tmux.conf;
   home.file.".bash_env".source = ./bash_env;
+  home.file.".bash_profile".source = ./bash_profile;
+  home.file.".bashrc".source = ./bashrc;
+  home.file.".bash_logout".source = ./bash_logout;
 
   home.file.".zshenv".source = ./zshenv;
   home.file.".zprofile".source = ./zprofile;
@@ -239,33 +239,6 @@ in
         User = "mich";
         IdentityFile = "~/.ssh/id_ed25519";
       };
-    };
-  };
-
-  programs.bash = {
-    enable = true;
-    shellOptions = [ ];
-    # bash_env owns history behavior (unset HISTFILE, HISTCONTROL=ignoredups)
-    # and is sourced after the generated settings.
-    # historyControl = [
-    #   "ignoredups"
-    #   "ignorespace"
-    # ];
-    initExtra = builtins.readFile ./bashrc;
-    profileExtra = builtins.readFile ./bash_profile;
-    logoutExtra = builtins.readFile ./bash_logout;
-
-    shellAliases = {
-      ga = "git add";
-      gc = "git commit";
-      gco = "git checkout";
-      gcp = "git cherry-pick";
-      gdiff = "git diff";
-      gl = "git prettylog";
-      gp = "git push";
-      gs = "git status";
-      gt = "git tag";
-      timeout = "gtimeout";
     };
   };
 

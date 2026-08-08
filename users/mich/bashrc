@@ -68,6 +68,16 @@ export LESS_TERMCAP_ZW=$(tput rsupm)
 #############################################################################
 alias dot='. ~/.bash_profile; echo "# reloaded .bash_profile"'
 
+alias ga='git add'
+alias gc='git commit'
+alias gco='git checkout'
+alias gcp='git cherry-pick'
+alias gdiff='git diff'
+alias gl='git prettylog'
+alias gp='git push'
+alias gs='git status'
+alias gt='git tag'
+
 alias tf=terraform
 alias tl='tmux list-sessions'
 alias ta='tmux attach'
@@ -81,6 +91,7 @@ alias ks='kubectl run -it --image bash --restart Never --rm shell'
 alias man='man -a'
 alias cp='cp -i'
 alias mv='mv -i'
+type gtimeout >/dev/null 2>&1 && alias timeout=gtimeout
 
 # ls
 #############################################################################

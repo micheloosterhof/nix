@@ -34,6 +34,10 @@ MY_PATH=""
 for f in $PATHS; do test -d $f && MY_PATH=$MY_PATH$f:; done
 export PATH=${MY_PATH%:}; unset MY_PATH; unset PATHS
 
+# home-manager's generated env (GNUPGHOME, XDG dirs, locale archive) —
+# sourced first so the settings below win.
+[ -f /etc/profiles/per-user/${USER}/etc/profile.d/hm-session-vars.sh ] && . /etc/profiles/per-user/${USER}/etc/profile.d/hm-session-vars.sh
+
 # ksh/bash specific
 unset HISTFILE
 export HISTCONTROL=ignoredups:ignorespace
@@ -46,6 +50,7 @@ export NETHACKOPTIONS='decgraphics,gender:male,dogname:Spot,pickup_types:$,race:
 export BLOCKSIZE=1K
 
 export LANG=C.UTF-8
+export LC_CTYPE=en_US.UTF-8
 export PAPERSIZE=a4
 
 export VISUAL=nvim
