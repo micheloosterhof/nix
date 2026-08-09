@@ -160,8 +160,15 @@ darwin)
 ;;
 esac
 
+# COMPLETION
+#############################################################################
 autoload -U +X bashcompinit && bashcompinit
 autoload -Uz compinit && compinit
+
+# Offer spelling corrections for the command word:
+setopt CORRECT
+# When an exact match fails, try correction and then approximate matching:
+zstyle ':completion:*' completer _complete _correct _approximate
 
 bindkey -e
 
