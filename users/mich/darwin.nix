@@ -91,6 +91,7 @@
     pkgs.atkinson-hyperlegible-mono
     pkgs.b612
     pkgs.jetbrains-mono
+    pkgs.julia-mono
     pkgs.nerd-fonts.symbols-only
   ];
 
