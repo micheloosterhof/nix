@@ -404,6 +404,15 @@ in
         "Symbols Nerd Font Mono"
       ];
 
+      # JetBrains Mono covers neither runes nor circled digits, and the system
+      # fallbacks for them (Apple Symbols, Arial Unicode MS) are proportional —
+      # their glyphs run up to 165% of the cell and collide with the next one.
+      # JuliaMono draws both ranges at exactly the 0.6em cell width.
+      font-codepoint-map = [
+        "U+16A0-U+16F8=JuliaMono"
+        "U+2460-U+2473,U+2780-U+2789=JuliaMono"
+      ];
+
       # Route launches through the running instance via D-Bus for instant
       # new windows; pairs with the systemd user service and "ghostty
       # +new-window" i3 keybind.
