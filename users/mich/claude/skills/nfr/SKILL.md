@@ -32,11 +32,12 @@ Never use JavaScript directly. All frontend code is TypeScript.
 - **Functional core, imperative shell**: Keep business logic in pure
   functions with no side effects. Push I/O, state mutation, and
   orchestration to the outer edges of the system.
-- **Dependency injection**: Accept dependencies as parameters rather than
-  constructing them internally. Simplifies testing by allowing real
-  collaborators to be replaced without mocks. Skip DI when it adds
-  indirection without a testing or flexibility benefit (e.g., trivial
-  helpers, scripts with no meaningful collaborators).
+- **Dependency injection**: Accept dependencies (randomness, clock, etc) 
+  as parameters rather than constructing them internally. Simplifies
+  testing by allowing real collaborators to be replaced without
+  mocks. Skip DI when it adds indirection without a testing or
+  flexibility benefit (e.g., trivial helpers, scripts with no
+  meaningful collaborators).
 
 ## 3. Logging
 
