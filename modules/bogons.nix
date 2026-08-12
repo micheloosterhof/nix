@@ -69,13 +69,20 @@
               rm -f "$tmp"
               return 0
             fi
-            elems="$(grep -E '^[0-9a-fA-F:.]+/[0-9]+' "$tmp" | paste -sd, -)"
+            # grep exits 1 when a payload holds no prefixes at all (an error page
+            # served with 200), which under errexit would abandon the families
+            # that come after this one — so tolerate it and treat an empty
+            # extraction like a failed download.
+            elems="$({ grep -E '^[0-9a-fA-F:.]+/[0-9]+' "$tmp" || true; } | paste -sd, -)"
+            if [ -z "$elems" ]; then
+              echo "bogons: no prefixes for $name, keeping existing set" >&2
+              rm -f "$tmp"
+              return 0
+            fi
             nftfile="$(mktemp)"
             {
               echo "flush set inet bogons $name"
-              if [ -n "$elems" ]; then
-                echo "add element inet bogons $name { $elems }"
-              fi
+              echo "add element inet bogons $name { $elems }"
             } > "$nftfile"
             # One atomic transaction: if it can't apply, the old set stays.
             nft -f "$nftfile"
