@@ -83,7 +83,6 @@ in
   ]
   ++ (lib.optionals fullTools [
     pkgs.act
-    pkgs.age
     pkgs.asciinema
     pkgs.ast-grep
     pkgs.bitwarden-cli
