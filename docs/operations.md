@@ -136,8 +136,8 @@ but keeps the host firewall on.
 | `make gc` | Delete generations older than 7d and collect store garbage |
 | `make store/verify` | Check the integrity of every store path |
 | `make store/repair` | Verify with content hashing and repair broken paths |
-| `make secrets/backup` | Tar `~/.ssh` + `~/.gnupg` into `backup.tar.gz` |
-| `make secrets/restore` | Untar `backup.tar.gz` back into `~` |
+| `make secrets/backup` | Tar `~/.ssh` + `~/.gnupg` into `backup.tar.gz.age`, encrypted under a passphrase |
+| `make secrets/restore` | Decrypt `backup.tar.gz.age` back into `~` |
 | `make cachix/seed` | Push the linux-builder image closure to the cachix cache |
 
 Scheduled hygiene is built into every host: weekly GC keeping 30 days of

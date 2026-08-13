@@ -126,28 +126,33 @@ store/verify: ## Check the integrity of every store path
 store/repair: ## Verify with content hashing and repair broken store paths
 	sudo nix-store --verify --check-contents --repair
 
-# Backup secrets so that we can transer them to new machines via
-# sneakernet or other means.
+# Backup secrets so that we can transfer them to new machines via
+# sneakernet or other means. The archive carries private ssh and gnupg keys,
+# so it only ever exists encrypted under a passphrase (age -p): the plaintext
+# stays in the pipe. pipefail so a tar failure isn't hidden by age's success,
+# umask so the archive is unreadable to anyone else.
 .PHONY: secrets/backup
-secrets/backup: ## Tar ~/.ssh and ~/.gnupg into backup.tar.gz
-	tar -czvf $(MAKEFILE_DIR)/backup.tar.gz \
+secrets/backup: ## Tar ~/.ssh and ~/.gnupg into passphrase-encrypted backup.tar.gz.age
+	set -o pipefail; umask 077; tar -czvf - \
 		-C $(HOME) \
 		--exclude='.gnupg/.#*' \
 		--exclude='.gnupg/S.*' \
 		--exclude='.gnupg/*.conf' \
 		--exclude='.ssh/environment' \
 		.ssh/ \
-		.gnupg
+		.gnupg \
+		| age --passphrase --output $(MAKEFILE_DIR)/backup.tar.gz.age
 
 .PHONY: secrets/restore
-secrets/restore: ## Untar backup.tar.gz back into ~
-	if [ ! -f $(MAKEFILE_DIR)/backup.tar.gz ]; then \
-		echo "Error: backup.tar.gz not found in $(MAKEFILE_DIR)"; \
+secrets/restore: ## Decrypt backup.tar.gz.age back into ~
+	if [ ! -f $(MAKEFILE_DIR)/backup.tar.gz.age ]; then \
+		echo "Error: backup.tar.gz.age not found in $(MAKEFILE_DIR)"; \
 		exit 1; \
 	fi
 	echo "Restoring SSH keys and GPG keyring from backup..."
 	mkdir -p $(HOME)/.ssh $(HOME)/.gnupg
-	tar -xzvf $(MAKEFILE_DIR)/backup.tar.gz -C $(HOME)
+	set -o pipefail; umask 077; age --decrypt $(MAKEFILE_DIR)/backup.tar.gz.age \
+		| tar -xzvf - -C $(HOME)
 	chmod 700 $(HOME)/.ssh $(HOME)/.gnupg
 	chmod 600 $(HOME)/.ssh/* || true
 	chmod 700 $(HOME)/.gnupg/* || true
