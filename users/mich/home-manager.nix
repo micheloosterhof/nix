@@ -89,6 +89,7 @@ in
     pkgs.cargo
     pkgs.claude-code
     pkgs.clippy
+    pkgs.codex
     pkgs.coreutils-prefixed
     pkgs.cosign
     pkgs.croc

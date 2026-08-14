@@ -19,6 +19,9 @@ let
           # Want the latest version of this.
           inherit (unstable) claude-code;
 
+          # Ships as fast as claude-code does, and stable is as far behind.
+          inherit (unstable) codex;
+
           # Stable's zed is far behind (1.3.x) and old builds fail to launch
           # against current GPU/library stacks.
           inherit (unstable) zed-editor;
