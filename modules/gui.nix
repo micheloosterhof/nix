@@ -58,8 +58,11 @@
         "uinput"
       ];
 
-      # Manage fonts. We pull these from a secret directory since most of these
-      # fonts require a purchase.
+      # The terminal font stack: JetBrains Mono for text, the symbols-only Nerd
+      # Font for the powerline/devicon glyphs it lacks, and JuliaMono for the
+      # runes and circled digits neither covers. Ghostty names all three
+      # (users/mich/home-manager.nix), so a missing one shows up as tofu or as
+      # a proportional fallback that overruns the cell.
       fonts = {
         fontDir.enable = true;
 
@@ -67,6 +70,7 @@
           pkgs.fira-code
           pkgs.jetbrains-mono
           pkgs.julia-mono
+          pkgs.nerd-fonts.symbols-only
         ];
       };
 
