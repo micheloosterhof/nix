@@ -136,6 +136,9 @@ in
     pkgs.switchaudio-osx
     # Sudoless performance monitoring CLI for Apple Silicon (CPU/GPU/power).
     pkgs.macmon
+    # Runs language models locally. Darwin-only because neon is the one host
+    # with a GPU to run them on; the Linux VMs get no passthrough.
+    pkgs.ollama
   ])
   ++ (lib.optionals gui [
     # Under VMware's vmwgfx GPU, Chromium's GPU-process sandbox blocks the lazy
