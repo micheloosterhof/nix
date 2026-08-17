@@ -165,11 +165,6 @@ esac
 autoload -U +X bashcompinit && bashcompinit
 autoload -Uz compinit && compinit
 
-# Offer spelling corrections for the command word:
-setopt CORRECT
-# When an exact match fails, try correction and then approximate matching:
-zstyle ':completion:*' completer _complete _correct _approximate
-
 bindkey -e
 
 type terraform >/dev/null 2>&1 && complete -o nospace -C $(which terraform) terraform
