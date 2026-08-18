@@ -163,6 +163,9 @@ each machine provably builds. neon's job substitutes the linux-builder
 image from the cachix cache (see Binary cache below).
 `.github/workflows/update-lock.yml` opens a weekly flake.lock bump PR with
 the input changes in the body and dispatches check/build onto the branch.
+The bump always lives on `flake-lock/weekly`, rebuilt from main and
+force-pushed, so an unmerged PR is refreshed in place rather than competing
+with a second one; don't commit anything onto that branch by hand.
 `.github/workflows/dependency-graph.yml` submits a representative host's
 closure to GitHub's dependency graph so advisories cover the deployed
 system, not just the flake inputs.

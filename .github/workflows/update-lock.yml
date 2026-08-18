@@ -1,6 +1,11 @@
 # Weekly flake.lock bump as a reviewable PR, with the input rev changes in
 # the PR body. check/build runs are dispatched onto the branch explicitly
 # because pushes made with GITHUB_TOKEN do not trigger on-push workflows.
+#
+# One branch holds the bump, rebuilt from main and force-pushed each run, so
+# an unmerged PR is refreshed in place instead of being joined by a second PR
+# that touches the same lines. The branch belongs to this workflow: anything
+# committed onto it by hand is overwritten on the next run.
 name: update-lock
 
 on:
@@ -35,13 +40,20 @@ jobs:
             echo "flake.lock already at branch tips; nothing to do"
             exit 0
           fi
-          branch="flake-lock/$(date -u +%Y-%m-%d)"
+          branch="flake-lock/weekly"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$branch"
+          git checkout -B "$branch"
           git add flake.lock
           git commit -m "chore(flake): update inputs"
-          git push -u origin "$branch"
+          pr=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')
+          # An open PR already carrying these exact inputs needs no new commit
+          # and no second CI run; its body still describes what merging does.
+          if [ -n "$pr" ] && git fetch origin "$branch" && git diff --quiet FETCH_HEAD -- flake.lock; then
+            echo "PR #$pr already holds these inputs; nothing to do"
+            exit 0
+          fi
+          git push --force -u origin "$branch"
           {
             echo "Automated weekly flake.lock bump."
             echo
@@ -63,6 +75,10 @@ jobs:
             echo
             echo "Review the changes above before merging; a lock bump is a real version bump."
           } > pr-body.md
-          gh pr create --title "chore(flake): weekly input bump" --body-file pr-body.md
+          if [ -n "$pr" ]; then
+            gh pr edit "$pr" --body-file pr-body.md
+          else
+            gh pr create --title "chore(flake): weekly input bump" --body-file pr-body.md
+          fi
           gh workflow run check.yml --ref "$branch"
           gh workflow run build.yml --ref "$branch"

@@ -154,5 +154,7 @@ jobs:
           } > comment.md
           pr=$(gh pr list --head "$GITHUB_REF_NAME" --json number --jq '.[0].number')
           if [ -n "$pr" ]; then
-            gh pr comment "$pr" --body-file comment.md
+            # --edit-last keeps the diffs of the current lock, not a thread of
+            # every lock the reused bump branch has carried.
+            gh pr comment "$pr" --body-file comment.md --edit-last --create-if-none
           fi
