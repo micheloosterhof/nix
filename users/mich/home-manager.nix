@@ -95,6 +95,7 @@ in
     pkgs.croc
     pkgs.duckdb
     pkgs.ffmpeg
+    pkgs.git-ls # ls that shows each file's git status and last commit
     pkgs.gitleaks
     pkgs.golangci-lint
     pkgs.hashcat
