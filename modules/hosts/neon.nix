@@ -61,7 +61,7 @@
                 "big-parallel"
                 "nixos-test"
               ];
-              config = (
+              config =
                 { pkgs, ... }:
                 {
                   virtualisation = {
@@ -74,8 +74,7 @@
                   environment.systemPackages = [
                     pkgs.htop
                   ];
-                }
-              );
+                };
             };
 
             settings = {
