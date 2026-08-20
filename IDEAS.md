@@ -1,5 +1,8 @@
 # Roadmap (self-originated)
 
+- hyperfine for benchmarks
+ - https://terminaltrove.com/fq/ jq for binary formats
+
 - **GPU GCE image variant (`gce-gpu`)** — a separate x86_64 image for GCP GPU
   instances (T4/L4/V100/A100/H100; GCP has no aarch64 GPUs), layering the
   NVIDIA datacenter driver + CUDA onto the existing base+server+gce
@@ -100,6 +103,240 @@
 - **Cloud Ops Agent / logging** (production observability, heavier). Ship
   metrics + logs to Cloud Monitoring/Logging. No clean nixpkgs module (Google
   binary), so this is the most involved of the set.
+
+---
+
+# Tier-1 batch — specced (2026-08-20)
+
+The cheap wins scattered across the surveys below, checked against the repo
+and turned into concrete changes. None is implemented today: `zramSwap`,
+`journald`, `initrd.systemd`, `useNetworkd`, `nix-output-monitor`,
+`programs.nh`, `direnvrc`, `intent-to-add`, `warn-dirty`,
+`builders-use-substitutes` and `FailureAction` appear nowhere in the repo
+outside this file.
+
+Two source bullets turned out to be wrong or more expensive than
+advertised — see nh and registry pinning. Each item below is one commit.
+
+## Batch A — no decision to make
+
+**1. Two nix.settings keys** (`modules/nix-settings.nix`, in the `settings`
+block around line 40). Add:
+
+```nix
+# The repo is worked on dirty most of the time; the warning on every
+# build is noise.
+warn-dirty = false;
+# Remote builders substitute from the caches themselves instead of
+# receiving every dependency over ssh from the client.
+builders-use-substitutes = true;
+```
+
+`builders-use-substitutes` only bites on neon (the one host with
+`nix.buildMachines`), but it is a client-side setting and harmless on the
+rest, so it stays in the shared block. Test: one eval assertion per key
+alongside the existing `testSubstituterFallback` in `tests/default.nix`.
+
+**2. `git add --intent-to-add` before local builds** (`Makefile`). A
+path-flake in a git worktree only sees tracked files, so a newly written
+`modules/foo.nix` is invisible to `nix build` until it is staged — the
+"path does not exist" gotcha. Add a helper target and make the four local
+targets depend on it:
+
+```make
+# A path flake only copies git-tracked files, so a new module is invisible
+# to the build until it is at least intent-to-add staged.
+.PHONY: stage
+stage:
+	@git add --intent-to-add .
+```
+
+`rebuild`, `test`, `build`, `check` gain `stage` as a prerequisite. Safe
+against junk: `--intent-to-add` honours `.gitignore`, which already covers
+`result`, `backup.tar.gz*` and `iso/nixos.iso`. Not the remote targets —
+`remote/copy` rsyncs the worktree and does not care. No test (Makefile).
+
+**3. Cap journal growth** (`modules/vm.nix` and `modules/server.nix`, or
+once on the shared base). `services.journald.extraConfig = "SystemMaxUse=1G"`.
+The VMs run a ~40 GiB virtual disk and the servers are small; the default
+cap is 10% of the filesystem, which is a lot of disk spent on logs nobody
+reads. Note `server` is composed into the GCE image too (`flake.lib.gceSystem`
+= base + server + gce), which is if anything a stronger reason to cap.
+Test: an eval assertion on one VM and one server.
+
+**4. zram swap** (`modules/vm.nix`). `zramSwap.enable = true`. Compressed
+RAM-backed swap so a big `nix build` in the guest degrades instead of
+OOM-killing. Take zram alone — Mic92's separate zswap module on top of it
+is a known anti-pattern. Leave the servers out for now: helium has 32 GB
+and nitrogen's workload is known. Test: eval assertion on fusion.
+
+**5. nix-output-monitor on the image targets** (`Makefile`, `home.packages`).
+Add `pkgs.nix-output-monitor` to the `fullTools` list in
+`users/mich/home-manager.nix`, then swap `nix build` → `nom build` in
+`vm/image` (line 222) and `gce/image` (line 247). Verified: `nom build
+--no-link --print-out-paths` puts only the store path on stdout, so the
+`$(...)` capture in `vm/launch` and `gce/upload` keeps working unchanged.
+The `*-rebuild` targets are a separate question — piping them needs
+`--log-format internal-json -v |& nom --json`, and if nh (item 9) lands it
+already prints an nom-style tree, so leave those alone. No test.
+
+**6. Offline-aware direnv** (`users/mich/home-manager.nix`, in the existing
+`programs.direnv` block). On a plane or a dead network, `use flake` tries to
+evaluate and fetch, and hangs. nix-direnv exposes a supported opt-out:
+
+```nix
+stdlib = ''
+  # No default route: serve nix-direnv's cached environment instead of
+  # evaluating the flake, which would block on a fetch.
+  if ! ${if isDarwin then "route -n get default" else "ip route get 1.1.1.1"} >/dev/null 2>&1; then
+    nix_direnv_manual_reload
+  fi
+'';
+```
+
+Verified against the pinned versions: home-manager writes `stdlib` to
+`$XDG_CONFIG_HOME/direnv/direnvrc`; direnv sources `direnv/lib/*.sh` (where
+HM puts nix-direnv) *before* `direnvrc`, so `nix_direnv_manual_reload` is
+defined by then. The route check has to branch per-OS — `ip` does not exist
+on darwin. Test: none worth writing (shell text in a dotfile).
+
+**7. gitconfig defaults** (`users/mich/home-manager.nix`, `programs.git.settings`).
+The surveys list two sets; after subtracting what is already configured and
+what fights an existing decision, this is what is left:
+
+```nix
+rebase.autosquash = true;      # `commit --fixup` lands without --autosquash
+rebase.updateRefs = true;      # stacked branches follow a rebase
+diff.algorithm = "histogram";
+branch.sort = "-committerdate";
+core.untrackedCache = true;    # default is "keep"; true actually enables it
+fetch.writeCommitGraph = true; # default false; core.commitGraph is already on
+commit.verbose = true;         # diff in the commit-message editor
+help.autocorrect = 10;
+am.threeWay = true;
+```
+
+plus aliases `fpush = "push --force-with-lease"`, `uncommit = "reset --soft
+HEAD^"`, and `checkout-pr` (fetch `pull/$N/head`).
+
+Deliberately excluded: `core.commitGraph` (has defaulted to true since git
+2.24 — adding it is a no-op); the `gh auth git-credential` helper (fights the
+existing split of osxkeychain on darwin / SSH url-rewrite on Linux, and
+`programs.gh.gitCredentialHelper.enable = false` is a deliberate setting);
+`gpg.format = "ssh"` (a real decision against the configured GPG key
+523D5DC389D273BC, not a Tier-1 one-liner); `[include] ~/.gitconfig.local`
+(the config is the source of truth here, and HM already writes the file).
+Conditional per-directory identity is worth having the day work and personal
+repos share a machine — not yet. No test.
+
+## Batch B — one decision each
+
+**8. Pin every flake input into the registry** (`modules/nix-settings.nix`).
+The claimed cost is "~700 MB of source trees in the closure". Measured on
+the current lock:
+
+| input | source closure |
+| --- | --- |
+| nixpkgs | 196 MiB (already pinned) |
+| nixpkgs-unstable | 201 MiB |
+| home-manager | 6 MiB |
+| the other eight | under 1 MiB each |
+
+So the real tradeoff is nixpkgs-unstable and nothing else: pinning the nine
+small inputs costs about 7 MiB. Proposal — pin everything except
+nixpkgs-unstable everywhere, and reconsider unstable separately:
+
+```nix
+registry = lib.mapAttrs (_: flake: { inherit flake; }) (
+  lib.filterAttrs (n: v: n != "nixpkgs-unstable" && lib.isType "flake" v) inputs
+);
+```
+
+with `nixPath` derived the same way. `flake-registry = ""` (blank the global
+registry so nothing silently resolves to an unpinned upstream) is the second
+half and can ride along. Decision: whether to accept 201 MiB on the lean
+artifacts (`my.tools.full = false` — the GCE image — and the container
+tarball) for `nix run nixpkgs-unstable#…` to work offline. Test: an eval
+assertion that the registry has an entry per input and that the GCE closure
+does not gain the unstable source.
+
+**9. nh as the rebuild/GC frontend.** Two corrections to the survey bullet:
+
+- **`programs.nh` does not exist in nix-darwin.** Checked the pinned
+  `nix-darwin-26.05` source: no `modules/programs/nh.nix`, no `programs.nh`
+  anywhere. It is a NixOS module and a home-manager module. So on neon nh
+  arrives via home-manager (which does support it, with `darwinFlake` and a
+  launchd clean agent); on the NixOS hosts it is the system module.
+- **`nh clean` and `nix.gc.automatic` are mutually exclusive.** The NixOS
+  module warns when both are on, home-manager likewise. `modules/nix-settings.nix`
+  sets `gc.automatic = true` on every host, so adopting `nh clean` means
+  deleting that block and moving the policy to
+  `programs.nh.clean.extraArgs = "--keep 5 --keep-since 20d"`. That is the
+  actual win — keep-count *and* keep-age, which `nix.gc.options` cannot
+  express — but it is a swap, not an addition.
+
+`NH_FLAKE` is per-host (the repo is at `~/src/nix` on neon and `/nix-config`
+on a remote-rebuilt VM), so either leave `flake` unset and rely on cwd, or
+set it per host file. `make rebuild`/`make gc` keep their names and call nh
+underneath. Decision: whether to hand GC scheduling to nh. Test: an eval
+assertion that exactly one of the two GC mechanisms is enabled per host.
+
+**10. sshd-or-reboot watchdog** (`modules/server.nix`):
+
+```nix
+# A headless box whose sshd fails at boot is unreachable; reboot instead
+# of sitting there.
+systemd.services.openssh = {
+  wantedBy = [ "boot-complete.target" ];
+  unitConfig.FailureAction = "reboot";
+};
+```
+
+Decision is scope, and it matters: `server` is also composed into the GCE
+image, where a persistent sshd failure would turn into a reboot loop that
+costs money and hides the cause. Options: put it on `server` and accept
+that; put it on the two pet servers' host files only (helium, nitrogen);
+or put it on `server` and override it off in `modules/gce.nix`. Prefer the
+host files — nitrogen is the machine this is actually insurance for (remote,
+non-standard ssh port 3333, nothing else to reach it by except the tailnet).
+Test: eval assertion on whichever hosts get it.
+
+## Batch C — needs a VM boot test, not just an eval
+
+**11. systemd initrd** (`modules/vm.nix`): `boot.initrd.systemd.enable = true`.
+Drop-in on paper — no LUKS, no custom initrd scripts in the repo — but it
+replaces the whole early boot path, so it gets verified by booting the
+fusion VM, not by `nix flake check`. Do it before item 12; if both land at
+once and the VM does not come back, there are two suspects.
+
+**12. networkd with a mac-based DHCP identifier** (`modules/vm.nix`,
+replacing `networking.useDHCP = true` at line 26):
+
+```nix
+networking.useNetworkd = true;
+systemd.network.networks."10-uplink" = {
+  matchConfig.Type = "ether";           # no interface names: Fusion/UTM/VZ
+  networkConfig.DHCP = "yes";
+  dhcpV4Config.ClientIdentifier = "mac"; # stable lease across rebuilds
+};
+```
+
+`matchConfig.Type = "ether"` (Mic92's utm-vm) is stronger than phaer's
+`en* eth*` name glob and drops the "hypervisor NICs get unpredictable
+enpXsY names" problem the current comment describes. The mac-based client
+identifier is the payoff: the VM keeps its NAT lease, which is what the
+hardcoded `dev` → `192.168.85.146` entry in `programs.ssh` depends on today.
+Pair it with `systemd.services.systemd-networkd.stopIfChanged = false` (and
+the same for resolved) so a `nixos-rebuild switch` over ssh does not cut the
+network mid-switch. Interacts with `modules/dns.nix` (resolved + DoT), which
+networkd integrates with cleanly. Verify by booting fusion and utm and
+confirming the lease survives two rebuilds.
+
+## Suggested order
+
+A1–A7 in any order, one commit each — all eval-only, all verifiable with
+`make lint`. Then B8/B9/B10, each carrying its decision. Then C11, boot the
+VM, then C12, boot the VM again.
 
 ---
 
@@ -556,12 +793,6 @@ personalization excluded, diff against what we already have before adopting.
   `nix run my#...` and `nix flake init -t my#<template>` work from any
   directory without a path. One line next to the existing
   `registry.nixpkgs` pin in `modules/nix-settings.nix`.
-
-- **statix as a third lint** — he formats/lints via treefmt-nix with nixfmt +
-  statix; we run nixfmt + deadnix. statix catches semantic antipatterns
-  (`if x then true else false`, redundant `inherit`, legacy merge idioms)
-  that neither of ours sees. With treefmt-nix now in `modules/checks.nix`,
-  adoption is one `programs.statix.enable` line.
 
 - **systemd-oomd on the dev VM** — his `gui/nixos.nix` enables
   `systemd.oomd` with user/root/system slices. A big `nix build` inside the
