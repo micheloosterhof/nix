@@ -3,10 +3,10 @@
 # Substitutes from cache.nixos.org plus the personal cachix cache;
 # --fallback builds locally if a path is missing from both.
 #
-# neon depends on the cachix cache holding the customized linux-builder
-# image (an aarch64-linux derivation a macOS runner cannot build). After a
-# flake.lock bump changes that image, run `make cachix/seed` from the Mac —
-# until then the neon job fails on the missing image, which is the signal.
+# neon's closure contains the customized linux-builder image, an
+# aarch64-linux derivation a macOS runner cannot build. The
+# linux-builder-image job builds it on a native arm runner and pushes it to
+# the cachix cache, so the neon job substitutes it like every other path.
 #
 # On flake-lock/* branches each host job also realizes main's closure and
 # diffs the two; the closures job collects the diffs into one PR comment so
@@ -26,8 +26,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Runs ahead of the closures because the neon job can only substitute the
+  # image once it is on the cache. Dependabot runs get no repository secrets,
+  # so the push is skipped there; those runs leave flake.lock alone and the
+  # image they need is already cached.
+  linux-builder-image:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+
+      # The token avoids GitHub API rate limits when fetching flake inputs.
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            extra-substituters = https://micheloosterhof.cachix.org
+            extra-trusted-public-keys = micheloosterhof.cachix.org-1:A80V0fr3ruUDRZtyNLGQLNCi9pL5aYyr4r9IfA590xA=
+
+      - name: build and push the linux-builder image
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_TOKEN }}
+        run: |
+          set -euo pipefail
+          path=$(nix build -L --no-link --print-out-paths \
+            ".#darwinConfigurations.neon.config.nix.linux-builder.package")
+          if [ -z "${CACHIX_AUTH_TOKEN:-}" ]; then
+            echo "no cachix token on this run; built $path without pushing"
+            exit 0
+          fi
+          nix run nixpkgs#cachix -- push micheloosterhof "$path"
+
   closure:
     name: ${{ matrix.host }}
+    needs: linux-builder-image
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
