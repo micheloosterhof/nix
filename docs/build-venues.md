@@ -1,90 +1,171 @@
 # Build venues
 
-Where each build runs, how the result reaches a machine, and the rule that
-keeps GitHub optional. How the flake is organized is in
+Where each build runs, how the result reaches a machine, and what keeps our
+own CI and cache optional. How the flake is organized is in
 [architecture.md](architecture.md); the commands themselves are in
 [operations.md](operations.md).
 
-## The invariant
+## What must stay true
 
-**Every machine can be updated from a local checkout with no GitHub
-involvement.** GitHub may make an operation faster or more convenient; it may
-never become the only way to perform it.
+**No machine may depend on *our* CI or *our* cache.** They may make an
+operation faster; they may never become the only way to perform it.
 
-This is already true by construction and should stay that way:
-`modules/nix-settings.nix` sets `fallback = true` and `connect-timeout = 5`,
-so an unreachable or empty cache costs five seconds and the build proceeds
-locally. Nothing in the fleet hard-depends on a remote artifact.
+"GitHub" is three separate dependencies, and only two of them are ours to
+control:
 
-The practical test for any change proposed here: *unplug the network to
-github.com and cachix. Can `make rebuild` still finish?* If not, the change
-is wrong.
+| role | ours? | optional? |
+|---|---|---|
+| github.com as flake-input source (`flake.lock` pins `github:` URLs) | no — shared with every Nix user | no |
+| GitHub Actions as a build venue | yes | **yes** |
+| cachix as an artifact store | yes | **yes** |
+
+So the test is not "unplug github.com" — a fresh checkout or any lock bump
+must fetch inputs from there, and always will. The test is:
+
+> Disable the cachix substituter and never run a workflow. Can every machine
+> still be built and updated?
+
+That passes today by construction: `modules/nix-settings.nix` sets
+`fallback = true` and `connect-timeout = 5`, so an unreachable or empty cache
+costs five seconds and the build proceeds locally. Any change proposed here
+has to keep it passing.
 
 ## Two hard constraints
 
-Everything below follows from two facts about where Nix can build what:
-
 - **A macOS runner cannot produce Linux paths.** Nix on macOS builds Linux
-  derivations only through a Linux builder. GitHub's hosted macOS runners are
-  themselves virtual machines and do not expose nested virtualization, so
-  standing a builder VM up there is not practical. The observable symptom is
-  neon's CI job failing on `system-path.drv` with
-  `Required system: 'aarch64-linux'`.
+  derivations only through a Linux builder, and GitHub's hosted macOS runners
+  are themselves virtual machines without nested virtualization, so standing
+  a builder VM up there is not practical. The symptom is neon's CI job
+  failing on `system-path.drv` with `Required system: 'aarch64-linux'`.
 - **A Linux runner cannot produce darwin paths.**
-
-Which gives:
 
 | output | system | can be built on |
 |---|---|---|
 | `nixosConfigurations.vm-aarch64-*` toplevel | aarch64-linux | Mac's linux-builder, `ubuntu-24.04-arm` |
-| `nixosConfigurations.{wsl,helium,nitrogen}` toplevel | x86_64-linux | `ubuntu-latest`, helium over ssh |
+| `nixosConfigurations.{wsl,helium,nitrogen}` toplevel | x86_64-linux | `ubuntu-latest`, an x86_64 Linux box over ssh |
 | `darwinConfigurations.neon.system` | aarch64-darwin **+ aarch64-linux** | Mac, or `macos-latest` **plus** a Linux venue |
 | `vmwareImage` | aarch64-linux | Mac's linux-builder, `ubuntu-24.04-arm` |
 | `gce-image` (repart, no KVM) | either | any runner of that arch |
 | `installer-iso`, `container-server` | either | any runner of that arch |
-| WSL `installer` tarball | x86_64-linux | `ubuntu-latest`, helium over ssh |
+| WSL `installer` tarball | x86_64-linux | `ubuntu-latest`, an x86_64 Linux box over ssh |
 
-Two consequences worth naming:
+Two consequences:
 
-- **neon is the only output that spans both sides.** Its closure contains the
-  customized linux-builder image, an aarch64-linux derivation. Any venue
-  building neon needs that path handed to it from a Linux venue. This is
-  structural, not an accident of configuration.
+- **neon is the only output that spans both sides**, because its closure
+  contains the customized linux-builder image. Any venue *building* neon
+  needs that aarch64-linux path handed to it. This is structural.
 - **x86_64-linux is the awkward arch locally.** The Mac's linux-builder is
-  aarch64, so wsl/helium/nitrogen closures and the x86_64 GCE image have no
-  convenient local venue. CI is their natural home, with helium over ssh as
-  the local escape hatch.
+  aarch64, so the wsl/helium/nitrogen closures and the x86_64 GCE image have
+  no convenient local venue. CI is their natural home, with an x86_64 Linux
+  box over ssh as the local escape hatch.
 
-## Where GitHub earns its place
+## Evaluation and building are separate questions
 
-CI currently builds nine closures and throws all of them away. Every machine
-then rebuilds the same paths from scratch. That is the single largest
-avoidable cost in the current setup, and closing it is one change: **have CI
-push what it builds, so `make rebuild` becomes a download instead of a
-build.**
+The constraints above bind *building*. Evaluation is unconstrained: a Linux
+runner evaluates the darwin config fine, and reaches the identical
+derivation. Verified on an x86_64 Linux host against this flake:
 
-The beneficiaries, in order of how much they gain:
+```
+nix eval --raw '.#darwinConfigurations.neon.config.system.build.toplevel.drvPath'
+/nix/store/299jbrpq2iiw7lhr04mqg6yx65m0bkp4-darwin-system-26.05.c3e90c8.drv
+```
 
-1. **nitrogen** — a small TransIP VPS currently compiling its own closure
-   under `make remote/rebuild`.
-2. **A fresh Mac** — see bootstrap below.
-3. **Any new VM** — first `make rebuild` inside a freshly imaged dev VM.
+Byte-identical to the same command on the Mac. Forcing a `drvPath` evaluates
+the whole configuration and builds nothing, so **full eval coverage of every
+host is available on any runner, for free.**
 
-The limit is storage. `docs/operations.md` records the cachix free tier at
-5 GB, which whole host closures do not fit into. The rule that does fit:
+This matters because it is what a build job adds *on top of* eval that has to
+justify the venue gymnastics — and today the eval half is weaker than it
+looks. `tests/default.nix` forces eleven specific slices of neon
+(`system.stateVersion`, `networking.hostName`, activation-script text,
+`nix.buildMachines`, a launchd daemon, some home-manager attributes) and
+never `system.build.toplevel`. `nix flake check` does not evaluate
+`darwinConfigurations` at all — it is not a standard flake output. So a
+renamed nix-darwin option outside those eleven slices is caught by neither
+the eval tests nor the macOS build job's *evaluation*; only by its build.
 
-> **Cache what cache.nixos.org lacks, not what it already has.**
+An eval test forcing `mac.system.build.toplevel.drvPath` closes that gap
+outright, costs nothing, and runs on the Linux runner `check.yml` already
+uses.
 
-For this fleet that delta is small and high-value:
+## The neon handoff
 
-- the customized linux-builder image (~3 GiB, the current sole occupant)
-- the packages `modules/overlays.nix` cherry-picks from `nixpkgs-unstable`,
-  which are exactly the paths that silently fall back to from-source builds
-  after a bump (the zed-editor caveat in `operations.md`)
+Some venue must hand the Linux image to a darwin build — but only if a
+darwin *build* happens in CI at all. Three options:
 
-If that delta outgrows 5 GB, the options are a paid cachix tier or a
-self-hosted store (attic, S3). Not a decision that needs making now, but the
-trigger to watch for.
+1. **The Mac seeds the cache by hand** (`make cachix/seed`). Works offline;
+   needs a human after every lock bump that moves the image, with a red neon
+   CI job as the reminder.
+2. **CI seeds it from an arm Linux runner** ahead of the closure matrix.
+   Proven to work, but see the costs below.
+3. **Drop neon from the build matrix** and add the `toplevel.drvPath` eval
+   test. Full eval coverage of neon on every push — strictly more than the
+   eleven slices give today. What is lost is proof that darwin *packages
+   compile*, and the neon entry in the lock-bump closure-diff comment.
+
+**Option 3 is the recommendation.** It removes the macOS runner, the seeding
+job, the cross-venue handoff, the `CACHIX_TOKEN` exposure in CI, and the
+whole class of failure described below — while *increasing* eval coverage.
+The residual risk is a darwin package that evaluates but fails to build,
+which surfaces at `make rebuild` with a generation to roll back to.
+
+Two things reduce that residual risk further. `modules/diff.nix` already
+prints `nix store diff-closures` at every activation, so the neon closure
+diff is not lost, only moved to the moment you rebuild — and neon is the
+host rebuilt by hand most often. And `make cachix/seed` stays as the
+fresh-Mac bootstrap path, which is a local operation with no CI involvement.
+
+### If the handoff stays anyway
+
+Option 2 as currently written has three defects that must be fixed first:
+
+- **It only seeds the triggering ref's image.** On a `flake-lock/*` branch
+  the neon job also builds `./base#darwinConfigurations.neon.system` for the
+  closure diff — that is *main's* closure, needing *main's* image, which the
+  seed job never builds. It works only while main's image happens to still
+  be cached, and fails in the diff step of a required check.
+- **A fleet-wide barrier for one host.** `needs:` on the whole matrix means
+  a cachix outage, an expired token, or an arm-runner incident skips all
+  nine closures and fails the required check, blocking merges unrelated to
+  darwin. neon should be its own job with the dependency; the step
+  duplication that argues against splitting is what a composite action is
+  for.
+- **cachix is the wrong transport between two jobs in one run.** `nix copy
+  --to file://` plus an artifact upload/download moves the image with no
+  secret, no storage quota, and no dependabot special-case. It loses
+  cross-run reuse, which matters only if the image is also wanted for the
+  fresh-Mac path — and that is what `make cachix/seed` already covers.
+
+## Caching what CI builds
+
+CI builds nine closures on every push and discards all of them; every
+machine then rebuilds the same paths. Closing that would turn
+`make remote/rebuild` on nitrogen from a compile into a download, and is
+independent of the neon question.
+
+The obstacle is storage: `operations.md` records the cachix free tier at
+5 GB, which whole host closures do not fit into. The intent is to cache only
+what cache.nixos.org lacks — but that is a goal, not yet a mechanism:
+
+- `cachix push` skips paths already in *that cachix cache*. It knows nothing
+  about what cache.nixos.org holds, so pushing a closure uploads plenty that
+  upstream already serves. A real implementation has to filter explicitly
+  (`nix path-info --store https://cache.nixos.org` per path, push the
+  misses).
+- The delta is not static. Right after a nixpkgs bump upstream lags, so the
+  set of missing paths is temporarily far larger than the steady-state
+  answer of "the linux-builder image plus the `nixpkgs-unstable` packages
+  `modules/overlays.nix` cherry-picks".
+
+Until that filter exists, this stays a proposal rather than a policy.
+
+**The cache is a fleet-wide trust root.** Every host trusts its signing key
+as a substituter (`modules/nix-settings.nix`), so write access means
+arbitrary store paths that every machine will accept. Fork PRs on a public
+repo get no secrets, but any commit on any branch of this repo does. If CI
+starts pushing, the push must be restricted to trusted refs (`main` and
+`flake-lock/*`), and the token treated as fleet-level credential rather than
+CI plumbing.
 
 ## Provisioning a new machine
 
@@ -95,70 +176,47 @@ trigger to watch for.
 | NixOS via nixos-infect | **no target exists** | — | — |
 | VMware dev VM | local (`make vm/launch`) | build the VMDK | unchanged |
 | GCE image | local (`make gce/image` + `gce/upload`) | build + upload via OIDC | unchanged |
-| WSL tarball | awkward locally (x86_64) | natural CI artifact | helium over ssh |
+| WSL tarball | awkward locally (x86_64) | natural CI artifact | x86_64 box over ssh |
 | container / ISO | either | natural CI artifact | unchanged |
 
-Notes on the three that are not straightforward:
-
-**Fresh Mac.** The one genuine bootstrap dependency in the fleet: the
-customized linux-builder image cannot be built without a working builder.
-With CI keeping the image in the cache this resolves permanently and no
-human step is involved. The no-GitHub path stays available and should stay
-documented — activate once with nix-darwin's default builder variant, then
-switch to the customized one.
+**Fresh Mac.** The one genuine bootstrap dependency: the customized
+linux-builder image cannot be built without a working builder. The local
+path is to activate once with nix-darwin's default builder variant and then
+switch to the customized one; `make cachix/seed` from an existing Mac makes
+the shortcut available. Keep both documented.
 
 **nixos-infect.** `operations.md` names it as the answer for hosts too small
-for the nixos-anywhere kexec (~1 GB), but there is no `make` target and no
-recipe. This is a real gap in the provisioning story, and it is a local-only
-path by nature — GitHub cannot help reach a VPS rescue console.
+for the nixos-anywhere kexec (~1 GB), but there is no target and no recipe.
+A real gap, and local-only by nature — CI cannot reach a VPS rescue console.
 
-**GCE upload.** Doing it from CI via OIDC to GCP workload identity
-federation would need no long-lived key and would make image releases
-repeatable. It also couples the repo to cloud credentials, so it is worth
-doing only if image releases become routine rather than occasional.
+**GCE upload.** Running it from CI via OIDC to GCP workload identity
+federation needs no long-lived key and makes image releases repeatable. It
+also couples the repo to cloud credentials, so it is worth doing only if
+image releases become routine.
 
 ## Updating an existing machine
 
 - **Local host** — `make rebuild`. Must always work; this is the invariant.
 - **Remote host** — `make remote/copy` then `make remote/rebuild`, which
-  builds *on the target*. Two independent improvements, one per venue:
-  - *GitHub:* the target substitutes from the cache instead of building.
-  - *Local:* `nixos-rebuild --target-host` builds on the Mac or helium and
-    copies the closure over, which needs no GitHub at all.
+  builds *on the target*. One improvement per venue:
+  - *CI:* the target substitutes from the cache instead of building.
+  - *Local:* `nixos-rebuild --target-host` builds on the Mac or another
+    Linux box and copies the closure over, needing no CI at all.
 
-The symmetry is deliberate. Every acceleration listed here has a local
-counterpart, which is what makes the invariant hold rather than merely being
-asserted.
-
-## The neon handoff
-
-neon's closure spans both venues, so some venue must hand the Linux image to
-the darwin build. There are exactly three ways to do that:
-
-1. **The Mac seeds the cache by hand** (`make cachix/seed`). Works offline;
-   needs a human after every lock bump that moves the image, and a red neon
-   CI job as the reminder.
-2. **CI seeds it from an arm Linux runner**, ahead of the closure matrix.
-   Proven: the `linux-builder-image` job ran green on main.
-3. **Drop neon from CI.** Removes the coupling entirely. `eval-tests` still
-   forces neon's config on every push, so eval breakage is still caught, but
-   the neon closure diff disappears from lock-bump PRs and darwin build
-   failures surface only at `make switch`.
-
-Applying the principle above gives 2 as the default and 1 as the retained
-offline path — the handoff becomes automatic without becoming mandatory.
-Option 3 remains the right answer only if the neon closure diff turns out
-not to be worth a job.
+Every acceleration here has a local counterpart. That is what makes the
+invariant hold rather than merely be asserted.
 
 ## Known gaps
 
 - **`update-lock` cannot pick up a CI fix.** The guard at
   `update-lock.yml:52-55` exits before the force-push when the lock is
-  unchanged, so `flake-lock/weekly` is only ever rebuilt from main when the
+  unchanged, so `flake-lock/weekly` is rebuilt from main only when the
   *inputs* move. A workflow fix landing on main never reaches an open bump
   PR; the branch has to be recreated by hand.
-- **No nixos-infect path**, as above.
-- **`CACHIX_TOKEN` is documented as unused** (`operations.md`, Binary cache),
-  "reserved for selective CI pushing later". This design is that later.
-- **The cache holds one artifact today.** Until CI pushes, every closure CI
-  builds is discarded.
+- **No nixos-infect path.**
+- **`build.yml` claims `--fallback` covers a missing path.** True for every
+  job except neon, where a missing aarch64-linux path cannot be built on the
+  runner at all.
+- **The eval tests do not force any host's `toplevel`.** neon is the case
+  that matters most, but the same one-line test is worth having for every
+  configuration.
