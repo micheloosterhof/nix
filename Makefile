@@ -214,6 +214,15 @@ remote/rebuild: remote/check-addr ## Run nixos-rebuild switch on the remote host
                 sudo NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 nixos-rebuild switch --flake \"/nix-config#${NIXNAME}\" \
 	"
 
+# Activate without a boot entry: if the new config kills the network, a
+# provider-console reboot lands back on the old system. Run this before
+# remote/rebuild on hosts where a bad switch means a trip to the console.
+.PHONY: remote/test
+remote/test: remote/check-addr ## Run nixos-rebuild test on the remote host (no boot entry; remote/copy first)
+	ssh $(SSH_OPTIONS) -p$(NIXPORT) $(NIXUSER)@$(NIXADDR) " \
+                sudo NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 nixos-rebuild test --flake \"/nix-config#${NIXNAME}\" \
+	"
+
 # Build the VMware VMDK and print its /nix/store path. No `result`
 # symlink (--no-link), so old builds GC automatically without manual
 # `rm result` first.

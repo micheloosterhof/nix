@@ -32,6 +32,7 @@ nitrogen — despite the prefix. They are parameterized by environment variables
 | Target | Purpose |
 |---|---|
 | `make remote/copy` | rsync this repo into the remote host at `/nix-config` (`--delete`: stale files would be auto-imported by import-tree and break evaluation) |
+| `make remote/test` | `nixos-rebuild test` on the remote host — no boot entry, so a config that kills the network is survivable by a console reboot |
 | `make remote/rebuild` | `nixos-rebuild switch` on the remote host (`remote/copy` first) |
 | `make remote/secrets` | rsync `~/.gnupg` and `~/.ssh` to the remote host |
 
@@ -167,9 +168,9 @@ the input changes in the body and dispatches check/build onto the branch.
 The bump always lives on `flake-lock/weekly`, rebuilt from main and
 force-pushed, so an unmerged PR is refreshed in place rather than competing
 with a second one; don't commit anything onto that branch by hand.
-`.github/workflows/dependency-graph.yml` submits a representative host's
-closure to GitHub's dependency graph so advisories cover the deployed
-system, not just the flake inputs.
+On main, the nitrogen build job also submits its closure to GitHub's
+dependency graph so advisories cover the deployed system, not just the
+flake inputs.
 
 ## Binary cache
 
