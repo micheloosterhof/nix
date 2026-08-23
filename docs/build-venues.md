@@ -120,7 +120,7 @@ Two consequences to accept with open eyes:
   so a fresh Mac misses the cache and takes the default-builder route. The
   shortcut stops helping; nothing breaks.
 - **neon becomes the least-covered host in CI overall.** It is already
-  absent from `dependency-graph.yml` (which matrices over
+  absent from the dependency-graph submission (which covers
   `nixosConfigurations` only), so GitHub advisories do not cover it. With
   the build job gone its CI story is eval-only — still strictly more eval
   than today, but the aggregate position should be stated, not just the

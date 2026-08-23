@@ -17,8 +17,10 @@ on:
   push:
   workflow_dispatch:
 
+# contents: write is for the dependency-graph snapshot submission on the
+# nitrogen job; the token never pushes.
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 concurrency:
@@ -84,6 +86,24 @@ jobs:
       - name: build system closure
         run: |
           nix build -L --fallback --no-link --print-out-paths ".#${{ matrix.attr }}"
+
+      # Submit nitrogen's closure to GitHub's dependency graph, so advisories
+      # cover the deployed system, not just the flake inputs. Riding the
+      # matrix build here reuses the closure this job just built. The nix
+      # build is a cache hit that only resolves the store path.
+      - name: submit dependency snapshot
+        if: matrix.host == 'nitrogen' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          path=$(nix build --no-link --print-out-paths ".#${{ matrix.attr }}")
+          ./.github/scripts/nix-deps-snapshot.sh "${{ matrix.host }}" "$path" > snapshot.json
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$GH_REPO/dependency-graph/snapshots" \
+            --input snapshot.json
 
       # gce-image outputs are compressed artifacts whose closures carry no
       # references, so a diff says nothing — skip them.
