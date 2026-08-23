@@ -33,10 +33,12 @@ has to keep it passing.
 ## Two hard constraints
 
 - **A macOS runner cannot produce Linux paths.** Nix on macOS builds Linux
-  derivations only through a Linux builder, and GitHub's hosted macOS runners
-  are themselves virtual machines without nested virtualization, so standing
-  a builder VM up there is not practical. The symptom is neon's CI job
-  failing on `system-path.drv` with `Required system: 'aarch64-linux'`.
+  derivations only through a Linux builder, and no runner here configures
+  one. (The observed failure — `system-path.drv`,
+  `Required system: 'aarch64-linux'` — proves only that. Whether a builder
+  VM *could* run on a hosted macOS runner is untested; hosted runners are
+  themselves VMs, so QEMU would likely fall back to unaccelerated TCG.
+  Nobody has measured it, and the design does not depend on the answer.)
 - **A Linux runner cannot produce darwin paths.**
 
 | output | system | can be built on |
@@ -114,6 +116,26 @@ prints `nix store diff-closures` at every activation, so the neon closure
 diff is not lost, only moved to the moment you rebuild — and neon is the
 host rebuilt by hand most often. And `make cachix/seed` stays as the
 fresh-Mac bootstrap path, which is a local operation with no CI involvement.
+
+Two consequences to accept with open eyes:
+
+- **The staleness signal goes away.** Today a red neon job announces that a
+  lock bump moved the builder image. Without it, nothing does — benignly: a
+  stale cached image has a different store path and is simply never matched,
+  so a fresh Mac misses the cache and takes the default-builder route. The
+  shortcut stops helping; nothing breaks.
+- **neon becomes the least-covered host in CI overall.** It is already
+  absent from `dependency-graph.yml` (which matrices over
+  `nixosConfigurations` only), so GitHub advisories do not cover it. With
+  the build job gone its CI story is eval-only — still strictly more eval
+  than today, but the aggregate position should be stated, not just the
+  delta.
+
+Housekeeping if option 3 lands: drop the cachix `extra_nix_config` from
+`build.yml` (no remaining job reads that cache; hosts keep their
+substituter — that is the fresh-Mac path), and update the stale
+descriptions of the manual-seed flow in `AGENTS.md` and
+`operations.md`.
 
 ### If the handoff stays anyway
 
@@ -200,11 +222,31 @@ image releases become routine.
 - **Remote host** — `make remote/copy` then `make remote/rebuild`, which
   builds *on the target*. One improvement per venue:
   - *CI:* the target substitutes from the cache instead of building.
-  - *Local:* `nixos-rebuild --target-host` builds on the Mac or another
-    Linux box and copies the closure over, needing no CI at all.
+  - *Local:* `nixos-rebuild --target-host` builds elsewhere and copies the
+    closure over, needing no CI at all — but only from a machine of the
+    right arch. For nitrogen (x86_64) the Mac cannot be that machine; the
+    local alternative is another x86_64 box, or nitrogen building on
+    itself as it does today.
 
-Every acceleration here has a local counterpart. That is what makes the
-invariant hold rather than merely be asserted.
+The invariant holds because building on the target always works. The
+accelerations are conveniences on top, and for x86_64 hosts the local
+convenience needs x86_64 hardware — CI is genuinely the only *always-on*
+x86_64 venue in this fleet.
+
+## Open questions
+
+- **Is the closure-diff comment worth its cost?** It is the most expensive
+  part of `build.yml`: a second checkout of main in every matrix job, a
+  second full closure build per host on bump branches (roughly doubling
+  bump-PR CI time), artifact plumbing, and a commenting job. It is also the
+  sole reason a bump branch needs *main's* builder image. Cheaper shapes:
+  diff one representative host, or diff only on demand (label or dispatch).
+  The design so far treats the diff as fixed and optimizes around it;
+  deciding this first may matter more than the neon question.
+- **Should `operations.md` describe the venue split at all?** This area now
+  spans three documents that must change together (`AGENTS.md`,
+  `operations.md`, this file). Likely answer: `operations.md` keeps the
+  commands, this file keeps the reasoning, and each points at the other.
 
 ## Known gaps
 
