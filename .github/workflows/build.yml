@@ -1,12 +1,12 @@
 # Build every host closure on a natively matching runner, so a green check
 # means each machine provably builds — not just evaluates (check.yml).
-# Substitutes from cache.nixos.org plus the personal cachix cache;
-# --fallback builds locally if a path is missing from both.
+# Substitutes from cache.nixos.org; --fallback builds anything missing.
 #
-# neon's closure contains the customized linux-builder image, an
-# aarch64-linux derivation a macOS runner cannot build. The
-# linux-builder-image job builds it on a native arm runner and pushes it to
-# the cachix cache, so the neon job substitutes it like every other path.
+# neon is covered by evaluation alone (the eval-tests flake check forces its
+# toplevel on every push): its closure pulls in the customized linux-builder
+# image, an aarch64-linux derivation a macOS runner cannot build without a
+# Linux builder, and feeding that across venues costs more than proving the
+# Mac builds is worth (docs/build-venues.md).
 #
 # On flake-lock/* branches each host job also realizes main's closure and
 # diffs the two; the closures job collects the diffs into one PR comment so
@@ -26,39 +26,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Runs ahead of the closures because the neon job can only substitute the
-  # image once it is on the cache. Dependabot runs get no repository secrets,
-  # so the push is skipped there; those runs leave flake.lock alone and the
-  # image they need is already cached.
-  linux-builder-image:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v7
-
-      # The token avoids GitHub API rate limits when fetching flake inputs.
-      - uses: cachix/install-nix-action@v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://micheloosterhof.cachix.org
-            extra-trusted-public-keys = micheloosterhof.cachix.org-1:A80V0fr3ruUDRZtyNLGQLNCi9pL5aYyr4r9IfA590xA=
-
-      - name: build and push the linux-builder image
-        env:
-          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_TOKEN }}
-        run: |
-          set -euo pipefail
-          path=$(nix build -L --no-link --print-out-paths \
-            ".#darwinConfigurations.neon.config.nix.linux-builder.package")
-          if [ -z "${CACHIX_AUTH_TOKEN:-}" ]; then
-            echo "no cachix token on this run; built $path without pushing"
-            exit 0
-          fi
-          nix run nixpkgs#cachix -- push micheloosterhof "$path"
-
   closure:
     name: ${{ matrix.host }}
-    needs: linux-builder-image
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -82,9 +51,6 @@ jobs:
           - host: nitrogen
             runner: ubuntu-latest
             attr: nixosConfigurations.nitrogen.config.system.build.toplevel
-          - host: neon
-            runner: macos-latest
-            attr: darwinConfigurations.neon.system
           # Cloud image family: assembled by systemd-repart (no VM, no KVM),
           # so both arches build on stock runners.
           - host: gce-image-x86_64
@@ -114,9 +80,6 @@ jobs:
       - uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            extra-substituters = https://micheloosterhof.cachix.org
-            extra-trusted-public-keys = micheloosterhof.cachix.org-1:A80V0fr3ruUDRZtyNLGQLNCi9pL5aYyr4r9IfA590xA=
 
       - name: build system closure
         run: |

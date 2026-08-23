@@ -109,9 +109,9 @@ gc: ## Delete system generations older than 30d and collect store garbage
 	nix store gc
 
 # The customized linux-builder image is an aarch64-linux derivation that
-# cache.nixos.org does not carry; neon's CI build substitutes it from the
-# personal cachix cache. Re-run this after a flake.lock bump changes the
-# image (the failing neon CI job is the reminder).
+# cache.nixos.org does not carry, and a fresh Mac cannot build it before it
+# has a working builder. Seeding the cache from a Mac that already has one
+# is what makes that first bootstrap possible.
 .PHONY: cachix/seed
 cachix/seed: ## Push the linux-builder image closure to the cachix cache
 	nix build --no-link ".#darwinConfigurations.neon.config.nix.linux-builder.package"
