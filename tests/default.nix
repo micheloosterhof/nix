@@ -52,6 +52,15 @@ lib.runTests {
     expr = mac.system.stateVersion;
     expected = 5;
   };
+  # `nix flake check` evaluates every nixosConfiguration's toplevel but skips
+  # darwinConfigurations (not a standard flake output), so without this the
+  # mac config is only ever fully evaluated by a build on the mac itself.
+  # Forcing the drvPath instantiates the whole configuration; any eval
+  # breakage (renamed nix-darwin option, broken module wiring) throws here.
+  testDarwinToplevelEvaluates = {
+    expr = lib.isString mac.system.build.toplevel.drvPath;
+    expected = true;
+  };
 
   # modules/hostname-guard.nix: singleton configs (my.hostnameGuard beside
   # their hostname) refuse to activate on a machine with a different one.
