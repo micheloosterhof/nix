@@ -1,6 +1,6 @@
 # ABOUTME: Minimal NixOS installer ISO with the provisioning ssh key authorized
 # ABOUTME: for root, so nixos-anywhere (make remote/provision) needs no console steps.
-{ inputs, ... }:
+{ config, inputs, ... }:
 {
   perSystem =
     { system, ... }:
@@ -10,17 +10,11 @@
           inherit system;
           modules = [
             "${inputs.nixpkgs}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
-            (
-              { lib, ... }:
-              {
-                # nixos-anywhere connects as root; authorize the same keys/
-                # directory the installed systems authorize.
-                users.users.root.openssh.authorizedKeys.keyFiles = lib.pipe (builtins.readDir ../keys) [
-                  (lib.filterAttrs (name: type: type == "regular" && lib.hasSuffix ".pub" name))
-                  (lib.mapAttrsToList (name: _: ../keys/${name}))
-                ];
-              }
-            )
+            {
+              # nixos-anywhere connects as root; authorize the same keys/
+              # list the installed systems authorize (modules/keys.nix).
+              users.users.root.openssh.authorizedKeys.keyFiles = config.flake.lib.authorizedKeyFiles;
+            }
           ];
         }).config.system.build.isoImage;
     };

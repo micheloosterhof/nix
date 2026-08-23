@@ -1,30 +1,16 @@
 {
   pkgs,
-  lib,
   inputs,
   ...
 }:
 
 let
   # Every public key in keys/ may ssh into the VMs (one .pub file per client
-  # machine; drop a file there to authorize a new one). The files must be
-  # git-tracked or the flake won't see them.
-  authorizedKeyFiles = lib.pipe (builtins.readDir ../../keys) [
-    (lib.filterAttrs (name: type: type == "regular" && lib.hasSuffix ".pub" name))
-    (lib.mapAttrsToList (name: _: ../../keys/${name}))
-  ];
+  # machine; drop a file there to authorize a new one). modules/keys.nix owns
+  # the list and throws when it is empty (an unreachable key-only system).
+  authorizedKeyFiles = inputs.self.lib.authorizedKeyFiles;
 in
 {
-  # sshd is key-only, so a host built with an empty key list is unreachable.
-  # The realistic trap: keys/ files that were never `git add`ed are invisible
-  # to the flake and silently drop out of the list.
-  assertions = [
-    {
-      assertion = authorizedKeyFiles != [ ];
-      message = "keys/ contains no *.pub files in the flake source (untracked files are invisible); refusing to build an unreachable key-only system.";
-    }
-  ];
-
   # Add ~/.local/bin to PATH
   environment.localBinInPath = true;
 

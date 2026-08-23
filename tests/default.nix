@@ -52,6 +52,14 @@ lib.runTests {
     expr = mac.system.stateVersion;
     expected = 5;
   };
+  # keys.nix throws when keys/ holds no *.pub files (a key-only host without
+  # keys is unreachable); both nixos.nix and the installer ISO consume this
+  # list, so the guard must stay on the shared lib, not on one consumer.
+  testAuthorizedKeyFilesNonEmpty = {
+    expr = self.lib.authorizedKeyFiles != [ ];
+    expected = true;
+  };
+
   # `nix flake check` evaluates every nixosConfiguration's toplevel but skips
   # darwinConfigurations (not a standard flake output), so without this the
   # mac config is only ever fully evaluated by a build on the mac itself.
@@ -98,14 +106,16 @@ lib.runTests {
     expected = true;
   };
 
-  # The silent-misconfig assertions stay wired: an empty keys/ must refuse to
-  # build (ssh is key-only), and the fusion disko labels must match the
-  # mounted filesystems. Only the wiring is asserted here; the assertions
-  # themselves are enforced when CI builds the toplevels.
-  testKeysAssertionWired = {
-    expr = lib.any (a: lib.hasInfix "keys/" a.message) nitrogen.assertions;
+  # The empty-keys/ guard lives on flake.lib.authorizedKeyFiles (keys.nix
+  # throws; ssh is key-only, so an empty list is an unreachable system). The
+  # hosts must actually consume that list, or the guard guards nothing.
+  testKeysListWired = {
+    expr = nitrogen.users.users.mich.openssh.authorizedKeys.keyFiles == self.lib.authorizedKeyFiles;
     expected = true;
   };
+  # The fusion disko labels must match the mounted filesystems. Only the
+  # wiring is asserted here; the assertion itself is enforced when CI builds
+  # the toplevels.
   testDiskoLabelAssertionWired = {
     expr = lib.any (a: lib.hasInfix "disko partition labels" a.message) fusion.assertions;
     expected = true;
