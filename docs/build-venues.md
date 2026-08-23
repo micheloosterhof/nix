@@ -105,9 +105,9 @@ darwin *build* happens in CI at all. Three options:
    eleven slices give today. What is lost is proof that darwin *packages
    compile*, and the neon entry in the lock-bump closure-diff comment.
 
-**Option 3 is the recommendation.** It removes the macOS runner, the seeding
+**Option 3 is the decision.** It removes the macOS runner, the seeding
 job, the cross-venue handoff, the `CACHIX_TOKEN` exposure in CI, and the
-whole class of failure described below — while *increasing* eval coverage.
+failure modes option 2 showed — while *increasing* eval coverage.
 The residual risk is a darwin package that evaluates but fails to build,
 which surfaces at `make rebuild` with a generation to roll back to.
 
@@ -137,26 +137,19 @@ substituter — that is the fresh-Mac path), and update the stale
 descriptions of the manual-seed flow in `AGENTS.md` and
 `operations.md`.
 
-### If the handoff stays anyway
+Option 2 was implemented and ran green, then rejected: it only seeded the
+triggering ref's image (the bump-branch diff needs *main's* image too), its
+`needs:` barrier let a cachix or arm-runner incident block all nine
+closures, and it put a fleet-trusted write token into CI. Recorded so it is
+not re-proposed; if a darwin build job is ever wanted again, move the image
+between jobs as a run artifact (`nix copy --to file://`), not through the
+cache.
 
-Option 2 as currently written has three defects that must be fixed first:
-
-- **It only seeds the triggering ref's image.** On a `flake-lock/*` branch
-  the neon job also builds `./base#darwinConfigurations.neon.system` for the
-  closure diff — that is *main's* closure, needing *main's* image, which the
-  seed job never builds. It works only while main's image happens to still
-  be cached, and fails in the diff step of a required check.
-- **A fleet-wide barrier for one host.** `needs:` on the whole matrix means
-  a cachix outage, an expired token, or an arm-runner incident skips all
-  nine closures and fails the required check, blocking merges unrelated to
-  darwin. neon should be its own job with the dependency; the step
-  duplication that argues against splitting is what a composite action is
-  for.
-- **cachix is the wrong transport between two jobs in one run.** `nix copy
-  --to file://` plus an artifact upload/download moves the image with no
-  secret, no storage quota, and no dependabot special-case. It loses
-  cross-run reuse, which matters only if the image is also wanted for the
-  fresh-Mac path — and that is what `make cachix/seed` already covers.
+**The closure diff stays.** Every defect above was neon's, not the diff's:
+with neon out of the matrix, `--fallback` genuinely covers every remaining
+job, main's closure builds on the runner without any cache, and the diff
+runs only on `flake-lock/*` branches — weekly runner minutes, zero
+structural coupling. The bump PR keeps its per-host what-changes view.
 
 ## Caching what CI builds
 
@@ -235,14 +228,12 @@ x86_64 venue in this fleet.
 
 ## Open questions
 
-- **Is the closure-diff comment worth its cost?** It is the most expensive
-  part of `build.yml`: a second checkout of main in every matrix job, a
-  second full closure build per host on bump branches (roughly doubling
-  bump-PR CI time), artifact plumbing, and a commenting job. It is also the
-  sole reason a bump branch needs *main's* builder image. Cheaper shapes:
-  diff one representative host, or diff only on demand (label or dispatch).
-  The design so far treats the diff as fixed and optimizes around it;
-  deciding this first may matter more than the neon question.
+- **Three near-identical arm VM builds.** fusion/utm/apple differ by
+  platform glue over one workstation config; three full closure builds per
+  push buy little beyond the first. A representative build (fusion, the one
+  with an image output) plus the `toplevel.drvPath` eval test for the other
+  two would cut the matrix by two jobs. Cost: a utm- or apple-only build
+  breakage surfaces at rebuild time instead of CI.
 - **Should `operations.md` describe the venue split at all?** This area now
   spans three documents that must change together (`AGENTS.md`,
   `operations.md`, this file). Likely answer: `operations.md` keeps the
