@@ -86,9 +86,9 @@ push.
 
 - `flake.lock` regenerates aggressively; a lock refresh is a real version
   bump. Details and the unstable-overlay cache caveat: `docs/operations.md`.
-- A lock bump that changes the linux-builder image breaks neon's CI build
-  until `make cachix/seed` is run from the Mac (`docs/operations.md`,
-  Binary cache).
+- neon has no CI build job — only full-config evaluation (the eval-tests
+  check) — so a darwin package that evaluates but fails to build surfaces
+  at `make rebuild` (`docs/build-venues.md`).
 - Homebrew (darwin) runs `onActivation.cleanup = "none"`, so ad-hoc `brew
   install` survives activation; the cask/brew lists in
   `users/mich/darwin.nix` are not yet exhaustive.

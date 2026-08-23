@@ -41,10 +41,10 @@ let
           connect-timeout = 5;
 
           # Personal binary cache, holding artifacts cache.nixos.org lacks —
-          # notably the customized linux-builder image, which neon's CI build
-          # substitutes (a macOS runner cannot build aarch64-linux). Seed
-          # with `make cachix/seed`. The extra-* forms append to the
-          # defaults instead of replacing them.
+          # notably the customized linux-builder image, which a fresh Mac
+          # substitutes during bootstrap (it cannot build the image before it
+          # has a working builder). Seed with `make cachix/seed`. The extra-*
+          # forms append to the defaults instead of replacing them.
           extra-substituters = [ "https://micheloosterhof.cachix.org" ];
           extra-trusted-public-keys = [
             "micheloosterhof.cachix.org-1:A80V0fr3ruUDRZtyNLGQLNCi9pL5aYyr4r9IfA590xA="

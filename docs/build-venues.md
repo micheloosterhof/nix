@@ -76,18 +76,13 @@ Byte-identical to the same command on the Mac. Forcing a `drvPath` evaluates
 the whole configuration and builds nothing, so **full eval coverage of every
 host is available on any runner, for free.**
 
-This matters because it is what a build job adds *on top of* eval that has to
-justify the venue gymnastics — and today the eval half is weaker than it
-looks. `tests/default.nix` forces eleven specific slices of neon
-(`system.stateVersion`, `networking.hostName`, activation-script text,
-`nix.buildMachines`, a launchd daemon, some home-manager attributes) and
-never `system.build.toplevel`. `nix flake check` does not evaluate
-`darwinConfigurations` at all — it is not a standard flake output. So a
-renamed nix-darwin option outside those eleven slices is caught by neither
-the eval tests nor the macOS build job's *evaluation*; only by its build.
-
-An eval test forcing `mac.system.build.toplevel.drvPath` closes that gap
-outright, costs nothing, and runs on the Linux runner `check.yml` already
+This matters because it is what a build job adds *on top of* eval that has
+to justify the venue gymnastics. `nix flake check` does not evaluate
+`darwinConfigurations` (not a standard flake output), and the eval tests
+historically forced only specific slices of neon — so eval breakage in the
+mac config could reach `make rebuild` undetected. The
+`testDarwinToplevelEvaluates` eval test closes that gap by forcing
+`mac.system.build.toplevel.drvPath` on the Linux runner `check.yml` already
 uses.
 
 ## The neon handoff
@@ -101,8 +96,8 @@ darwin *build* happens in CI at all. Three options:
 2. **CI seeds it from an arm Linux runner** ahead of the closure matrix.
    Proven to work, but see the costs below.
 3. **Drop neon from the build matrix** and add the `toplevel.drvPath` eval
-   test. Full eval coverage of neon on every push — strictly more than the
-   eleven slices give today. What is lost is proof that darwin *packages
+   test. Full eval coverage of neon on every push — strictly more eval than
+   the old slice tests gave. What is lost is proof that darwin *packages
    compile*, and the neon entry in the lock-bump closure-diff comment.
 
 **Option 3 is the decision.** It removes the macOS runner, the seeding
@@ -250,6 +245,7 @@ x86_64 venue in this fleet.
 - **`build.yml` claims `--fallback` covers a missing path.** True for every
   job except neon, where a missing aarch64-linux path cannot be built on the
   runner at all.
-- **The eval tests do not force any host's `toplevel`.** neon is the case
-  that matters most, but the same one-line test is worth having for every
-  configuration.
+- ~~The eval tests do not force any host's `toplevel`.~~ Resolved: `nix
+  flake check` already evaluates every nixosConfiguration's toplevel (only
+  `darwinConfigurations` is skipped, as a nonstandard output), and the
+  eval tests now force neon's (`testDarwinToplevelEvaluates`).

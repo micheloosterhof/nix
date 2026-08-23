@@ -156,11 +156,12 @@ evaluates every host config, catching eval breakage before deploy.
 (fast format + hygiene on commit).
 
 CI (`.github/workflows/check.yml`) runs the same `nix flake check` on every
-push. `.github/workflows/build.yml` builds every host closure on a natively
-matching runner (`ubuntu-24.04-arm` for the aarch64 VMs, `ubuntu-latest`
-for wsl/helium/nitrogen, `macos-latest` for neon), so a green check means
-each machine provably builds. neon's job substitutes the linux-builder
-image from the cachix cache (see Binary cache below).
+push. `.github/workflows/build.yml` builds every NixOS host closure on a
+natively matching runner (`ubuntu-24.04-arm` for the aarch64 VMs,
+`ubuntu-latest` for wsl/helium/nitrogen), so a green check means each
+machine provably builds. neon is deliberately not in the build matrix: its
+full config is evaluated by the eval-tests check, and the reasoning for
+eval-only coverage is in [build-venues.md](build-venues.md).
 `.github/workflows/update-lock.yml` opens a weekly flake.lock bump PR with
 the input changes in the body and dispatches check/build onto the branch.
 The bump always lives on `flake-lock/weekly`, rebuilt from main and
@@ -176,22 +177,24 @@ system, not just the flake inputs.
 an `extra-substituter` (with its signing key) on every host in
 `modules/nix-settings.nix`. It holds artifacts cache.nixos.org lacks —
 today that is one thing: the customized linux-builder VM image, an
-aarch64-linux derivation that neon's CI job cannot build on a macOS runner
-and a fresh Mac cannot build before it has a working builder.
+aarch64-linux derivation a fresh Mac cannot build before it has a working
+builder (see Building Linux artifacts below).
 
 - **Optional by construction**: `fallback = true` and `connect-timeout = 5`
   mean an unreachable or missing cache costs five seconds and then
   operations proceed normally (cache.nixos.org, local builds). Nothing
-  hard-depends on cachix except neon's CI job, whose failure on a missing
-  image is the re-seed signal.
+  hard-depends on cachix; a stale or empty cache only makes the fresh-Mac
+  bootstrap take the default-builder route.
 - **Seeding**: `make cachix/seed` builds the builder image (via the Mac's
-  own builder) and pushes its closure (~3 GiB). Run it after a flake.lock
-  bump changes the image. Pushing needs the cachix CLI authenticated once:
+  own builder) and pushes its closure (~3 GiB), keeping the fresh-Mac
+  shortcut current. Pushing needs the cachix CLI authenticated once:
   `nix run nixpkgs#cachix -- authtoken <token>`.
-- **Reading needs no auth** — the cache is world-readable, so CI pulls
-  without secrets. The `CACHIX_TOKEN` repo secret exists but is unused;
-  it's reserved for selective CI pushing later. Free-tier storage is 5 GB,
-  so don't push whole host closures.
+- **Reading needs no auth** — the cache is world-readable. The
+  `CACHIX_TOKEN` repo secret exists but is unused; before wiring it into
+  CI, read the trust-root warning in
+  [build-venues.md](build-venues.md) — every host trusts this cache's
+  signing key. Free-tier storage is 5 GB, so don't push whole host
+  closures.
 
 ## Building Linux artifacts on the Mac
 
