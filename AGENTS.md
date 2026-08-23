@@ -16,6 +16,9 @@ The detailed maps live in `docs/`:
 - **[docs/operations.md](docs/operations.md)** — build, deploy,
   provisioning, the Mac's Linux builder, the cachix binary cache, and the
   gotchas around `flake.lock`.
+- **[docs/build-venues.md](docs/build-venues.md)** — which builds can run
+  where, what CI should own, and the rule that keeps every machine
+  updatable from a local checkout with GitHub unreachable.
 
 ## Repo layout
 
