@@ -18,80 +18,9 @@
   (lean). Raised 2026-07-22 during the GCE image work; build after the base
   image is boot-tested.
 
-- **GCE image lifecycle — families + labels** (cheap). Register in
-  `gce/upload` with `--family=nixos` so instances reference
-  `--image-family=nixos` and always get the latest while old versions stay
-  for rollback (the standard GCP image-lifecycle pattern), and
-  `--labels=git-rev=<rev>,built=<date>` for provenance (know exactly what's
-  deployed). A few lines in the Makefile target.
-
-- **gVNIC networking** — done 2026-08-24. `gce/upload` registers `GVNIC`
-  (both arches; C4A on aarch64 requires it too), unlocking the newer
-  machine families (C3, C3D, H3, N4, C4A, Titanium) and their higher
-  bandwidth. gce.nix force-loads `gve` alongside the profile's
-  `virtio_net` so the driver is present for either NIC type (`gve.ko`
-  confirmed in the 6.18.45 module tree). eth0/DHCP naming holds by
-  construction — the GCE profile sets kernel-style interface names, so
-  the single NIC is eth0 under both drivers. Remaining: launch-verify a
-  gVNIC instance (`--network-interface nic-type=GVNIC`) after the next
-  image registration.
-
-- **Confidential VM** (security; the standout) — done. `gce/upload` now
-  registers x86_64 images with `SEV_CAPABLE`, `SEV_LIVE_MIGRATABLE_V2`,
-  `SEV_SNP_CAPABLE` and `TDX_CAPABLE`, so instances can launch as
-  Confidential VMs (memory encrypted in hardware, opaque to the
-  hypervisor). Kernel side verified against GCP's requirements: nixpkgs
-  builds every x86_64 kernel with `AMD_MEM_ENCRYPT`, the `SEV_GUEST`
-  attestation driver and `INTEL_TDX_GUEST`, `gve` is built as a module,
-  and `linuxPackages_latest` (6.18) clears the 6.6 floor for TDX and SEV
-  live migration. The SEV-SNP (C3D) and TDX (C3) machine series require
-  gVNIC, registered since 2026-08-24 (gVNIC item above); SEV on N2D works
-  now. Launch-verified 2026-07-27 on an N2D
-  Confidential VM: dmesg shows "Memory Encryption Features active: AMD
-  SEV" and "live migration enabled in EFI" (SEV_LIVE_MIGRATABLE_V2
-  functional).
-
-- **Secure Boot for the GCE image** — done 2026-07-27. The image boots a
-  single UKI signed inside the build with an ephemeral RSA-4096 key; the
-  certificate ships beside the tarball and `make gce/upload` enrolls it
-  as the image's UEFI PK/KEK/db. Assembly moved from make-disk-image to
-  systemd-repart (no KVM anywhere in the pipeline — aarch64 images now
-  build on the linux-builder and plain CI runners). Verified on a
-  Shielded + SEV Confidential VM: "Secure Boot: enabled (user)",
-  "Measured UKI: yes", all three Shielded legs plus SEV. Tradeoff
-  accepted: no bootloader/generations on instances; boot changes ship as
-  a new image. Login model: OS Login is the admin path (its PAM denies
-  local users; execWheelOnly relaxed on this image so IAM admins can
-  sudo); the baked mich key works only where enable-oslogin=FALSE.
-  lanzaboote remains the right tool for pet hosts that rebuild in place —
-  not used for image pipelines (its install-time signing would put the
-  key in the store). build.yml builds both arch images on stock runners
-  (no KVM gate left). Original research notes:
-  - GCP enrolls custom keys at image registration: `gcloud compute images
-    create --platform-key-file (one DER X.509) --key-exchange-key-file
-    --signature-database-file --forbidden-database-file` (db entries can mix
-    our cert with Microsoft/Google certs). No firmware setup-mode dance —
-    the image carries its UEFI trust state. Instances then launch with
-    `--shielded-secure-boot`.
-  - lanzaboote is v1.1.0 (2026-06-22, mature) but signs at
-    bootloader-install time via `lzbt` reading `pkiBundle` (sbctl keys at
-    /var/lib/sbctl). For a make-disk-image build that install step runs
-    inside the build VM, so the private db key would have to enter the nix
-    store — leaked into the image and any cache. lanzaboote therefore fits
-    installed systems that rebuild in place (keys on the host), NOT
-    image pipelines.
-  - Proposed image path instead: boot the image via a single signed UKI
-    (nixpkgs `boot.uki` / systemd-stub bundles kernel+initrd+cmdline —
-    initrd integrity included, which plain signed systemd-boot lacks) as
-    `EFI/BOOT/BOOTX64.EFI`, and `sbsign` that one PE on the build host as
-    an image post-processing step. Keys never touch the store; signing is
-    idempotent and stays out of the nix sandbox.
-  - lanzaboote proper remains the path for pet hosts that `nixos-rebuild`
-    in place (physical/VMs, or cloud pets once a secrets mechanism can
-    deliver the pkiBundle).
-  - Key custody is the open decision and ties into the standing secrets
-    decision: PK/KEK/db are long-lived fleet identity. Interim: generate
-    with `sbctl create-keys` on the build host, back up offline.
+- **Launch-verify gVNIC**: after the next `gce/upload`, boot an instance
+  with `--network-interface nic-type=GVNIC` and confirm the NIC is eth0
+  with the gve driver bound and a DHCP lease.
 
 - **Tailscale auto-join on first boot** (highest-leverage for fleet deploy;
   needs the secrets decision first). `base` enables tailscaled but it's inert
@@ -888,12 +817,6 @@ personalization excluded, diff against what we already have before adopting.
   rsync, no flake eval inside the VM, VM never needs the repo. Decision:
   where builds should happen (Mac builder VM vs guest).
 
-- **Minimal installer sub-flake** — addressed differently. We didn't add a
-  separate sub-flake; instead `packages.<linux>.installer-iso` bakes the
-  provisioning ssh key into the standard minimal installer, and nixos-anywhere
-  installs the *full* config directly (building on the Mac's linux-builder or a
-  native aarch64 box), so there's no "heavy main flake" problem to route around.
-
 - **agenix as the lighter secrets option** — ryan4yin uses agenix (age keys =
   existing ssh keys, one `secrets.nix` mapping files to recipients). Add it
   to the sops-nix/git-crypt decision list in the fork-survey Tier 2 item:
@@ -928,16 +851,6 @@ stack and don't port to ours.
   unpredictable `enpXsY` NIC names and flaky NAT DHCP. The stronger of the two.
 
 ## Tier 2 — higher value, bigger change or a real decision
-
-- **Declarative disk layout with disko** — done (branch `feat/disko-provisioning`).
-  `disko.devices` spec (1 GiB ESP + ext4 root, labels `ESP`/`nixos`) lives in the
-  fusion host file with `disko.enableConfig = false` so the runtime fstab is
-  unchanged and the host's toplevel derivation stays byte-identical. `make
-  remote/provision` runs nixos-anywhere against an ISO-booted VM, replacing the
-  `vm/bootstrap0`/`vm/bootstrap` shell (both deleted). A keyed
-  `packages.<linux>.installer-iso` supplies the target. Verified end-to-end
-  (partition → systemd-boot → reboot); the run also surfaced + fixed a real bug
-  (`/host` needed `nofail` or a VM without the share drops to emergency mode).
 
 - **Secret management (we currently have none)** — pick one:
   - `cdenneen` — sops-nix wired as a home-manager module (`.sops.yaml`, age +
