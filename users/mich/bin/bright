@@ -1,0 +1,11 @@
+#!/bin/sh
+# ABOUTME: Sets the brightness of every external DDC-capable monitor at once.
+# ABOUTME: Usage: bright <0-100>
+set -eu
+
+level="${1:?usage: bright <0-100>}"
+
+# The built-in panel has no DDC and lists as "(null)"; skip it.
+m1ddc display list | awk -F'[][]' '!/\(null\)/ {print $2}' | while read -r d; do
+  m1ddc display "$d" set luminance "$level" >/dev/null
+done

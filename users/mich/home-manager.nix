@@ -140,6 +140,9 @@ in
     pkgs.switchaudio-osx
     # Sudoless performance monitoring CLI for Apple Silicon (CPU/GPU/power).
     pkgs.macmon
+    # DDC control of external monitors (brightness, contrast, input);
+    # Apple Silicon only. ~/.bin/bright drives it.
+    pkgs.m1ddc
     # Runs language models locally. Darwin-only because neon is the one host
     # with a GPU to run them on; the Linux VMs get no passthrough.
     pkgs.ollama
@@ -193,6 +196,13 @@ in
   # drafted in place before being promoted into the repo.
   home.file.".claude/skills" = {
     source = ./claude/skills;
+    recursive = true;
+  };
+
+  # Personal scripts; both shells put ~/.bin on PATH. A real directory
+  # (recursive) so ad-hoc scripts can live alongside the managed ones.
+  home.file.".bin" = {
+    source = ./bin;
     recursive = true;
   };
 
