@@ -195,6 +195,23 @@ lib.runTests {
     };
   };
 
+  # The image's DHCP config binds to eth0, which is only the NIC's name
+  # while kernel-style interface names are in force (set by the upstream
+  # GCE profile — a nixpkgs bump could silently change that). The gve
+  # module must be loaded so gVNIC instances get a NIC driver at all.
+  testGceNicNamingAndDrivers = {
+    expr = {
+      predictableNames = gce.networking.usePredictableInterfaceNames;
+      eth0Dhcp = gce.networking.interfaces.eth0.useDHCP;
+      gveLoaded = lib.elem "gve" gce.boot.kernelModules;
+    };
+    expected = {
+      predictableNames = false;
+      eth0Dhcp = true;
+      gveLoaded = true;
+    };
+  };
+
   # The image must carry the closure's store-db registration and load it on
   # first boot; without it every nix operation on the instance sees an
   # unregistered store (HM activation is the first casualty).

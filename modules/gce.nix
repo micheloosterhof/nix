@@ -26,6 +26,13 @@
       # keeps the global switch off for that reason).
       networking.interfaces.eth0.useDHCP = true;
 
+      # The image registers the GVNIC guest OS feature, so instances may
+      # attach a gVNIC NIC instead of virtio-net (newer machine series
+      # require it). The GCE profile force-loads virtio_net; load gve the
+      # same way so the driver is present for either NIC type. The single
+      # NIC is eth0 under both drivers (kernel-style names, see above).
+      boot.kernelModules = [ "gve" ];
+
       # Keep the host firewall on whether or not a given instance has an
       # external IP; GCP's own network firewall is separate (defense in
       # depth). The GCE profile defaults it off with mkDefault, so this plain

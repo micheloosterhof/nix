@@ -25,12 +25,16 @@
   `--labels=git-rev=<rev>,built=<date>` for provenance (know exactly what's
   deployed). A few lines in the Makefile target.
 
-- **gVNIC networking** (cheap). The image is virtio-net (eth0), which caps it
-  to older machine families (N1/N2/E2) at ~32 Gbps. Newer families (C3, H3,
-  N4, Titanium) use/require gVNIC. Register the image with the `GVNIC` guest
-  OS feature (the `gve` module is already in the kernel) to unlock those
-  machine types and higher bandwidth. Verify eth0/DHCP naming still holds
-  under gVNIC.
+- **gVNIC networking** — done 2026-08-24. `gce/upload` registers `GVNIC`
+  (both arches; C4A on aarch64 requires it too), unlocking the newer
+  machine families (C3, C3D, H3, N4, C4A, Titanium) and their higher
+  bandwidth. gce.nix force-loads `gve` alongside the profile's
+  `virtio_net` so the driver is present for either NIC type (`gve.ko`
+  confirmed in the 6.18.45 module tree). eth0/DHCP naming holds by
+  construction — the GCE profile sets kernel-style interface names, so
+  the single NIC is eth0 under both drivers. Remaining: launch-verify a
+  gVNIC instance (`--network-interface nic-type=GVNIC`) after the next
+  image registration.
 
 - **Confidential VM** (security; the standout) — done. `gce/upload` now
   registers x86_64 images with `SEV_CAPABLE`, `SEV_LIVE_MIGRATABLE_V2`,
@@ -40,9 +44,9 @@
   builds every x86_64 kernel with `AMD_MEM_ENCRYPT`, the `SEV_GUEST`
   attestation driver and `INTEL_TDX_GUEST`, `gve` is built as a module,
   and `linuxPackages_latest` (6.18) clears the 6.6 floor for TDX and SEV
-  live migration. Remaining: SEV-SNP (C3D) and TDX (C3) machine series
-  require gVNIC, so those two stay unlaunchable until the gVNIC item above
-  lands; SEV on N2D works now. Launch-verified 2026-07-27 on an N2D
+  live migration. The SEV-SNP (C3D) and TDX (C3) machine series require
+  gVNIC, registered since 2026-08-24 (gVNIC item above); SEV on N2D works
+  now. Launch-verified 2026-07-27 on an N2D
   Confidential VM: dmesg shows "Memory Encryption Features active: AMD
   SEV" and "live migration enabled in EFI" (SEV_LIVE_MIGRATABLE_V2
   functional).

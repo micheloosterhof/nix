@@ -88,10 +88,11 @@ Access, in order of preference — you should never be locked out:
 
 The image boots a single signed UKI: an ephemeral per-build key signs it,
 and `gce/upload` enrolls the matching certificate as the image's UEFI
-PK/KEK/db alongside the `UEFI_COMPATIBLE` and Confidential VM guest OS
-features. Instances run with all three Shielded VM legs
-(`--shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring`)
-and can additionally launch as Confidential VMs
+PK/KEK/db alongside the `UEFI_COMPATIBLE`, `GVNIC` and Confidential VM
+guest OS features. Instances run with all three Shielded VM legs
+(`--shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring`),
+can attach a gVNIC NIC (`--network-interface nic-type=GVNIC`, required by
+newer machine series) and can additionally launch as Confidential VMs
 (`--confidential-compute-type=SEV` on N2D). There is no bootloader menu on
 the instance: kernel/initrd changes ship as a new image.
 

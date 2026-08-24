@@ -259,13 +259,17 @@ gce/image: ## Build a GCE image; prints /nix/store path (GCE_ARCH=x86_64-linux|a
 # Set GCE_BUCKET and GCE_PROJECT. gcloud/gsutil run via nix (no local install).
 # GCE resource names forbid underscores, so the arch is dash-mangled.
 GCE_IMAGE_NAME ?= nixos-$(subst _,-,$(GCE_ARCH))
+# GVNIC (both arches) lets instances attach the gVNIC NIC that newer
+# machine series use or require (C3/C3D/H3/N4 on x86_64, C4A on aarch64)
+# for higher network bandwidth; the image kernel carries the gve driver
+# as a module, and virtio-net instances are unaffected.
 # Confidential VM feature tags (x86_64 only: SEV on N2D/C2D, SEV-SNP on
 # N2D/C3D, TDX on C3) so instances can launch with hardware memory
 # encryption. The stock nixpkgs kernel carries the guest support
 # (AMD_MEM_ENCRYPT, SEV_GUEST, INTEL_TDX_GUEST; live migration and TDX need
-# kernel >= 6.6). SNP/TDX machine series additionally require registering
-# the GVNIC feature before instances will launch.
-GCE_GUEST_OS_FEATURES = UEFI_COMPATIBLE
+# kernel >= 6.6). The SNP (C3D) and TDX (C3) machine series additionally
+# require GVNIC, registered above.
+GCE_GUEST_OS_FEATURES = UEFI_COMPATIBLE,GVNIC
 ifeq ($(GCE_ARCH),x86_64-linux)
 GCE_GUEST_OS_FEATURES := $(GCE_GUEST_OS_FEATURES),SEV_CAPABLE,SEV_LIVE_MIGRATABLE_V2,SEV_SNP_CAPABLE,TDX_CAPABLE
 endif
