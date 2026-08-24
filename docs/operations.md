@@ -89,7 +89,10 @@ Access, in order of preference — you should never be locked out:
 The image boots a single signed UKI: an ephemeral per-build key signs it,
 and `gce/upload` enrolls the matching certificate as the image's UEFI
 PK/KEK/db alongside the `UEFI_COMPATIBLE`, `GVNIC` and Confidential VM
-guest OS features. Instances run with all three Shielded VM legs
+guest OS features. Each upload registers a uniquely timestamped image in
+the per-arch family `nixos-<arch>`, labeled with the git revision and
+build date; instances reference the family and get the newest image,
+while older ones stay registered for rollback. Instances run with all three Shielded VM legs
 (`--shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring`),
 can attach a gVNIC NIC (`--network-interface nic-type=GVNIC`, required by
 newer machine series) and can additionally launch as Confidential VMs
@@ -109,7 +112,7 @@ the first boot-test:
 ```
 gcloud compute instances create nixos-test \
     --project=<project> --zone=<zone> \
-    --image=<image-name> --image-project=<project> \
+    --image-family=nixos-x86-64-linux --image-project=<project> \
     --shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
     --metadata=enable-oslogin=TRUE,serial-port-enable=TRUE
 # boot log:  gcloud compute instances get-serial-port-output nixos-test --zone=<zone>

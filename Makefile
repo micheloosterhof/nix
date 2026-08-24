@@ -258,7 +258,13 @@ gce/image: ## Build a GCE image; prints /nix/store path (GCE_ARCH=x86_64-linux|a
 # Upload the built image to a GCS bucket and register it as a Compute image.
 # Set GCE_BUCKET and GCE_PROJECT. gcloud/gsutil run via nix (no local install).
 # GCE resource names forbid underscores, so the arch is dash-mangled.
-GCE_IMAGE_NAME ?= nixos-$(subst _,-,$(GCE_ARCH))
+# Standard GCP image lifecycle: each upload registers a uniquely
+# timestamped image inside a stable per-arch family (one shared family
+# would mix arches — --image-family resolves to the family's newest image
+# regardless of architecture). Instances reference the family and always
+# get the newest image; older ones stay behind for rollback.
+GCE_IMAGE_FAMILY ?= nixos-$(subst _,-,$(GCE_ARCH))
+GCE_IMAGE_NAME ?= $(GCE_IMAGE_FAMILY)-$(shell date -u +%Y%m%d-%H%M%S)
 # GVNIC (both arches) lets instances attach the gVNIC NIC that newer
 # machine series use or require (C3/C3D/H3/N4 on x86_64, C4A on aarch64)
 # for higher network bandwidth; the image kernel carries the gve driver
@@ -282,6 +288,8 @@ gce/upload: ## Upload + register the GCE image (set GCE_BUCKET, GCE_PROJECT)
 		nix run nixpkgs#google-cloud-sdk -- storage cp "$$TARBALL" "gs://$(GCE_BUCKET)/" && \
 		nix run nixpkgs#google-cloud-sdk -- compute images create "$(GCE_IMAGE_NAME)" \
 			--project "$(GCE_PROJECT)" \
+			--family "$(GCE_IMAGE_FAMILY)" \
+			--labels=git-rev=$$(git -C "$(MAKEFILE_DIR)" describe --always --dirty),built=$$(date -u +%Y-%m-%d) \
 			--guest-os-features=$(GCE_GUEST_OS_FEATURES) \
 			--platform-key-file="$$IMG/cert.der" \
 			--key-exchange-key-file="$$IMG/cert.der" \
