@@ -129,6 +129,8 @@ setopt HIST_SAVE_NO_DUPS
 setopt SHARE_HISTORY
 # Execute commands using history (e.g.: using !$) immediatel:
 unsetopt HIST_VERIFY
+# Allow # comments on the interactive command line:
+setopt INTERACTIVE_COMMENTS
 
 # ls
 #############################################################################
