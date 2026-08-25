@@ -407,6 +407,178 @@ exists), lanzaboote (the repart+UKI pipeline covers our Secure Boot case).
   — extra `use …` functions (nix_shell, postgres, python) shipped via
   home-manager next to the existing offline-aware stdlib.
 
+## Small-tricks pass (same repos, second sweep — dotfile layer)
+
+### Terminal / ssh / tmux workflow
+
+- **OSC 52 + OSC 777 scripts** (ambroisie `pkgs/osc52/`, `pkgs/osc777/`) —
+  two small bash scripts: clipboard-copy and desktop-notification escape
+  sequences, with the tmux DCS passthrough wrapping and screen chunking
+  done correctly. Clipboard to the Mac / notifications from inside
+  ssh-inside-tmux, no X forwarding; ghostty supports both. Supersedes the
+  oscclip package candidate (traxys survey).
+- **zsh-done long-command notifications** (ambroisie
+  `modules/home/zsh/default.nix`, plugin `github:ambroisie/zsh-done`) —
+  notify when a long command finishes; `DONE_EXCLUDE` is one anchored
+  regex built from a list (`git (?!push|pull|fetch)`, `tail -f`, editors);
+  overriding `done_send_notification()` to call `osc777` routes it through
+  ssh to the local terminal.
+- **tmux one-liners** (ambroisie `modules/home/tmux/default.nix`) —
+  `set -s set-clipboard on` + `allow-passthrough on` (required for OSC 52
+  upward through tmux); `terminal-features ",<term>:hyperlinks"` / `:RGB`
+  (OSC 8 links + truecolor for terminals tmux doesn't know);
+  `aggressiveResize = true` (multiple ghostty windows on one session);
+  `bind-key -N "description"` on every binding so `prefix ?`
+  self-documents; yank with `@yank_action 'copy-pipe'` (stay in copy
+  mode); `focusEvents = true`; `bind R source-file` reload binding.
+- **Auto-tmux on ssh login** (ambroisie zsh module `launchTmux` option) —
+  `[ -z "$TMUX" ] && exec tmux new-session` via `lib.mkBefore` in
+  initContent; `exec` so no orphan login shell.
+- **lesskey readline bindings** (ambroisie `modules/home/pager/`) —
+  `programs.less.config` gives `^a ^e ^w \eb \ef ^p ^n` etc. inside less's
+  search/command line, `Q` quits without clearing the screen, and `LESS`
+  is set explicitly in the environment (via `lib.cli.toCommandLineGNU`) so
+  it overrides git's internal pager defaults; bat reuses it:
+  `programs.bat.config.pager = "''${PAGER} ''${LESS}"`. Rarely configured,
+  used every day.
+- **Tailnet-scoped ssh canonicalization** (sebastianrasor
+  `home-modules/ssh.nix`) — `CanonicalizeHostname yes` +
+  `CanonicalDomains ts.<domain>` so bare `ssh host` resolves to the
+  tailnet FQDN, and `ForwardAgent yes` is scoped to `Host *.ts.<domain>`
+  only — agent forwarding for our machines, never for random hosts. Plus
+  `ControlPath` under `$XDG_RUNTIME_DIR` (tmpfs, 0700, tmpfiles rule
+  pre-creates it) instead of `~/.ssh`, and
+  `programs.ssh.enableDefaultConfig = false` so the rendered config is
+  exactly what's written. ambroisie's companion: `includes =
+  [ "config.local" ]` (and the same in gitconfig) for unversioned
+  per-machine entries.
+- **sudo via forwarded ssh-agent — pam_rssh** (sebastianrasor
+  `nixos-modules/pam.nix`) — `security.pam.services.sudo.rssh = true` with
+  `auth_key_file` per user: sudo on a remote host authenticates against
+  the forwarded agent, no password on the box at all. Best single nugget
+  of the sweep for a headless fleet.
+- **gpg `reset-agent` alias** (ambroisie gpg module) —
+  `gpg-connect-agent updatestartuptty /bye`: the fix for pinentry landing
+  on the wrong tty after a tmux reattach.
+
+### Servers and VMs
+
+- **Daemon disk headroom** (sebastianrasor `nixos-modules/nix.nix`) —
+  `min-free`/`max-free` in nix.settings so the daemon auto-GCs during
+  builds; `log-lines = 25` for more context on failures; `build-dir`
+  moved off `/tmp` (avoids tmpfs exhaustion on big builds). Also
+  `nixPath = lib.mapAttrsToList (k: v: "''${k}=''${v.to.path}")
+  config.nix.registry` — derive nixPath from the pinned registry instead
+  of maintaining both.
+- **GC timer jitter** (ambroisie nix module) — `nix.gc` with
+  `randomizedDelaySec = "10min"` and `persistent = true`; persistent
+  matters for VMs suspended when the timer would have fired.
+- **`virtualisation.docker/podman.autoPrune`** (ambroisie) — weekly
+  `--all` prune. The helium disk crisis (orphan podman volume) as a
+  one-liner of prevention.
+- **fail2ban escalating bans** (ambroisie fail2ban module) —
+  `bantime-increment = { enable = true; rndtime = "5m"; }` + DEFAULT jail
+  `findtime`/`bantime` — jittered, escalating bans for nitrogen's exposed
+  sshd.
+- **`boot.shell_on_fail` kernel param** (sebastianrasor plymouth module) —
+  drop to a shell when boot fails instead of hanging; cheap insurance on
+  headless boxes. Companion: `console.earlySetup = true` (keymap in
+  initrd, matters for emergency prompts).
+- **mosh in the ssh-server module** (ambroisie) — `programs.mosh.enable`
+  opens its UDP range automatically; nice over flaky links.
+- **Lazy network mounts** (sebastianrasor `unas-lazy-media.nix`) —
+  `systemd.mounts` + `systemd.automounts` with
+  `automountConfig.TimeoutIdleSec = "600"`: NAS shares mount on first
+  access, unmount after idle, and a down NAS never hangs boot.
+- **Boot-speed pair** (sebastianrasor) — `systemd.network.wait-online
+  .enable = false` plus catch-all network with `linkConfig
+  .RequiredForOnline = "no"` (per-host opt-back-in); companion to the
+  networkd item in the Tier-1 batch (C12).
+- **timesyncd without double sources** (sebastianrasor) — `servers = [ ];
+  fallbackServers = [ "time.google.com" ]`: NTP from DHCP when offered,
+  fallback otherwise.
+
+### git / jj
+
+- **gitconfig beyond the specced Tier-1 batch set** (ambroisie git
+  module) — `merge.conflictStyle = "zdiff3"`, `rerere.enabled`,
+  `rebase.autoStash`, `fetch.prune` + `fetch.pruneTags`,
+  `url."git@github.com:".insteadOf = "https://github.com/"` (pasted HTTPS
+  URLs go over ssh), `blame = { coloring = "repeatedLines";
+  markIgnoredLines; markUnblamables; }`. Aliases: `assume`/`unassume`/
+  `assumed` (update-index --assume-unchanged), `pick = "log -p -G"`,
+  `push-new`, `git = "!git"`. Global ignores parsed from a plain
+  `default.ignore` file via a 6-line readLines snippet so the file stays a
+  normal gitignore. Packages alongside: `git-absorb`, `git-revise`, `tig`;
+  `package = gitFull`.
+- **jj sign-on-push only** (sebastianrasor `home-modules/jujutsu.nix`) —
+  `signing.behavior = "drop"` + `git.sign-on-push = true`: local commits
+  unsigned, signatures added at push.
+
+### Shell and $HOME hygiene (all ambroisie)
+
+- **zsh keybinding fixes** (`extra-mappings.zsh`) — `bindkey '^u'
+  backward-kill-line` (stop ^U nuking the whole line),
+  `edit-command-line` widget on `^x^e`, terminfo-guarded bindings (with
+  fallbacks) for Delete/Shift-Tab/Ctrl-arrows across keymaps.
+- **Completion zstyles worth lifting wholesale**
+  (`completion-styles.zsh`) — `menu select`, LS_COLORS in completion
+  listings, `group-name`, `squeeze-slashes`, colored `kill` completion
+  from verbose `ps`, case-insensitive `matcher-list`, per-category
+  `format` strings.
+- **zsh options** (`options.zsh`) — `inc_append_history_time` (instead of
+  share_history), `hist_reduce_blanks`, `hist_verify`, `rc_quotes`,
+  `auto_pushd pushd_minus pushd_silent`, `auto_resume` (bare `vim`
+  resumes the stopped job).
+- **Skip double compinit** — `programs.zsh.enableGlobalCompInit = false`
+  when home-manager runs its own; measurable startup win.
+- **XDG tidy-`$HOME` block** (`modules/home/xdg/`) — `HISTFILE`,
+  `PSQL_HISTORY`, `PYTHON_HISTORY`, `PYTHONPYCACHEPREFIX`, `CARGO_HOME`,
+  `DOCKER_CONFIG`, `INPUTRC`, `_JAVA_OPTIONS` prefs root all into XDG
+  dirs; `home.preferXdgDirectories = true`; wget's hsts file via a 2-line
+  `WGETRC`. Overlaps xdg-ninja (traxys survey) — this is the config to
+  write once that audit runs.
+- **man pages that work** — `documentation.man.cache.enable = true` (so
+  `apropos`/`man -k` function) + `man-pages` and `man-pages-posix`
+  packages; HM side `programs.man.generateCaches = true`.
+- **Misc one-liners** — `programs.jq.colors` (readable jq output); gdb:
+  `add-auto-load-safe-path /nix/store` + history into XDG state;
+  `home.sessionVariables.GITHUB_TOKEN = ''$(cat <secret path>)''`
+  (command substitution loads an agenix secret at login, never enters the
+  store); `mkDisableOption = d: (mkEnableOption d) // { default = true; }`
+  (`lib/options.nix`); their comma variant with `COMMA_PICKER`
+  (fzf-tmux popup) and `COMMA_NIXPKGS_FLAKE` override points; the passage
+  module's config-as-wrapper micro-pattern (sebastianrasor —
+  `makeBinaryWrapper` baking env-var config into the binary).
+
+### Deploy / CI micro-patterns
+
+- **ssh exit-255 mapping** (sebastianrasor `hercules-ci.nix`) — after an
+  ssh deploy, `|| exit "''${?/255/0}"`: host-unreachable (a powered-off
+  machine) passes, real switch failures still fail.
+- **Whole-tree formatter** (sebastianrasor `flake.nix`) — `formatter =
+  pkgs.nixfmt-tree`; plus `statix` and `nixf` as dev-shell linters
+  (companions to the git-hooks item above).
+- **devShells scanned from `shell.nix` files** (sebastianrasor
+  `devshells.nix`) — `lib.filesystem.listFilesRecursive` + basename
+  filter auto-exposes every package's `shell.nix` as a flake devShell;
+  root shellHook exports `NH_FLAKE="."` so `nh os switch` works bare in
+  the repo.
+- **CI notifier packaged in the flake** (ambroisie `.woodpecker/` +
+  `pkgs/matrix-notifier`) — the notify step is just `nix run
+  '.#matrix-notifier'` on success and failure; the pattern (CI tooling as
+  a flake package) ports to GitHub Actions.
+- **Backups follow the service** (sebastianrasor postgresql-backup) — the
+  backup module's enable defaults to `config.<ns>.postgresql.enable`, so
+  enabling the service enables its backup; detail for the backup-baseline
+  item above.
+
+Not applicable here, skipped deliberately: readDir'd authorized-keys
+(`keys/` already works that way), fish-specific config, laptop
+lid/power-key logind settings, starship tweaks (no starship in this
+repo), YubiKey gpg-nag suppression, plymouth splash, the URL-as-email
+scraper dodge.
+
 ---
 
 # Ideas harvested from Misterio77/Foundry (2026-07-22)
