@@ -1071,12 +1071,236 @@ with no other changes; the biggest drift-killer on offer.
   module referencing its own repo-relative path in generated docs;
   survives file moves. Niche.
 
+## Small-tricks pass (same repos, second sweep — dotfile layer)
+
+mightyiam has no tmux/atuin config (zsh+nushell+starship); drupol and
+vic are fish users, so shell config mostly doesn't port — but vic runs
+ghostty and Macs, which lands squarely on our stack.
+
+### ghostty (vic `modules/vic/dots/config/ghostty/config`)
+
+- **`performable:` keybind prefix** — `keybind =
+  performable:ctrl+shift+c=copy_to_clipboard`: the binding only consumes
+  the key when it can act (copy only with a selection), otherwise the key
+  passes through to the terminal.
+- **Leader-key chords** — tmux-style prefix inside ghostty: `alt+,>c` new
+  tab, `alt+,>\` split right, `alt+,>z` zoom split, `alt+,>1..9` goto
+  tab.
+- **Small settings** — `shell-integration-features = no-cursor,sudo,
+  no-title` (the `sudo` feature keeps terminfo working under sudo),
+  `window-save-state = always`, `unfocused-split-opacity`,
+  `window-colorspace = "display-p3"` (relevant on neon).
+
+### Nix, builds, home-manager
+
+- **`nix.settings.keep-outputs = true`** (mightyiam) — GC keeps
+  build-time deps of rooted outputs, so direnv dev shells survive
+  `nix-collect-garbage`.
+- **"Reasonable defaults" block** (drupol `modules/base/nix.nix`,
+  credited to jackson.dev) — `log-lines = 50`, `tarball-ttl = 86400`,
+  plus the connect-timeout/fallback and min-free/max-free pairs already
+  harvested from sebastianrasor; third repo converging on the same set.
+- **HM collision handling** (mightyiam) — `home-manager.backupCommand =
+  trash-put`: file collisions go to trash instead of aborting the
+  switch. Same file: `sharedModules` sets `home.stateVersion =
+  osConfig.system.stateVersion` — never drifts.
+- **HM generation expiry** (drupol) — `services.home-manager.autoExpire
+  { frequency = "weekly"; store.cleanup = true; }` — the HM analogue of
+  `nh clean`.
+- **`system.autoUpgrade` with `operation = "boot"`** (mightyiam) —
+  auto-upgrade applies on next reboot, never live-switches a headless
+  box unattended.
+- **`pkgs.master`/`pkgs.unstable` overlay inheriting `final.config`**
+  (drupol) — extra-channel attrs that propagate allowUnfree etc.,
+  without a second `import nixpkgs` at call sites; compare our
+  overlays.nix plumbing.
+- **Generated flake-compat shim** (drupol `modules/files/flake-compat
+  .nix`) — committed shim reading `flake.lock` for the pinned narHash,
+  giving `nix-build`/`nix repl` entry with zero unpinned fetches, and
+  generated so it can't drift.
+- **Slim the closure** (drupol) — `environment.defaultPackages =
+  lib.mkForce [ ]` (drops nano/perl/rsync/strace);
+  `documentation.*.enable = false` for headless (measurable eval win);
+  `programs.command-not-found.enable = false` in NixOS *and* HM (it's
+  channel-backed and permanently broken on flake systems).
+- **`boot.initrd.systemd.network.wait-online.enable = false`** (drupol)
+  — the initrd half of the wait-online kill; pairs with the main-system
+  one already harvested.
+- **Search the pinned inputs** (vic) — `nix search --inputs-from <repo>
+  nixpkgs <term>` searches the locked nixpkgs, not the registry one;
+  companion `rg-nixpkgs` greps a stable symlink to the input source.
+- **nix-index-database comma** (mightyiam + vic independently) —
+  `programs.nix-index-database.comma.enable = true`: prebuilt weekly
+  index, `,cmd` runs any uninstalled command, no local indexing.
+- **Small nix tools** — `nix-melt` (flake.lock TUI), `nurl` (generate
+  fetcher calls from a URL), `nix-fast-build`; one-liner `system`
+  command = `nix-instantiate --eval --expr builtins.currentSystem
+  --raw` (handy on a mixed-arch fleet); zsh alias `nix-shell =
+  "nix-shell --run zsh"`.
+
+### ssh
+
+- **`StreamLocalBindUnlink = "yes"` in sshd** (drupol) — server removes
+  stale forwarded unix sockets, the fix for agent/gpg socket forwarding
+  breaking on reconnect. Direct fit for the ssh-into-VM workflow.
+- **mDNS fleet names** (mightyiam) — avahi with `nssmdns4 = true`, fleet
+  knownHosts on `<host>.local` names: no DHCP-address tracking for the
+  Fusion/UTM VMs.
+- **sshd runtime drop-ins** (mightyiam) — `extraConfig = "Include
+  /etc/ssh/sshd_config.d/*"`: an escape hatch on otherwise-immutable
+  NixOS sshd config.
+- **Secret host inventory** (vic) — `programs.ssh.includes` pulls a
+  sops-encrypted ssh config fragment, so private hostnames/IPs never
+  appear in the repo; companion activation step symlinks sops-decrypted
+  keys into `~/.ssh` (keys never in the store).
+- **Per-host ControlPersist override** (vic) — `ControlPersist = "no"`
+  for github.com while `*` keeps 10m: no stale multiplexed sockets to
+  high-churn hosts.
+- **HM ssh-agent user service** (vic) — `services.ssh-agent.enable` on
+  Linux HM; plus nix-community `vscode-server` HM service if VS
+  Code/Cursor Remote-SSH into the VMs ever happens.
+
+### git / jj
+
+- **mergiraf** (mightyiam + drupol independently) — syntax-aware
+  structural merge driver; HM wires it into git *and* jj
+  (`programs.mergiraf.enable{,GitIntegration,JujutsuIntegration}`).
+- **gitconfig stragglers** — `pull.useForceIfIncludes = true` (drupol;
+  safety companion to force-with-lease), `rebase.instructionFormat =
+  "%d %s"` (decorations in the rebase todo), `push.default = "current"`,
+  `tag.sort = "taggerdate"`, alias `clone-bare-with-refspec` (fixes the
+  bare-clone-for-worktrees fetch refspec), `recents` alias
+  (for-each-ref by committerdate) (vic).
+- **gh wrapper `--unset GITHUB_TOKEN`** (mightyiam) — a stray env token
+  from direnv/CI can't shadow the keyring login.
+- **lazygit tuning** (mightyiam + drupol) — pager cascade
+  (difftastic → delta → default, cycle inside lazygit), `git.autoFetch =
+  false`, custom `N` binding = `git add --intent-to-add` on the selected
+  file, `overrideGpg = true` (stops hangs on signed commits).
+- **jj block** (drupol + vic; relevant to the jujutsu skill) —
+  `git.private-commits = "description(glob:'wip:*') | ..."` (never
+  pushed), `snapshot.auto-update-stale = true`, `ui.default-command =
+  ["--ignore-working-copy" "log"]` (bare `jj` never touches the working
+  copy), `tug` alias (advance nearest bookmark), revset library
+  (`closest_bookmark`, `recent()`, `why_immutable(r)`), `conf.d/`
+  drop-in fragments merging with HM settings, `--scope`/`--when`
+  conditional config, starship jj module replacing the `git_*` modules.
+  Plus the pattern of wrapping any signing TUI with `ssh-add -l ||
+  ssh-add` first.
+- **Global gitignore of agent droppings** (vic) — `.claude`, `CLAUDE.md`,
+  `AGENT*`, `.aider*`, `GEMINI.md` etc. globally ignored (committed
+  files unaffected); mightyiam does the same for `.envrc`/`.direnv`,
+  plus direnv `warn_timeout = 0`.
+- **gh-dash sections as code** (drupol) — declarative PR dashboard
+  filters with per-repo checkout paths and a `gh pr checkout`
+  keybinding; ports to any review queue.
+
+### zsh (mightyiam)
+
+- `bindkey '^[^M' autosuggest-execute` — Alt-Enter accepts and runs the
+  autosuggestion in one keystroke.
+- `history.ignorePatterns = ["rm *"]` — destructive commands never enter
+  history.
+- `matcher-list 'm:{a-z}={A-Za-z}'` at `lib.mkOrder 550` (before
+  compinit); all six syntax-highlighting highlighters (`main brackets
+  pattern regexp cursor line`); `edit-command-line` on `^e` in vicmd;
+  `programs.carapace` for cross-shell completions.
+
+### System one-liners
+
+- **sudo-rs** (mightyiam + drupol independently) — `security.sudo.enable
+  = false; security.sudo-rs.enable = true`: memory-safe sudo, drop-in.
+- User in `systemd-journal` group — full `journalctl` without sudo
+  (mightyiam); journald `MaxFileSec=3day` — time-based retention beside
+  the size cap (drupol).
+- `kernelParams = ["quiet" "systemd.show_status=error"]` — quiet boot,
+  errors still shown; `boot.tmp.useTmpfs` + `cleanOnBoot` (both repos).
+- `services.kmscon.enable` with mouse — modern VT for
+  headless-with-occasional-console; swap-by-partlabel with
+  `randomEncryption.enable`; `pam.loginLimits` nofile 8192; ntpd-rs
+  with `log-level = "warn"`; docker `enableOnBoot = false` + rootless
+  `setSocketVariable` (socket-activated daemon); `programs.nano.enable
+  = false` (mightyiam).
+- **macOS/darwin** (vic) — `ApplePressAndHoldEnabled = false` +
+  `system.keyboard.remapCapsLockToControl` (no Karabiner); darwin
+  tooling installed from the pinned nix-darwin input; `nix.gc` wrapped
+  in `optionalAttrs config.nix.enable` so modules eval on
+  Determinate-managed Macs.
+- **keyd mac-modifier layout for Linux** (vic `macos-keys.nix`) —
+  left-Alt as ⌘ with Cmd-C/V/T/W translated: Mac muscle memory inside
+  the Fusion/UTM VMs.
+
+### Secrets / direnv (vic)
+
+- **LLM API keys via sops template + $HOME .envrc** — sops renders
+  `export ANTHROPIC_API_KEY=...` to a file, a direnv lib function
+  sources it, and `~/.envrc` is one line — keys decrypted at
+  activation, never committed, never in the store.
+- `use_nix_installables() { direnv_load nix shell "$@" -c $direnv dump; }`
+  — ad-hoc per-project toolsets without writing a devshell.
+- **sops rotation** — rotation is one xargs line; a monthly cron
+  workflow files a GitHub issue as a rotation reminder (CI can't rotate
+  what it can't decrypt). The nag pattern generalizes to cert renewal.
+
+### CI micro-patterns (vic, plus convergence)
+
+- **Dynamic matrix from nix eval** — `nix-instantiate --json --eval` of
+  a hosts-by-system helper → `fromJSON` into the job matrix; each build
+  job appends its result store path to `$GITHUB_STEP_SUMMARY`.
+- **`/check` comment-triggered CI** — expensive multi-OS `nix flake
+  check` runs only when a PR comment says `/check`.
+- **upterm scratch runners** — workflow_dispatch jobs turn GH runners
+  (ubuntu, arm, macos) into throwaway ssh boxes; the runners exist as
+  fleet hosts with stub roots so their configs eval. Free
+  aarch64/macos scratch machines.
+- **Stub-root eval trick** — `fileSystems."/".device = "/dev/null";
+  fsType = "auto"; boot.loader.grub.enable = false` lets hosts without
+  real hardware (WSL!) eval and build in CI.
+- **Bump PRs that trigger required checks** — vic's scheduled job pushes
+  with a PAT (`secrets.PAT` as `GH_TOKEN`) and embeds the update output
+  in the commit body; the exact fix for our ci-dispatch-pr-gotcha.
+- **git-hooks in the shell, not the check** (mightyiam + drupol) —
+  `pre-commit.check.enable = false` with hooks installed via devshell
+  shellHook; CI runs the formatter directly instead of duplicating.
+
+### AI/agent tooling (drupol)
+
+- **`programs.mcp` as single MCP registry** — define each MCP server
+  once (command via `lib.getExe`, env, disabled by default), fan out via
+  `enableMcpIntegration` on codex/opencode/vscode/zed. The portable
+  idea for users/mich/claude/.
+- **mcp-gateway** — one HTTP endpoint aggregating all registered stdio
+  servers (systemd user service, YAML generated from `programs.mcp`).
+- **litellm as a Copilot proxy** — GitHub Copilot subscription exposed
+  as an OpenAI-compatible endpoint (`github_copilot/<model>` + editor
+  headers); agent tools' self-update pinned off since nix manages the
+  binaries.
+
+### Misc
+
+- **Rescue ISO as a fleet host** (vic `hosts/bombadil.nix`) — personal
+  installer ISO built like any other host: `installation-cd-base.nix` +
+  persistent home on a labeled partition + `mkImageMediaOverride` to
+  un-force installer defaults. Compare our installer-iso package.
+- **Imperative tools pinned to input revs** (vic doom.nix) — activation
+  script compares the installed tool's rev to `inputs.<x>.rev`, no-ops
+  when equal, else fetches exactly that rev. Recipe for tools that
+  insist on managing their own directory.
+- **Justfile nuggets** (vic) — current system via `nix-instantiate
+  --eval -E builtins.currentSystem`; a `reboot` recipe that runs the
+  boot-not-switch target first (safer kernel bumps).
+- **CLI candidates** — `ripgrep-all` (rg into PDFs/archives), `fx` +
+  `jd-diff-patch` (JSON explore/diff), `watchexec`, `gping`,
+  `bandwhich`, `ansifilter`, `uni`, `ouch` (one CLI for all archives),
+  `git-trim`, `serie` (git graph TUI), `diffnav`, `television`,
+  tealdeer with `use_pager = true`.
+
 ## Follow-up leads
 
 - **GaetanLepage/nix-config** — flagged independently by two surveys:
   nixvim lead maintainer, ~55 fine-grained dendritic aspects
   (remote-builders, wireguard, caddy), the closest in scale to a real
-  fleet. Best candidate for a future survey.
+  fleet. Surveyed 2026-08-26 — see its own section below.
 - drupol's dendritic writing (not-a-number.io): the 2025-05 host-first →
   feature-first rewrite rationale, and the 2026-04 den evaluation — the
   best published analysis of the pattern's hard edge (host×user
