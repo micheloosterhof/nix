@@ -579,6 +579,224 @@ lid/power-key logind settings, starship tweaks (no starship in this
 repo), YubiKey gpg-nag suppression, plymouth splash, the URL-as-email
 scraper dodge.
 
+## Deep sweep (same repos, third pass — services, hosts, lib, packaging)
+
+### Service-module patterns
+
+- **DynamicUser + impermanence, the 0700 trap** (sebastianrasor
+  `nixos-modules/core.nix` + `actual.nix`) — persist `/var/lib/private`
+  itself instead of chasing each DynamicUser StateDirectory, with an
+  activation script that pre-creates it `chmod 0700` (systemd refuses
+  DynamicUser state dirs otherwise). The sharp edge to know before any
+  impermanence adoption.
+- **Secrets to services via `LoadCredential`** (sebastianrasor
+  `cheaters-swear-jar.nix`) — `LoadCredential` +
+  `Environment=FOO_PATH=%d/credName` with DynamicUser, instead of
+  EnvironmentFile or owner-chowned secret files. Cleanest
+  secret-to-service pattern seen; backend-agnostic.
+- **nginx resolves tailnet upstreams at runtime** (sebastianrasor
+  `reverse-proxy.nix`) — `proxyResolveWhileRunning = true` + `resolver
+  .addresses = [ "127.0.0.53:53" ]` so nginx doesn't fail at boot when
+  tailscale DNS isn't up yet. Direct fit for proxying over the tailnet.
+- **`RequiresMountsFor` on services with network mounts** (sebastianrasor
+  immich/jellyfin modules) — binds a service to its NFS/bind mounts,
+  works with automounts; the guard the lazy-automount item above lacks.
+  Related: persist only `${cacheDir}/transcodes` — persisting a subpath
+  of a cache dir instead of the whole state dir.
+- **Chicken-and-egg bootstrap oneshot** (sebastianrasor `headscale.nix`)
+  — a service that depends on an IdP behind the network it provides:
+  start degraded (`only_start_if_oidc_is_available = false`), companion
+  oneshot probes the issuer until reachable, then restarts. Generic "A
+  needs B, B needs A's network" pattern.
+- **`restartIfChanged = false` for long-job services** (both repos
+  independently: sebastianrasor buildbot-master, ambroisie
+  drone/woodpecker runners) — a deploy doesn't kill in-flight CI builds.
+- **Sandboxed nix-capable CI runner** (ambroisie
+  `services/drone/runner-exec/`, `woodpecker/agent-exec/`) —
+  `confinement.enable = true` with explicit `BindPaths` (nix daemon
+  socket, nscd) and `BindReadOnlyPaths` (passwd, ca-bundle, `/etc/nix`,
+  `/nix`), `NIX_REMOTE=daemon`; hardening relaxed precisely per runtime
+  (`SystemCallFilter` mkForce, `MemoryDenyWriteExecute = false` for
+  node).
+- **nginx vhost assertion suite** (ambroisie `services/nginx/`) —
+  eval-time asserts: exactly one of port/root/socket/redirect per vhost,
+  and (via a `countValues` lib helper) no port or subdomain claimed
+  twice, each with a named message. Steal for any future vhost
+  self-registration module.
+- **Reverse-proxy SSO recipe** (ambroisie nginx + paperless modules) —
+  complete `auth_request /sso-auth` pattern: internal subrequest
+  location, `error_page 401` redirect to the login host with a `go=`
+  return URL, username forwarded as `X-User`, per-app ACL via an
+  `X-Application` header; app side consumes
+  `PAPERLESS_ENABLE_HTTP_REMOTE_USER`.
+- **ACME sharp edges** (both) — ambroisie: wildcard DNS-01 cert with
+  `dnsPropagationCheck = false` and
+  `LEGO_DISABLE_CNAME_SUPPORT=true` when a wildcard CNAME exists; nginx
+  reads certs via membership in the `acme` group. sebastianrasor:
+  `defaults.dnsResolver = "1.1.1.1:53"` forces DNS-01 lookups past
+  split-horizon local resolvers.
+- **fail2ban from journald, no log files** (ambroisie, ~12 services) —
+  jail + filter with `journalmatch = _SYSTEMD_UNIT=X.service`;
+  `iptables-allports` for non-HTTP services; `ignoreIP` for VPN subnets;
+  komga shows raising an app's log level solely so fail2ban has lines to
+  match.
+- **Wireguard peer registry** (ambroisie `services/wireguard/`) — one
+  peer list where `clientNum` derives v4+v6 addresses; two interfaces
+  (full-tunnel and internal-only) made mutually exclusive with
+  reciprocal systemd `conflicts`; on-demand start (`wantedBy = mkForce
+  [ ]`) plus a polkit rule letting wheel start/stop exactly those units.
+  File for a future helium/nitrogen/laptop mesh.
+- **VPN-only firewall scoping** (ambroisie `services/adblock/`) —
+  `networking.firewall.interfaces."${iface}".allowedUDPPorts = [ 53 ]`:
+  expose a service on one interface only; unbound with DoT upstream and
+  an adblock hosts file compiled to `local-zone: static` entries.
+- **postgres upgrade escape hatch** (ambroisie `services/postgresql/`) —
+  transient `upgradeScript` option installing an `upgrade-pg-cluster`
+  script computed from the current config (old/new bin+data dirs,
+  `pg_upgrade`, prints follow-ups). Turn on, migrate, turn off.
+- **Resource caps on flaky services** (ambroisie transmission/jackett) —
+  `MemoryMax = "33%"` / `MemoryHigh`, `TimeoutStopSec = "5m"` to let
+  work finish on stop.
+- **tmpfiles secret provisioning** (ambroisie `services/lohr/`) —
+  `systemd.tmpfiles.settings` with `d` (0700 `~/.ssh`) and `"L+"`
+  symlinking a secret into place — declarative key install for a service
+  user, no activation script.
+- **Cross-host config reference** (sebastianrasor `gate.nix`) —
+  `self.nixosConfigurations.<host>.config.services...` used inside
+  another host's proxy config so proxy and backend can't drift; same
+  file: sops template `restartUnits` bounces the service when the secret
+  changes.
+- **Webhook-only public vhost** (sebastianrasor
+  `buildbot-webhook-public-proxy.nix`) — public vhost proxying only
+  `locations."/change_hook/"` to a tailnet-internal service; template
+  for exposing one path while the rest stays tailnet-only.
+- **tailscale state + imaging** (sebastianrasor `tailscale.nix`) —
+  `--encrypt-state=false` when persisting/imaging
+  `/var/lib/tailscale/tailscaled.state`; the TPM-bound default makes
+  persisted state non-restorable. Relevant to the GCE image + tailscale
+  auto-join roadmap item.
+- **Misc nginx per-app tweaks** (ambroisie) — `client_max_body_size 0`
+  on import/export endpoints, `proxy_read_timeout 1d` for long-lived
+  websockets, `proxy_buffering off` for media streaming; a catch-all
+  `"_"` vhost 302-redirecting unknown subdomains to the apex.
+- **Small service one-liners** (ambroisie) — grafana
+  `admin_password = "$__file{...}"` (native file interpolation); restic
+  timers as `OnActiveSec`/`OnUnitActiveSec = "6h"` (relative cadence,
+  not calendar); forgejo `dump.enable = false` + restic on
+  `repositoryRoot`/`lfs.contentDir` directly (zip dumps are
+  backup-unfriendly); parameterized module template (`starr.nix` as a
+  function instantiated per service, enables cascading from an
+  `enableAll` master).
+- **Passwordless pam_u2f** (sebastianrasor `pam.nix`) — authfile built
+  at eval time from users × registered keys, `unixAuth = false` for a
+  hardware-key-only box; complements the pam_rssh item above. Related:
+  their `.sops.yaml` lists YubiKey age recipients alongside per-host
+  keys — recovery recipients that keep secrets editable if all hosts
+  die; worth copying into any future sops setup.
+
+### Hosts, install, deploy
+
+- **Debian-to-NixOS install script** (ambroisie
+  `hosts/nixos/porthos/install.sh`) — on a Debian rescue system:
+  Determinate installer, `nix profile install nixpkgs#nixos-install-tools`,
+  `nixos-generate-config --root /mnt`, `nixos-install --flake`. The
+  TransIP/helium situation as a script; complements the nixos-anywhere
+  item above.
+- **Minimal CI deploy user** (ambroisie porthos users + `pkgs/drone-rsync`)
+  — dedicated user, `createHome = false`, home at the docroot, CI
+  runner's pubkey; CI side loads a passphrase-protected key
+  non-interactively via ephemeral `ssh-agent` + `sshpass -P passphrase`.
+- **CI deploy gating** (sebastianrasor `hercules-ci.nix`) —
+  `passthru.prebuilt = toplevel` so the closure is built and pushed
+  before the ssh effect runs; `runIf (branch == "main")`.
+- **Impermanence disk topology** (sebastianrasor azalea/nephele
+  hardware configs) — single real fs at `/nix/persist` (`neededForBoot`,
+  `nofail`) with `/nix/store` and `/nix/var` bind-mounted out of it
+  (`depends`), swapfile declared inside the persist fs, explicit
+  `size=1G` on the tmpfs root of a small server.
+
+### lib and flake mechanics
+
+- **Per-system package filtering with `availableOn`** (sebastianrasor
+  `packages/default.nix`) — `lib.filterAttrs (_: lib.meta.availableOn
+  { inherit (pkgs.stdenv.hostPlatform) system; })` (plus
+  `builtins.tryEval` for nested sets) so linux-only packages don't break
+  `nix flake show`/CI eval on darwin and vice versa. Directly useful for
+  this cross-platform flake.
+- **Small lib helpers** (ambroisie `lib/`) — `countValues` (duplicate
+  detection for assertions), `recursiveMerge` (foldl recursiveUpdate for
+  composing config fragments), `renameAttrs`.
+- **Cross-instantiating a callPackage derivation** (sebastianrasor
+  `buildbot-jobs.nix`) — `.override (oldArgs: builtins.intersectAttrs
+  oldArgs crossPkgs)` re-targets a package to another pkgs set without
+  re-plumbing its arguments.
+
+### Home-module mechanics
+
+- **`pkgs.emptyDirectory` as "configure, don't install"** (ambroisie
+  work-machine homes) — `git.package = pkgs.emptyDirectory` (or a stub
+  symlinking `/usr/bin/<tool>` with `meta.mainProgram`) so home-manager
+  writes config for host-provided binaries. Exactly the WSL/corporate
+  machine case.
+- **`systemd.user.startServices = "sd-switch"`** (ambroisie) — user
+  services restart on HM switch by diffing units.
+- **Option aliasing into HM** (ambroisie `modules/nixos/home/`) —
+  `lib.mkAliasOptionModule [ "my" "home" ] [ "home-manager" "users"
+  <name> ... ]` kills the `home-manager.users.x` boilerplate at system
+  level; a technique independent of their structure.
+- **`lib.hiPrio` wrapper shadowing** (ambroisie steam module) — shadow a
+  package's binary with a same-name `writeShellScriptBin` wrapper (e.g.
+  relocating its dotfile mess via `HOME=`) while keeping the package
+  installed.
+- **Guarded exec-into-preferred-shell** (sebastianrasor
+  `home-modules/fish.nix`) — from bash, exec the preferred shell only
+  when the parent isn't already it, `BASH_EXECUTION_STRING` is empty,
+  and `SHLVL == 1`, preserving `--login`; portable to a zsh bridge.
+  Same file: `ssh-keygen -K` one-liner to re-download FIDO resident ssh
+  keys from a YubiKey onto a fresh machine.
+- **Kernel-keyring token caching** (ambroisie `pkgs/bw-pass/`) — caches
+  a CLI session token via `keyctl add/request/timeout` (15-min timeout)
+  — sudo-free secret caching for any CLI.
+- **Firefox de-noising pref list** (ambroisie `modules/home/firefox/`)
+  — the comprehensive block disabling `browser.ml.*`/AI surfaces,
+  pocket, sponsored content, form-autofill, and the built-in password
+  manager; a crib sheet independent of the declarative-Firefox
+  machinery.
+- **direnv `watch_file` on flake parts** (ambroisie `.envrc`) — watch
+  only the shell-relevant flake files so direnv doesn't reload on every
+  repo edit.
+
+### Packaging patterns
+
+- **Gradle via `mitmCache`** (sebastianrasor `packages/*/`) —
+  `gradle.fetchDeps` + `deps.json`, `-Dorg.gradle.java.home` pinning,
+  `meta.sourceProvenance`; `fetchGit { ref = "refs/pull/N/head"; }` to
+  pin an unmerged upstream PR.
+- **Version from the project's own metadata** (sebastianrasor) — parse
+  `gradle.properties` (lib.pipe) or `Cargo.toml` (`fromTOML`) for
+  pname/version/mainProgram instead of duplicating them.
+- **Compose-don't-mutate app dirs** (sebastianrasor
+  `legacy-packages/fabricmc-servers/`) — plugins/mods via `symlinkJoin`
+  injected through a `makeBinaryWrapper` flag; `passthru.updateScript`
+  (jq against the upstream version API) emitting a `versions.json`;
+  `fetchMavenArtifact` pointed at any maven-shaped API as a generic
+  pinned-artifact fetcher.
+- **Build-time config assets** (sebastianrasor `gate.nix`) — `fetchzip`
+  + imagemagick in a small derivation, store path referenced from the
+  config template: derive assets, don't commit binaries.
+- **Self-registering browser helper** (ambroisie `pkgs/ff2mpv-go/`) —
+  postInstall runs the built binary with `--manifest` to generate its
+  own native-messaging JSON into `$out`.
+- **Nested package override** (sebastianrasor `intel-arc-a380.nix`) —
+  `jellyfin-ffmpeg.override { ffmpeg_7-full = prev.ffmpeg_7-full
+  .override { ... }; }` — reference for the gce-gpu item if QSV/VAAPI
+  plumbing ever comes up.
+
+Territories that came up empty: sebastianrasor has no monitoring,
+alerting, or systemd hardening anywhere (DynamicUser + LoadCredential is
+the only isolation used); ambroisie's hardware/profile modules are thin
+laptop/X11 toggles, and the desktop home modules are personalization.
+
 ---
 
 # Ideas harvested from Misterio77/Foundry (2026-07-22)
