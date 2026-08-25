@@ -1310,6 +1310,140 @@ ghostty and Macs, which lands squarely on our stack.
 
 ---
 
+# Ideas harvested from GaetanLepage/nix-config (2026-08-26)
+
+The largest actively-maintained dendritic config (nixvim lead
+maintainer): 8 hosts (5 NixOS + 3 standalone-HM), ~224 nix files —
+though only ~35 named aspects; the "55 aspects" framing oversells it.
+No nix-darwin (his Mac is plain home-manager). Same architecture as
+this repo, so structural verdicts are direct comparisons.
+
+## Structural
+
+- **Typed host registry as flake-parts options — the centerpiece**
+  (`modules/flake/hosts/{nixos.nix,home.nix,_utils/base.nix}`). Hosts
+  declared as `nixosHosts.<name>` / `homeHosts.<name>` submodules with
+  `system`, `unstable` (bool picking which nixpkgs input evaluates the
+  host), `tags`, `primaryUser`, `modules`, `homeManagerModules`,
+  `specialArgs`, and a `finalPackage` output field. From this one
+  registry he derives `nixosConfigurations`, `homeConfigurations`, the
+  colmena hive (per-host nixpkgs/specialArgs survive into it), deploy-rs
+  nodes, and per-system build checks. The strongest structural idea of
+  the whole survey series: the fleet axes (baseline/substrate/role/
+  exposure/identity) could become typed submodule options on exactly
+  such a registry, with knownHosts/DNS/deploy targets all reading from
+  it. Better than ad-hoc `nixosSystem` call sites. Registry option
+  types worth noting: `types.pathInStore` for a nixpkgs input,
+  `types.pkgs`.
+- **Three-tier namespace discipline** (his answer to name soup). Tier 1:
+  one file = one named aspect (`nixos.nh`). Tier 2: explicit aggregator
+  files — `modules/nixos/core/imports.nix` is literally `flake.modules
+  .nixos.core.imports = with config.flake.modules.nixos; [ agenix
+  bootloader nh ... ]`; membership readable in one place instead of
+  scattered self-registration (wash-to-better vs ours: traceability for
+  one extra list). Tier 3: big config trees (neovim, shell) demoted to
+  *plain* modules under `_`-prefixed dirs, pulled in with one
+  `imports = [ ./_dev ]` line — keeps the aspect namespace small on
+  purpose (better; worth adopting). He's inconsistent about it in
+  places — pick one style.
+- **Host-local modules and secrets colocated** — every host dir has its
+  registry entry plus `_nixos/` full of plain modules, `.age` secrets
+  sitting next to the module that declares them. Per-host exceptions
+  never touch shared aspects. Clean convention, worth copying
+  wholesale.
+- **Standalone-HM hosts as first-class fleet members** — machines
+  without root (nix-community builders, a colleague's cluster, his Mac)
+  live in `homeHosts` with the same core aggregate and secrets
+  machinery; checks build `activationPackage`; home prefix computed
+  from `hostPlatform` with a `throw` fallback. The missing fourth class
+  next to nixos/darwin/home-in-nixos — relevant for managed presence on
+  corporate boxes.
+- **`primaryUser` as a registry-driven specialArg** — every shared
+  module takes `{ primaryUser, ... }` instead of hardcoding the user;
+  also `configName` and `nhSwitchCommand` specialArgs so the HM nh
+  module aliases the right switch command per config type. Directly
+  addresses our known follow-up (hardcoded user in gui/fusion modules).
+- **Arch-filtered build checks** (`modules/flake/hosts/checks.nix`) —
+  `checks.nixos-hosts` = `symlinkJoin` over each host's `finalPackage`
+  filtered by `cfg.system == system`, so `nix flake check` builds every
+  same-arch host and never pulls foreign-arch closures; same filter on
+  deploy-rs checks; `checks.devshells` likewise. The build-level
+  sibling of our eval-only CI, composable per-arch.
+- **DNS zone as a flake output** (`modules/flake/dns/`, dnscontrol-nix)
+  — records built with nix lib functions, creds via agenix, OVH
+  registrar. His TODO ("move this to host definitions") converges on
+  deriving DNS from the host registry — the concrete tool if we ever
+  want declarative DNS.
+
+## CI / deploy
+
+- **CI is worse than ours** — `nix flake check` runs only on PRs
+  touching `flake.nix`/`flake.lock` (paths filter), so module changes
+  land unchecked. Keep our eval-all-hosts CI.
+- **Auto-merged lock bumps with a bot PAT** — `peter-evans/
+  create-pull-request` with `secrets.BOT_GITHUB_TOKEN` (PR triggers
+  required checks) then `gh pr merge --rebase --auto`. Together with
+  vic's PAT-pushing bump job, two working implementations of the
+  ci-dispatch-pr-gotcha fix.
+- **Three deploy backends off one registry** — nh interactive, colmena
+  by `tags = ["server"]`, deploy-rs for checked pushes; tags are the
+  grouping mechanism (maps to the role axis). Devshell `rebuild` runs
+  `nh os switch --target-host root@$h --build-host root@$h` — build on
+  the target, useful when the client is a weak or foreign-arch machine
+  (our aarch64 Mac pushing to x86 servers). Devshell `update` verb =
+  flake update + deploy + commit + push in one command.
+
+## Techniques
+
+- **Remote-builder roster** (`modules/home/core/nix-remote-builders/`)
+  — per-builder `maxJobs`/`speedFactor`/`supportedFeatures`;
+  `mandatoryFeatures = ["cuda"]` so only CUDA jobs route to the CUDA
+  box; self-exclusion via `lib.optionals (hostName != "spark")` so a
+  host never lists itself; builder hostname read from
+  `programs.ssh.settings.<alias>` so ssh config and buildMachines share
+  one source. Server side: dedicated `nix` user + trusted-users.
+- **Caddy `vpn` flag on self-registered vhosts** — the one new bit
+  beyond our harvested reverse-proxy pattern: a `vpn = true` flag emits
+  a `@vpn remote_ip <subnet>` matcher so a vhost has public TLS but
+  only answers over the tunnel. Tailnet-equivalent idea for the
+  exposure axis.
+- **WireGuard IPAM in nine lines** — hub peers generated from a pure
+  attrset `pubkey → last-octet` (`peers.nix`); client aspect is an
+  options module choosing full-tunnel wg-quick vs split-tunnel kernel
+  wireguard. Reference material (we're on tailscale).
+- **agenix-rekey** — master identity in-repo, per-host rekeyed secret
+  stores, `age.rekey.hostPubkey` inline in each host entry: encrypt
+  once to a master key, machine-rekeys per host. A distinct workflow
+  option for the standing secrets decision. Related: HM-inside-NixOS
+  gets its own agenix identity (itself an agenix secret owned by the
+  user) — clean root/user secret separation.
+- **DGX Spark llama-cpp config** (`modules/hosts/spark/_nixos/
+  llama-cpp.nix`) — gpt-oss-120b MXFP4 via `hf-repo`, GB10 tuning flags
+  with citations, bound to the wireguard address only, plus a systemd
+  ordering fix for the VPN-bind race. Feeds the dgx-spark/gce-gpu
+  memory item.
+- **ZFS replication via `services.zfs.autoReplication`** — one option
+  block + knownHosts pin; simpler than syncoid. Relevant to the helium
+  backup story only if ZFS ever enters the picture.
+
+## Small nuggets
+
+- `nix.settings`: `http-connections = 128`, `max-substitution-jobs =
+  128` (parallel substitution on fat pipes) — every setting carries a
+  WHY comment, a documentation style worth imitating.
+- Substituters as a data list with explicit `?priority=N` params, keys
+  via `builtins.catAttrs`.
+- **`flakeArgs:` file idiom** — a module file written as `flakeArgs:
+  { flake.modules.nixos.x = ... }` reaches flake-level inputs/config
+  without shadowing module args.
+- `programs.ssh.settings` generated via `mapAttrs`/`genAttrs` from
+  hostname maps, wildcard `*.domain` entry for a whole cluster.
+- rsync.net borg: `BORG_REMOTE_PATH = "borg14"` (required since
+  2025-05) — sharp edge to remember if borg-to-rsync.net becomes the
+  helium offsite target.
+
+---
+
 # Ideas harvested from Misterio77/Foundry (2026-07-22)
 
 Foundry is the successor monorepo to `Misterio77/nix-config`, already covered
