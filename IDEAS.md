@@ -28,6 +28,13 @@
   Secret Manager (or instance metadata) and runs `tailscale up` makes every
   instance self-join the tailnet — the turnkey "deploy many places" property.
   Depends on picking a secrets story (agenix/sops or GCP Secret Manager).
+  Extension (decided 2026-08-25, fleet role split): exit nodes are the same
+  mechanism plus a tag — tagged auth key, `--advertise-exit-node`, and
+  tailnet-policy `autoApprovers.exitNode = ["tag:exit"]` so a fresh node is
+  exit-approved with no console interaction. Exit nodes are stateless cattle
+  (fresh identity per deploy, nothing backed up); control plane stays
+  hosted Tailscale, no headscale. Hygiene cost: stale node records after
+  redeploys — ephemeral keys or occasional cleanup.
 
 - **Spot/preemption graceful drain** (only if running Spot VMs). Spot
   instances get a ~30s notice via the metadata server; a systemd watcher can
