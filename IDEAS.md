@@ -884,6 +884,208 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 ---
 
+# Ideas harvested from the dendritic authors (2026-08-25)
+
+Surveyed the configs of the people who built the pattern this repo runs
+on: `mightyiam/infra` (canonical dendritic config; author of the pattern
+doc), the denful/vic ecosystem (import-tree author — `vix`, `den`,
+`dendrix`, `flake-file`, `flake-aspects`), and `drupol/infra`. Unlike
+every other survey in this file, these share our architecture, so
+structural material is in scope. Ecosystem note: vic's repos moved to the
+`denful` org (old URLs redirect); both vic and drupol have migrated off
+raw dendritic onto vic's `den` framework.
+
+## The convergent finding: flake-file
+
+All three surveys independently landed on **flake-file**
+(`denful/flake-file`) as the top adoptable dependency. It fixes the
+dendritic pattern's one real asymmetry: features are per-file but
+`flake.nix` inputs are centralized. Each module declares the inputs it
+consumes (`flake-file.inputs.<name>.url = ...`) next to the feature;
+`nix run .#write-flake` regenerates a do-not-edit `flake.nix`, and a
+check fails CI when it's stale. Deleting a feature file deletes its
+input. Cost: `flake.nix` becomes a generated artifact. Fits this repo
+with no other changes; the biggest drift-killer on offer.
+
+## Verdict on the frameworks: read, don't migrate
+
+- **den** (`denful/den`) — full aspect framework (aspects as functions
+  of host/user context, `includes`, quirks, forward piping,
+  angle-bracket `__findFile` tricks). Very active, but one-author, deep
+  magic, high churn — vic's own config has been rewritten ~7 times, and
+  drupol's blog documents a real host×user cardinality bug den
+  introduced (fixed in den#468 by deduping `<class>@<identity>`). Our
+  explicit `flake.modules` aggregates avoid that bug class by
+  construction. den is what the raw pattern compiles down to; stay on
+  the substrate.
+- **dendrix** (community module aggregation) — dormant since 2026-01;
+  wrong trust/pinning direction (it pins third-party modules, not us).
+  Don't consume; read the indexed repos directly. Durable takeaway: the
+  `+flag`/`-flag` filename convention + import-tree `.filter` as a way
+  to publish/select feature subsets of a module tree.
+- **flake-aspects** — small dependency-free transpose: write
+  `flake.aspects.<name>.{nixos,darwin,homeManager}` so one feature file
+  holds all classes under one key instead of three `flake.modules.*`
+  attrpaths. The low-risk middle ground if class-first grouping ever
+  chafes.
+- **with-inputs / unflake** (npins, no flake.nix; ~3× eval speedup
+  claimed) — abandons flake UX and our CI conventions; skip unless eval
+  time becomes a real problem.
+- Avoid outright: `.addScoped` / `scopedImport` and `__findFile`
+  angle-bracket tricks — invisible coupling inside module files.
+
+## Structural ideas for this repo
+
+- **Fleet-wide knownHosts from host pubkey options** (mightyiam
+  `modules/ssh.nix`) — declare each host's ssh host pubkey as an option
+  in its host file; a base module iterates all host configs and folds
+  every key into every host's `programs.ssh.knownHosts`.
+  Zero-maintenance mutual trust across the fleet, darwin included as a
+  consumer. Portable directly by iterating
+  `config.flake.nixosConfigurations`. Supersedes the Misterio77
+  committed-pubkeys item (six-config survey) with less ceremony.
+- **Derivation-neutrality snapshot** (mightyiam
+  `modules/repository/all-check-store-paths.nix`) — a package writing a
+  TOML map of every check name → out-path (`unsafeDiscardStringContext`).
+  Diff it before/after a refactor to prove file moves changed no hashes.
+  The exact tool for dendritic reorganizations; cheaper and more local
+  than the CI closure diff. Good `make` target.
+- **Eval guardrails in `nixConfig`** (mightyiam) — `abort-on-warn =
+  true` and `allow-import-from-derivation = false` repo-wide. Two lines;
+  complements the pure-eval tests.
+- **Platform-mismatch pure-eval test** (vix `modules/ci/platforms.nix`)
+  — walk every host's system + home packages and assert each package's
+  `meta.platforms` includes the host's system (with a per-host skip
+  list). Catches "Linux-only package added to an aggregate the Mac
+  consumes" at eval time. Direct fit for `tests/`.
+- **import-tree API beyond the one-liner** (`denful/import-tree`, 269
+  lines, pure builtins) — `.map lib.traceVal` (one-line "which files am
+  I importing" debugger), `.leafs`/`.files` (use it as a plain file
+  lister inside pure-eval tests — e.g. assert every module file has
+  ABOUTME comments, or tree-shape invariants), `.filterNot` (exclude
+  files per-invocation without renaming to `_`), `.initFilter`
+  (redefine the discovery rule), `.addPath` (multiple roots), and tree
+  roots can be flake inputs (import modules straight from another
+  repo). Housekeeping: `.withLib` is a no-op since July 2026 and the
+  repo moved to denful — check our pin.
+- **Hosts as first-class option values** (mightyiam `modules/nixos.nix`)
+  — `nixos.configurations` as a `lazyAttrsOf submodule`;
+  `flake.nixosConfigurations` and per-system checks are derived from
+  it, and any feature module can extend the host schema (facter report
+  path, hostname defaulted from attr name) or iterate all hosts. The
+  flake-parts `systems` list is computed from the hosts' actual arches.
+  Judgment call whether to adopt the layer; the "iterate hosts from a
+  feature module" capability is the part worth having.
+- **Cross-class sharing via hoisted options** (mightyiam) — shared
+  values live in one top-level option (`options.nix.settings` at the
+  flake-parts level), and the nixos and home-manager modules each
+  `inherit` from it. The dendritic answer to nixos/darwin/HM
+  duplication.
+- **Typed aggregates with static implication** (mightyiam
+  `modules/lib.nix` `mkModuleOption`) — aggregates as
+  `deferredModuleWith` options where `pc` statically includes `base`,
+  so hosts import one name; `key` makes modules dedupe across import
+  paths. His pattern doc calls bare `flake.modules` an anti-pattern
+  ("not declaring options"); counterpoint: our explicit aggregates are
+  simpler and the same implication is one `imports` line inside the
+  aggregate. Optional ~30-line upgrade if aggregate layering gets
+  repetitive.
+- **Parameterized feature modules** (drupol `modules/facter/facter.nix`)
+  — a feature as a function taking per-host arguments
+  (`flake.modules.nixos.facter = path: {...}`, consumed as `(facter
+  ./facter.json)`). Kills per-host boilerplate that varies only in data
+  (disk IDs, image params).
+- **Identity metadata as single source** (drupol user aspect `meta` =
+  email/fullname/key/authorizedKeys; mightyiam's `users` submodule
+  generating per-user aggregates) — one attrset feeding git signing,
+  authorized_keys, etc. Relevant to the fleet-axes identity axis; worth
+  it the day identity facts are duplicated across modules.
+- **Single fleet inventory file** (vix `modules/hosts.nix`) — every
+  host/home declared in one attrset table, each host's composition in
+  its own ~20-line file. A one-file fleet table maps directly onto the
+  fleet-axes model, den not required.
+- **Features own their meta-files** (mightyiam
+  `modules/repository/files.nix`, github:mightyiam/files) — `.gitignore`
+  generated from an aggregated `git.ignore` option (the VM module
+  declares `*.qcow2` where VMs are configured); README assembled from
+  per-module text fragments. The aggregated-gitignore option is the
+  most portable piece.
+- **`workarounds.nix` convention** (mightyiam) — every workaround in one
+  file with upstream issue URLs, instead of hidden inside feature
+  modules. Decay stays visible.
+- **`.pkg.nix` convention** (mightyiam) — `import-tree.filterNot
+  (hasSuffix ".pkg.nix")` lets callPackage files sit next to the
+  feature module that overlays them, inside the dendritic tree.
+- **Devshell nix.conf sync** (vix `modules/flake/shell.nix`) — generate
+  a `nix.conf` from one host's evaluated `nix.settings` and export
+  `NIX_USER_CONF_FILES` in the devshell, so shell substituter/key
+  config can't drift from host config.
+- **Test harness host access** (vix `modules/ci/test-base.nix`) —
+  `_module.args.ci` exposes every host's evaluated `config` to test
+  modules by hostname; cleaner than each test re-deriving
+  `nixosConfigurations.<x>.config`.
+- **checkmate** (denful) — a separate checker flake that tests a target
+  flake via `--override-input target .`, keeping dev/test deps out of
+  the config's own inputs. Niche but tidy.
+- **Mostly-non-flake inputs** (mightyiam) — nearly all inputs `flake =
+  false`, importing `${input}/flake-module.nix` by path; tiny lock
+  file, no `follows` plumbing. Works while upstream layouts are stable;
+  mild fragility. A real alternative to follows-chasing.
+
+## Techniques and small items
+
+- **gh-flake-update's pre/post build distinction** (drupol
+  `pkgs/by-name/gh-flake-update/`) — build selected toplevels *before*
+  `nix flake update` so "already broken" and "update broke it" are
+  distinguished in the PR body (collapsible per-host dix diffs +
+  captured failure logs). Refinement for our update-lock workflow. Uses
+  the `nothing-but-nix` action to reclaim runner disk.
+- **deploy-rs nodes derived from nixosConfigurations** (drupol
+  `modules/flake-parts/deploy.nix`) — `deploy.nodes = lib.mapAttrs'`
+  over `config.nixosConfigurations`, arch read from each config; the
+  derive-per-host-tooling-from-config move applies to any deploy/CI
+  matrix generation.
+- **nixos-facter over hardware-configuration.nix** (drupol, mightyiam
+  both) — committed JSON hardware report; `detected.dhcp.enable =
+  false` keeps it from fighting explicit network config. More useful if
+  bare metal ever joins the fleet.
+- **motd provenance** (drupol `modules/base/etc/motd.nix`) — `/etc/motd`
+  embeds NixOS release, nixpkgs rev, and `self.rev or dirtyRev`;
+  login-time provenance for the headless servers, same idea as the
+  `configurationRevision` item.
+- **Agent skills pinned as flake inputs** (drupol
+  `modules/ai-local/skills.nix`) — non-flake inputs (skill collections)
+  symlinked into the agent's skills dir via a readDir helper;
+  third-party Claude skills become lock-pinned and update with `nix
+  flake update`. Directly relevant to the nix-managed claude config in
+  users/mich/claude/.
+- **Formatting enforcement** — pedantix (drupol; treefmt-integrated
+  attr-ordering per glob, e.g. enforce a canonical key order in every
+  `flake.modules.*` file), `json-sort` for committed JSON, and treefmt
+  `settings.on-unmatched = "fatal"` (mightyiam) so every file is
+  formatted or explicitly excluded.
+- **Generated fleet diagrams** (vix `modules/diagrams.nix`) — mermaid
+  diagrams rendered from the config graph into the repo; machinery is
+  den-specific but the idea ports.
+- **`__curPos.file` self-reference** (mightyiam `modules/lib.nix`) — a
+  module referencing its own repo-relative path in generated docs;
+  survives file moves. Niche.
+
+## Follow-up leads
+
+- **GaetanLepage/nix-config** — flagged independently by two surveys:
+  nixvim lead maintainer, ~55 fine-grained dendritic aspects
+  (remote-builders, wireguard, caddy), the closest in scale to a real
+  fleet. Best candidate for a future survey.
+- drupol's dendritic writing (not-a-number.io): the 2025-05 host-first →
+  feature-first rewrite rationale, and the 2026-04 den evaluation — the
+  best published analysis of the pattern's hard edge (host×user
+  cardinality, propagation policy: "hosts include infrastructure
+  features; users include experience features"). Useful vocabulary for
+  aggregate design decisions here regardless of den.
+
+---
+
 # Ideas harvested from Misterio77/Foundry (2026-07-22)
 
 Foundry is the successor monorepo to `Misterio77/nix-config`, already covered
