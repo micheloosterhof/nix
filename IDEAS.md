@@ -797,6 +797,84 @@ alerting, or systemd hardening anywhere (DynamicUser + LoadCredential is
 the only isolation used); ambroisie's hardware/profile modules are thin
 laptop/X11 toggles, and the desktop home modules are personalization.
 
+## The private identity stack (sebastianrasor: vaultwarden + authentik + headscale)
+
+Read in full (fourth pass, on request). ambroisie has no equivalent — he
+uses hosted Bitwarden plus the already-harvested bw-pass client and
+nginx-sso. sebastianrasor's stack is the complete self-hosted version and
+its topology is the most transferable part.
+
+**Topology — one private host, one tiny public host.** carbon (home
+server) runs everything: authentik, vaultwarden, forgejo, immich,
+paperless, radicale, buildbot, harmonia, postgres. Its reverse-proxy
+instance sets `baseDomainName = "ts.<domain>"` and does *not* open the
+firewall — every service gets an nginx vhost on a tailnet-only name.
+nephele (small public VPS) runs headscale plus the `*-public-proxy`
+modules; its reverse-proxy instance sets `baseDomainName = <domain>` with
+`openFirewall = true` and forwards only the chosen few into the tailnet
+(authentik for login, immich share links, the buildbot webhook path).
+Same ~70-line module, instantiated twice with different base domains —
+the public/private split is one option value per host.
+
+- **Real certs for tailnet-only services**: `.ts.<domain>` names are real
+  subdomains, so DNS-01 ACME issues them like any other — no self-signed
+  CA inside the tailnet, and the single-cert `extraDomainNames`
+  collection (already harvested) picks them up automatically.
+- **Service discovery via headscale MagicDNS `extra_records`**
+  (`nixos-modules/headscale.nix`): `base_domain = "ts.<domain>"` plus one
+  A-record per service name pointing at the serving host's tailnet IP.
+  On real Tailscale the equivalent would be split-DNS or public DNS
+  records pointing at the tailnet address.
+- **The OIDC bootstrap circle, solved three ways at once**: headscale
+  clients must reach the IdP *before* they're on the tailnet, but
+  authentik lives behind it. (a) nephele publicly proxies
+  `authentik.<domain>` → `https://authentik.ts.<domain>`; (b) on carbon,
+  `networking.hosts."127.0.0.1" = [ "authentik.<domain>" ]`
+  short-circuits the public name locally; (c)
+  `only_start_if_oidc_is_available = false` + the restart-oneshot
+  (already harvested) handles boot ordering.
+
+**Vaultwarden module** (`nixos-modules/vaultwarden.nix`, 52 lines) —
+directly liftable: `dbBackend = "postgresql"` + `configurePostgres`,
+tailnet-only `domain`, port referenced from
+`config.services.vaultwarden.config.ROCKET_PORT` in the vhost (no
+duplicated numbers), and secrets via a sops template rendered to an
+`environmentFile` (`ADMIN_TOKEN`, `SSO_CLIENT_SECRET`). SSO wiring:
+`SSO_ENABLED` + `SSO_ONLY` against an authentik OIDC app — login through
+the IdP, while the vault encryption password stays client-side by
+Bitwarden's design. SSO is severable: drop the `SSO_*` keys and the
+module stands alone with local accounts.
+
+**authentik** (`nixos-modules/authentik.nix`, via the `authentik-nix`
+flake module) — small: nginx integration on the tailnet name,
+`disable_startup_analytics`, secret key via sops template, and the
+public serverAlias added with `forceSSL`/`useACMEHost` mkForce'd for the
+external-to-tailnet case. Consumers follow one convention:
+`oidc/clientSecrets/<app>` sops secrets; forgejo takes
+`ENABLE_AUTO_REGISTRATION` with `DISABLE_REGISTRATION = true` (accounts
+only via SSO) and `after = [ "authentik.service" ]`.
+
+**headscale vs hosted Tailscale** — the real decision if any of this is
+adopted. Self-hosting the control plane buys SSO-controlled tailnet
+login and no dependence on Tailscale Inc., and costs running a
+public coordination server (nephele) plus the embedded DERP relay
+(`derp.server` with `verify_clients`, UDP 3478 STUN). The current
+hosted-Tailscale setup makes headscale unnecessary; everything else in
+the stack (tailnet-only vhosts, real certs, public-proxy pinholes,
+vaultwarden, authentik) works identically on hosted Tailscale.
+
+**Sizing note**: the whole stack is ~470 lines of module code across
+vaultwarden, authentik + public proxy, headscale, golink, forgejo,
+radicale, immich-public-proxy. A Michel version — vaultwarden
+tailnet-only on helium behind the existing Tailscale, no headscale, IdP
+optional — would be one module of about 50 lines plus the secrets
+story, which remains the actual prerequisite (admin token at minimum).
+
+Smaller bits spotted on the way: `tailscale-golink` (go/short-links
+service that joins the tailnet itself via an auth key from sops);
+radicale with bcrypt `htpasswd` auth from a sops file and persistence
+resolving the storage dir from config with a `hasAttrByPath` fallback.
+
 ---
 
 # Ideas harvested from Misterio77/Foundry (2026-07-22)
