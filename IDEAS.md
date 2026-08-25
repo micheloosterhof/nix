@@ -273,6 +273,142 @@ VM, then C12, boot the VM again.
 
 ---
 
+# Ideas harvested from ambroisie/nix-config and sebastianrasor/nix-config (2026-08-25)
+
+Same ground rules as the surveys below: infrastructure only, diffed against
+the repo before listing. Both repos are the pre-dendritic generation —
+personal option namespaces (`my.*` / `sebastianrasor.<name>.enable`),
+hand-rolled readDir autoloaders, `importApply` input plumbing — so nothing
+structural carries over; techniques only. Neither has a darwin, WSL, or
+aarch64 story. Already covered elsewhere in this file and skipped here:
+nh + scheduled GC (Tier-1 batch item 9), flake templates (`templates/`
+exists), lanzaboote (the repart+UKI pipeline covers our Secure Boot case).
+
+## Tier 1 — low-risk wins
+
+- **`system.configurationRevision = self.rev or self.dirtyRev or "dirty"`**
+  (ambroisie `flake/nixos.nix`) — stamps the git rev into `nixos-version
+  --json` on every host. Extends the GCE image provenance labels to every
+  deployed system; one line in a shared aggregate.
+
+- **git-hooks.nix wired into `nix flake check` and the devShell** (ambroisie
+  `flake/checks.nix` + `flake/dev-shells.nix`) — cachix's git-hooks
+  flake-parts module with `pre-commit.check.enable = true`: deadnix,
+  nixf-diagnose, shellcheck run as a flake check in CI and install locally
+  via `shellHook = config.pre-commit.installationScript`. It's a flake-parts
+  module, so it drops into `modules/` as one file. The flake-parts-native
+  version of the futtetennista pre-commit baseline (fork survey Tier 2);
+  today nothing lints nix/shell here.
+
+- **Graceful-degrade substituter settings** (sebastianrasor `nix.nix`):
+  `connect-timeout = 5` + `fallback = true` so an unreachable binary cache
+  degrades to building instead of hanging. Worth adding for cachix
+  regardless of any self-hosted cache.
+
+- **Backup baseline path list** (ambroisie
+  `modules/nixos/services/backup/default.nix`) — whatever backup tool is
+  chosen, the unconditional baseline is the keeper: `/etc/machine-id`,
+  `/var/lib/nixos` (UID/GID map), and the ssh host key paths derived from
+  `config.services.openssh.hostKeys` rather than hardcoded. His restic
+  module also shows services registering their dump dirs into the backup
+  module's `paths` (postgres-backup example). The servers currently have no
+  declarative backup story.
+
+## Tier 2 — higher value, bigger change or a real decision
+
+- **Idempotent push deploy via prebuilt closure** (sebastianrasor
+  `hercules-ci.nix`) — build `config.system.build.toplevel` locally or in
+  CI, then over ssh: compare `readlink -f /run/current-system` against the
+  toplevel path and exit early, else `nixos-rebuild --no-reexec switch
+  --store-path ${toplevel}`. Zero eval on the target, free redeploys.
+  Slots into the Makefile remote targets for helium/nitrogen; the
+  lightweight cousin of `nixos-rebuild --target-host` (ryan4yin survey) and
+  the pull-deploy items (Foundry, Mic92 pre-warm).
+
+- **nixos-anywhere + disko provisioning** (sebastianrasor
+  `nixos-configurations/sunflower/`) — one-command install over ssh with
+  the partition layout declared as a disko module; `--extra-files` stages
+  keys, `--copy-host-keys` preserves host identity, and his README
+  documents the second-rebuild wart when secrets key off new host keys.
+  Directly aimed at the TransIP provisioning pain (sticky installer boot,
+  rescue-mode traps). Joins the existing disko threads: Mic92's rescue
+  recipes and wimpysworld's `--extra-files` bullet (six-config survey).
+
+- **Secrets decision, two more entries for the standing list**:
+  - **TPM-sealed age keys for sops-nix** (sebastianrasor
+    `nixos-modules/secrets/default.nix`) — `age-plugin-tpm`: each host's
+    age identity is an `AGE-PLUGIN-TPM-…` recipient committed in the repo
+    (only that host's TPM can decrypt), installed by an activation script,
+    with `sshKeyPaths` + `generateKey` fallback for hosts without a listed
+    key. GCE instances have vTPMs; the ssh fallback covers the VMs. Kills
+    key-distribution ceremony entirely.
+  - **agenix with directory-derived naming** (ambroisie
+    `modules/nixos/secrets/default.nix`) — `.age` files live next to the
+    host, a small mapper auto-registers the directory into `age.secrets`
+    (filename = secret name), guarding `owner` on whether the user exists
+    in the config. Dendritic-friendly shape if the agenix route wins.
+
+- **Self-hosted binary cache via harmonia** (both repos independently:
+  ambroisie `modules/nixos/services/nix-cache/`, sebastianrasor
+  `nixos-modules/harmonia.nix`) — serve the builder's store signed with a
+  private key, ~40 lines; sebastianrasor exposes it over the tailnet as
+  `cache.ts.<domain>`. A cachix complement with helium as builder+cache.
+  Caveat: his nginx proxy block wrongly references `services.nix-serve`
+  options — don't copy verbatim. Related cheap trick already listed:
+  Misterio77's `nix.sshServe` (six-config survey).
+
+- **Reverse-proxy self-registration** (both repos independently: ambroisie
+  `modules/nixos/services/nginx/default.nix`, sebastianrasor
+  `nixos-modules/reverse-proxy.nix` + `acme.nix`) — one module exposes a
+  `proxies`/`virtualHosts` option; every service file writes its own vhost
+  in, and the proxy/ACME/SSO wiring stays in one place (sebastianrasor
+  collects `attrNames cfg.proxies` into a single cert's
+  `extraDomainNames`). Services-register-into-a-sibling-module fits the
+  dendritic one-feature-per-file philosophy; only relevant once a server
+  hosts multiple HTTP services. Same family as smh's homelab Caddy bundle
+  (fork survey Tier 3).
+
+- **Cross-arch CI builds via `extendModules`** (sebastianrasor
+  `buildbot-jobs.nix`) — build every nixosConfiguration on one builder
+  arch by overriding only the build platform: `cfg.extendModules { modules
+  = [{ nixpkgs.buildPlatform = system; }] }`, plus a
+  `compatibleCrossBuild` predicate that skips darwin↔linux pairs. Files
+  against the deliberate eval-only CI decision (docs/build-venues.md);
+  this is the clean mechanism if that ever changes.
+
+- **Closure diffs between git revs** (ambroisie `pkgs/diff-flake/`) — two
+  transferable techniques from his ~200-line script: the
+  `.?rev=$(git rev-parse @~)#output` flake-URL trick (diff two revisions
+  with no worktree juggling), and building devShells via their
+  `.inputDerivation` attribute so they diff too. Could become a pre-push
+  "what will this change" Makefile target across all hosts; overlaps the
+  CI closure diff, which covers only pushes.
+
+## Smaller bits
+
+- **Option-typing tricks** (sebastianrasor `nixos-modules/persistence.nix`
+  + home variant): `lib.types.coercedTo str (d: { directory = d; }) attrs`
+  lets one list accept bare strings or attrsets; `lib.optionalAttrs
+  (options.home ? persistence)` makes a bridging HM module no-op when the
+  NixOS side didn't load its counterpart.
+- **nixd fed the repo's own option sets** (sebastianrasor
+  `home-modules/vscodium/`) — point the language server's
+  `options.nixos.expr` / `options.home_manager.expr` at this flake's
+  actual configurations so completion knows the real merged option tree.
+  Editor-agnostic.
+- **`/etc/nix/inputs` symlinks for nixPath** (ambroisie
+  `modules/nixos/system/nix/default.nix`) — `environment.etc` symlinks per
+  flake input with `nix.nixPath = ["/etc/nix/inputs"]`; an alternative
+  mechanism to the direct nixPath pin worth comparing.
+- **Pure-Nix IPv4/CIDR lib** (ambroisie `lib/ip.nix`) — `parseSubnet4`
+  with `nth`/membership/eval-time warnings; only if peer addresses or
+  static network config ever get generated from a subnet definition.
+- **Custom direnv stdlib helpers** (ambroisie `modules/home/direnv/lib/`)
+  — extra `use …` functions (nix_shell, postgres, python) shipped via
+  home-manager next to the existing offline-aware stdlib.
+
+---
+
 # Ideas harvested from Misterio77/Foundry (2026-07-22)
 
 Foundry is the successor monorepo to `Misterio77/nix-config`, already covered
