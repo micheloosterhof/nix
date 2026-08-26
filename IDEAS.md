@@ -554,12 +554,6 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Terminal: ghostty, tmux, less
 
-- **OSC 52 + OSC 777 scripts** (ambroisie `pkgs/osc52/`, `pkgs/osc777/`) —
-  two small bash scripts: clipboard-copy and desktop-notification escape
-  sequences, with the tmux DCS passthrough wrapping and screen chunking
-  done correctly. Clipboard to the Mac / notifications from inside
-  ssh-inside-tmux, no X forwarding; ghostty supports both. Supersedes the
-  oscclip package candidate (traxys survey).
 - **zsh-done long-command notifications** (ambroisie
   `modules/home/zsh/default.nix`, plugin `github:ambroisie/zsh-done`) —
   notify when a long command finishes; `DONE_EXCLUDE` is one anchored
