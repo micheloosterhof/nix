@@ -1908,8 +1908,6 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 - **cleanshot** — Screenshot + screen-recording + annotation + scrolling
   capture. Paid app, no real free equivalent that matches it.
-- **arto** — Markdown reader (`arto-app/tap/arto`). Niche; keep only if it's
-  the actual daily Markdown viewer over Obsidian / a browser preview.
 - **sdformatter** — SD Association's official formatter. Keep only while
   actively flashing SD cards (Raspberry Pi, cameras, etc.).
 - **blu-ray-player-pro** — Blu-ray disc playback. Keep only with an optical
