@@ -521,8 +521,9 @@ style: check against the repo, spec, one commit each) draws from here.
 - **Slim the closure** (drupol) — `environment.defaultPackages =
   lib.mkForce [ ]` (drops nano/perl/rsync/strace);
   `documentation.*.enable = false` for headless (measurable eval win).
-  (`command-not-found` done 2026-08-26: declared off on NixOS; the HM
-  option already defaults off and is untouched by the repo.)
+  (`command-not-found` checked 2026-08-26: already off everywhere — the
+  NixOS default follows `nix.channel.enable`, which the repo disables,
+  and the HM option defaults off. Nothing declared; Michel's call.)
 - **sudo-rs** (mightyiam + drupol independently) — `security.sudo.enable
   = false; security.sudo-rs.enable = true`: memory-safe sudo, drop-in.
 - User in `systemd-journal` group — full `journalctl` without sudo
