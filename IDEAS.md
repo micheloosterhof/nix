@@ -503,9 +503,6 @@ style: check against the repo, spec, one commit each) draws from here.
 - **`boot.initrd.systemd.network.wait-online.enable = false`** (drupol)
   — the initrd half of the wait-online kill; pairs with the main-system
   one above.
-- **timesyncd without double sources** (sebastianrasor) — `servers = [ ];
-  fallbackServers = [ "time.google.com" ]`: NTP from DHCP when offered,
-  fallback otherwise.
 - **inotify watch bump for dev VMs** (dustinlyons):
   `boot.kernel.sysctl."fs.inotify.max_user_watches" = 1048576` — stops
   file-watcher exhaustion with big repos under editors/direnv in the VM.
