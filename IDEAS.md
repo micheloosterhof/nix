@@ -520,9 +520,9 @@ style: check against the repo, spec, one commit each) draws from here.
   (`pkgs.ghostty.terminfo` done 2026-08-26, vm + server.)
 - **Slim the closure** (drupol) — `environment.defaultPackages =
   lib.mkForce [ ]` (drops nano/perl/rsync/strace);
-  `documentation.*.enable = false` for headless (measurable eval win);
-  `programs.command-not-found.enable = false` in NixOS *and* HM (it's
-  channel-backed and permanently broken on flake systems).
+  `documentation.*.enable = false` for headless (measurable eval win).
+  (`command-not-found` done 2026-08-26: declared off on NixOS; the HM
+  option already defaults off and is untouched by the repo.)
 - **sudo-rs** (mightyiam + drupol independently) — `security.sudo.enable
   = false; security.sudo-rs.enable = true`: memory-safe sudo, drop-in.
 - User in `systemd-journal` group — full `journalctl` without sudo
