@@ -129,6 +129,13 @@
       virtualisation.podman = {
         enable = true;
         dockerCompat = true;
+        # Weekly prune of stopped containers, unused networks, and (--all)
+        # images no container references, so container debris can't slowly
+        # eat a small disk.
+        autoPrune = {
+          enable = true;
+          flags = [ "--all" ];
+        };
       };
 
       # gcloud / gsutil on the instance (base components only, no extras).

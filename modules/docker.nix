@@ -3,7 +3,16 @@
 { ... }:
 let
   shared = {
-    virtualisation.docker.enable = true;
+    virtualisation.docker = {
+      enable = true;
+      # Weekly prune of stopped containers, unused networks, and (--all)
+      # images no container references, so container debris can't slowly
+      # eat a small disk.
+      autoPrune = {
+        enable = true;
+        flags = [ "--all" ];
+      };
+    };
   };
 in
 {

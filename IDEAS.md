@@ -486,9 +486,6 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Servers and VMs
 
-- **`virtualisation.docker/podman.autoPrune`** (ambroisie) — weekly
-  `--all` prune. The helium disk crisis (orphan podman volume) as a
-  one-liner of prevention.
 - **fail2ban escalating bans** (ambroisie fail2ban module) —
   `bantime-increment = { enable = true; rndtime = "5m"; }` + DEFAULT jail
   `findtime`/`bantime` — jittered, escalating bans for nitrogen's exposed
