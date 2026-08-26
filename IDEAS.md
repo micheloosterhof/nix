@@ -308,14 +308,6 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Repo, eval, and formatting guardrails
 
-- **`system.configurationRevision = self.rev or self.dirtyRev or "dirty"`**
-  (ambroisie `flake/nixos.nix`) — stamps the git rev into `nixos-version
-  --json` on every host. Extends the GCE image provenance labels to every
-  deployed system; one line in a shared aggregate.
-- **motd provenance** (drupol `modules/base/etc/motd.nix`) — `/etc/motd`
-  embeds NixOS release, nixpkgs rev, and `self.rev or dirtyRev`;
-  login-time provenance for the headless servers, same idea as the
-  `configurationRevision` item.
 - **git-hooks.nix wired into `nix flake check` and the devShell** (ambroisie
   `flake/checks.nix` + `flake/dev-shells.nix`) — cachix's git-hooks
   flake-parts module with `pre-commit.check.enable = true`: deadnix,
