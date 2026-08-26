@@ -31,16 +31,24 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_/-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: fmt
-fmt: ## Format the repo with treefmt (nixfmt, deadnix, shellcheck, shfmt, actionlint)
-	@nix fmt
+fmt: .treefmt.stamp ## Format the repo with treefmt (nixfmt, deadnix, shellcheck, shfmt, actionlint)
+	@./.treefmt/bin/treefmt
 
 .PHONY: fmt/check
-fmt/check: ## Check formatting without writing changes
-	@nix fmt -- --fail-on-change
+fmt/check: .treefmt.stamp ## Check formatting without writing changes
+	@./.treefmt/bin/treefmt --fail-on-change
+
+# Gc-rooted treefmt wrapper: `nix fmt` re-evaluates the flake on every run
+# (minutes when the eval cache is cold), while the built wrapper starts
+# instantly and only needs rebuilding when the formatter config or the
+# pinned inputs change.
+.treefmt.stamp: modules/checks.nix flake.lock
+	nix build ".#formatter.$$(nix config show system)" --out-link .treefmt
+	@touch $@
 
 .PHONY: lint
-lint: ## Run flake checks (formatting + eval-tests)
-	nix flake check --all-systems
+lint: ## Evaluate flake checks without building (CI builds them via check.yml)
+	nix flake check --no-build
 
 .PHONY: hooks
 hooks: ## Install the git pre-commit hooks

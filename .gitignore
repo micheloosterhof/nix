@@ -1,4 +1,6 @@
 .DS_Store
 backup.tar.gz*
 result
+.treefmt
+.treefmt.stamp
 iso/nixos.iso

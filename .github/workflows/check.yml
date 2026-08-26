@@ -1,4 +1,5 @@
-# CI mirror of `make lint`: nix flake check runs the nixfmt, deadnix, and
+# The thorough variant of `make lint` (which skips builds and foreign
+# systems for speed): nix flake check runs the nixfmt, deadnix, and
 # eval-tests checks and evaluates every host configuration, so eval breakage
 # (renamed file, dropped upstream attr, broken mksystem wiring) is caught on
 # every push without building any system. --all-systems also evaluates the
