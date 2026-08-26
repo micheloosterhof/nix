@@ -291,6 +291,16 @@ in
     # auto-load when you cd into them.
     nix-direnv.enable = true;
 
+    # direnv sources direnv/lib/*.sh (where nix-direnv lives) before this
+    # direnvrc, so nix_direnv_manual_reload is defined by the time it runs.
+    stdlib = ''
+      # No default route: serve nix-direnv's cached environment instead of
+      # evaluating the flake, which would block on a fetch.
+      if ! ${if isDarwin then "route -n get default" else "ip route get 1.1.1.1"} >/dev/null 2>&1; then
+        nix_direnv_manual_reload
+      fi
+    '';
+
     config = {
       whitelist = {
         prefix = [

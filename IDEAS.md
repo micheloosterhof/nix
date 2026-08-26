@@ -13,7 +13,7 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 The cheap wins scattered across the surveys, checked against the repo
 and turned into concrete changes. None is implemented today: `zramSwap`,
 `journald`, `initrd.systemd`, `useNetworkd`, `nix-output-monitor`,
-`programs.nh`, `direnvrc`, `intent-to-add`, `warn-dirty`,
+`programs.nh`, `intent-to-add`, `warn-dirty`,
 `builders-use-substitutes` and `FailureAction` appear nowhere in the repo
 outside this file.
 
@@ -81,26 +81,6 @@ Add `pkgs.nix-output-monitor` to the `fullTools` list in
 The `*-rebuild` targets are a separate question — piping them needs
 `--log-format internal-json -v |& nom --json`, and if nh (item 9) lands it
 already prints an nom-style tree, so leave those alone. No test.
-
-**6. Offline-aware direnv** (`users/mich/home-manager.nix`, in the existing
-`programs.direnv` block). On a plane or a dead network, `use flake` tries to
-evaluate and fetch, and hangs. nix-direnv exposes a supported opt-out:
-
-```nix
-stdlib = ''
-  # No default route: serve nix-direnv's cached environment instead of
-  # evaluating the flake, which would block on a fetch.
-  if ! ${if isDarwin then "route -n get default" else "ip route get 1.1.1.1"} >/dev/null 2>&1; then
-    nix_direnv_manual_reload
-  fi
-'';
-```
-
-Verified against the pinned versions: home-manager writes `stdlib` to
-`$XDG_CONFIG_HOME/direnv/direnvrc`; direnv sources `direnv/lib/*.sh` (where
-HM puts nix-direnv) *before* `direnvrc`, so `nix_direnv_manual_reload` is
-defined by then. The route check has to branch per-OS — `ip` does not exist
-on darwin. Test: none worth writing (shell text in a dotfile).
 
 **7. gitconfig defaults** (`users/mich/home-manager.nix`, `programs.git.settings`).
 The surveys list two sets; after subtracting what is already configured and
@@ -280,10 +260,6 @@ registry-pinning corrections).
   `warn-dirty = false`, `builders-use-substitutes = true` (remote builder
   fetches from cache directly instead of copy-via-Mac; free win for the
   existing linux-builder). → batch A1.
-- **Offline-aware direnv** (Mic92 `home/.direnvrc`): checks default route +
-  a 1s ping; when offline sets `_nix_direnv_manual_reload=1` so nix-direnv
-  serves the stale env instead of trying to evaluate/fetch on a plane.
-  Copy verbatim. → batch A6.
 - **VM/host one-liners** (Mic92, machines/, nixosModules/): `pkgs.ghostty.terminfo`
   (terminfo output only) in the VM's systemPackages so ghostty-over-SSH
   works — the lightweight version of the srvos mixins-terminfo idea in the
