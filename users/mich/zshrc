@@ -214,3 +214,15 @@ add-zsh-hook precmd direnv-tab-tint
 # back fzf with ripgrep so file search respects .gitignore, when available
 type rg >/dev/null 2>&1 && export FZF_DEFAULT_COMMAND="rg --files --hidden --glob '!.git'" FZF_CTRL_T_COMMAND="rg --files --hidden --glob '!.git'"
 type fzf >/dev/null 2>&1 && source <(fzf --zsh)
+
+# Notify when a command running longer than DONE_MIN_CMD_DURATION (5s)
+# finishes while this terminal is unfocused (.zsh_done). Delivery rides
+# OSC 777 to the local terminal, so it survives any ssh/tmux depth. Over
+# ssh there is no focus to check, so every long command notifies; the
+# anchored PCRE exclude regex is the noise control there.
+DONE_EXCLUDE='^\s*((fg)|(git (?!push|pull|fetch))|(htop)|(less)|(man)|(ssh)|(tail -f)|(tmux)|(vim))'
+[ -n "$SSH_CLIENT" ] && DONE_ALLOW_NONGRAPHICAL=1
+done_send_notification() {
+  osc777.sh "$2" "$3"
+}
+[ -e ${HOME}/.zsh_done ] && source ${HOME}/.zsh_done

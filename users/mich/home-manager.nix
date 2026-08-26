@@ -188,6 +188,7 @@ in
   home.file.".zshrc".source = ./zshrc;
   home.file.".zlogout".source = ./zlogout;
   home.file.".zsh_kubectl".source = ./zsh_kubectl;
+  home.file.".zsh_done".source = ./zsh_done;
 
   # Global agent instructions, version-controlled and synced across hosts.
   home.file.".claude/CLAUDE.md".source = ./claude/CLAUDE.md;

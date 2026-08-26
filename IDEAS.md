@@ -554,12 +554,14 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Terminal: ghostty, tmux, less
 
-- **zsh-done long-command notifications** (ambroisie
-  `modules/home/zsh/default.nix`, plugin `github:ambroisie/zsh-done`) —
-  notify when a long command finishes; `DONE_EXCLUDE` is one anchored
-  regex built from a list (`git (?!push|pull|fetch)`, `tail -f`, editors);
-  overriding `done_send_notification()` to call `osc777` routes it through
-  ssh to the local terminal.
+- **bash port of zsh-done** (follow-up; zsh-done itself vendored as
+  `.zsh_done` 2026-08-26). The fleet's interactive shell is bash
+  (`users/mich/nixos.nix` sets `shell = pkgs.bash`), so the ssh-into-fleet
+  case needs a bash version: vendor `rcaloras/bash-preexec` (single file,
+  synthesizes preexec/precmd from the DEBUG trap + PROMPT_COMMAND; what
+  iTerm2/Atuin build on, coexists with direnv) plus a ~40-line port of the
+  done logic sharing the `DONE_*` variables and calling `osc777.sh`. The
+  tmux active-pane suppression is plain ps/tmux and ports over too.
 - **tmux one-liners** (ambroisie `modules/home/tmux/default.nix`) —
   `set -s set-clipboard on` + `allow-passthrough on` (required for OSC 52
   upward through tmux); `terminal-features ",<term>:hyperlinks"` / `:RGB`
