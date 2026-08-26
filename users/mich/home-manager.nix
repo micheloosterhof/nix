@@ -282,6 +282,13 @@ in
         User = "mich";
         IdentityFile = "~/.ssh/id_ed25519";
       };
+      # Fleet hosts get agent forwarding so sudo there can authenticate
+      # against the local agent (pam_rssh). Scoped to owned machines and
+      # the tailnet, never "*": a forwarded socket is usable by the remote
+      # host's root for as long as the session lasts.
+      "dev nitrogen helium *.ts.net" = {
+        ForwardAgent = "yes";
+      };
     };
   };
 
