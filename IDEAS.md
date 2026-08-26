@@ -800,11 +800,10 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## macOS / darwin
 
-- **macOS/darwin one-liners** (vic) — `ApplePressAndHoldEnabled = false` +
-  `system.keyboard.remapCapsLockToControl` (no Karabiner); darwin
-  tooling installed from the pinned nix-darwin input; `nix.gc` wrapped
-  in `optionalAttrs config.nix.enable` so modules eval on
-  Determinate-managed Macs.
+- **macOS/darwin one-liners** (vic) — `ApplePressAndHoldEnabled = false`;
+  darwin tooling installed from the pinned nix-darwin input; `nix.gc`
+  wrapped in `optionalAttrs config.nix.enable` so modules eval on
+  Determinate-managed Macs. (`remapCapsLockToControl` done 2026-08-26.)
 - **keyd mac-modifier layout for Linux** (vic `macos-keys.nix`) —
   left-Alt as ⌘ with Cmd-C/V/T/W translated: Mac muscle memory inside
   the Fusion/UTM VMs.

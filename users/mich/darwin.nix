@@ -12,10 +12,10 @@
 
   system.primaryUser = "mich";
 
-  # Caps Lock acts as Escape.
+  # Caps Lock acts as Control.
   system.keyboard = {
     enableKeyMapping = true;
-    remapCapsLockToEscape = true;
+    remapCapsLockToControl = true;
   };
 
   system.defaults = {
