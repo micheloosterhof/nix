@@ -730,10 +730,6 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## zsh and $HOME hygiene
 
-- **zsh keybinding fixes** (ambroisie `extra-mappings.zsh`) — `bindkey
-  '^u' backward-kill-line` (stop ^U nuking the whole line),
-  `edit-command-line` widget on `^x^e`, terminfo-guarded bindings (with
-  fallbacks) for Delete/Shift-Tab/Ctrl-arrows across keymaps.
 - **Completion zstyles worth lifting wholesale**
   (ambroisie `completion-styles.zsh`) — `menu select`, LS_COLORS in
   completion listings, `group-name`, `squeeze-slashes`, colored `kill`
