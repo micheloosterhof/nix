@@ -177,7 +177,9 @@ bindkey -e
 
 type terraform >/dev/null 2>&1 && complete -o nospace -C $(which terraform) terraform
 
-[ -e ${HOME}/.zsh_kubectl ] && source ${HOME}/.zsh_kubectl
+# Generated live so the glue always matches the installed kubectl (a
+# vendored snapshot mishandles newer directives like activeHelp).
+type kubectl >/dev/null 2>&1 && source <(kubectl completion zsh)
 
 # load direnv
 type direnv >/dev/null 2>&1 && eval "$(direnv hook zsh)"
