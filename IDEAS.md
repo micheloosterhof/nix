@@ -211,7 +211,11 @@ hardcoded `dev` → `192.168.85.146` entry in `programs.ssh` depends on today.
 Pair it with `systemd.services.systemd-networkd.stopIfChanged = false` (and
 the same for resolved) so a `nixos-rebuild switch` over ssh does not cut the
 network mid-switch. Interacts with `modules/dns.nix` (resolved + DoT), which
-networkd integrates with cleanly. Verify by booting fusion and utm and
+networkd integrates with cleanly. Also unlocks `modules/ntp.nix` (added
+2026-08-26): timesyncd only receives DHCP-offered NTP servers through
+networkd's `UseNTP`, so under scripted DHCP its empty `servers` list means
+the fallback pool answers everywhere — the "NTP from DHCP when offered"
+half starts working here. Verify by booting fusion and utm and
 confirming the lease survives two rebuilds.
 
 ## Suggested order
