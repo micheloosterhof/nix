@@ -300,6 +300,24 @@ lib.runTests {
     expr = fusion.users.mutableUsers;
     expected = false;
   };
+  # accounts.nix: sudo can authenticate against a forwarded ssh-agent
+  # (pam_rssh). Inert while wheelNeedsPassword = false skips PAM, but staged
+  # so flipping that policy is a one-line change.
+  testVmSudoRssh = {
+    expr = fusion.security.pam.services.sudo.rssh && fusion.security.pam.rssh.enable;
+    expected = true;
+  };
+  testServerSudoRssh = {
+    expr = nitrogen.security.pam.services.sudo.rssh && nitrogen.security.pam.rssh.enable;
+    expected = true;
+  };
+  # The trusted-keys file must stay the root-owned sshd path; a nixpkgs
+  # default change toward $HOME/.ssh/authorized_keys would let a user
+  # process edit its own sudo credential.
+  testSudoRsshKeyFile = {
+    expr = nitrogen.security.pam.rssh.settings.auth_key_file;
+    expected = "/etc/ssh/authorized_keys.d/$ruser";
+  };
   testServerDocker = {
     expr = helium.virtualisation.docker.enable;
     expected = true;

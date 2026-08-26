@@ -639,11 +639,16 @@ style: check against the repo, spec, one commit each) draws from here.
 - **mDNS fleet names** (mightyiam) — avahi with `nssmdns4 = true`, fleet
   knownHosts on `<host>.local` names: no DHCP-address tracking for the
   Fusion/UTM VMs.
-- **sudo via forwarded ssh-agent — pam_rssh** (sebastianrasor
-  `nixos-modules/pam.nix`) — `security.pam.services.sudo.rssh = true` with
-  `auth_key_file` per user: sudo on a remote host authenticates against
-  the forwarded agent, no password on the box at all. Best single nugget
-  of the sweep for a headless fleet.
+- **sudo NOPASSWD → agent-authenticated** (follow-up to pam_rssh, enabled
+  2026-08-26). pam_rssh is wired into the sudo PAM stack on vm + server
+  (accounts.nix), but `wheelNeedsPassword = false` means sudo skips PAM
+  entirely, so it is inert. The real posture change is flipping that to
+  true: sudo then authenticates against the forwarded agent (sufficient),
+  falling back to mich's password. Needs agent forwarding to the fleet
+  hosts first (no `ForwardAgent` in the ssh config today), and a decision
+  on whether the GCE image keeps NOPASSWD (OS Login admins have their own
+  sudoers path). sebastianrasor goes further — `sudo.unixAuth = false`,
+  agent-only; decided against for now (console lockout risk).
 - **gpg `reset-agent` alias** (ambroisie gpg module) —
   `gpg-connect-agent updatestartuptty /bye`: the fix for pinentry landing
   on the wrong tty after a tmux reattach.
