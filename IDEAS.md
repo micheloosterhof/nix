@@ -397,9 +397,11 @@ style: check against the repo, spec, one commit each) draws from here.
   unstable-overlay claude-code if nixpkgs-unstable ever lags.
 - **claude-code hygiene, Mic92's version** (pkgs/claude-code,
   home/.claude/): wrapper exports `SHELL=${pkgs.bashInteractive}/bin/bash`
-  (claude picks up broken login shells otherwise); a Notification hook
-  rings the terminal bell when permission is needed — pairs with tmux
-  bell monitoring.
+  (claude picks up broken login shells otherwise). The settings.json
+  `env.SHELL = /bin/bash` covers this today, but only on darwin and only
+  in the hand-synced live file; the wrapper version is nix-managed and
+  works on NixOS hosts too. (His terminal-bell Notification hook is done:
+  `preferredNotifChannel = terminal_bell`.)
 - **Auto-load overlays** — `jseppanen` / `lucamaraschi` `lib/overlays.nix`. Reads
   `overlays/` and auto-imports every `*.nix` / subdir-with-`default.nix`, so new
   overlays never need hand-listing. Confirmed not present upstream.
@@ -457,9 +459,6 @@ style: check against the repo, spec, one commit each) draws from here.
   .nix`) — committed shim reading `flake.lock` for the pinned narHash,
   giving `nix-build`/`nix repl` entry with zero unpinned fetches, and
   generated so it can't drift.
-- **nix-index-database comma** (mightyiam + vic independently) —
-  `programs.nix-index-database.comma.enable = true`: prebuilt weekly
-  index, `,cmd` runs any uninstalled command, no local indexing.
 - **Search the pinned inputs** (vic) — `nix search --inputs-from <repo>
   nixpkgs <term>` searches the locked nixpkgs, not the registry one;
   companion `rg-nixpkgs` greps a stable symlink to the input source.
