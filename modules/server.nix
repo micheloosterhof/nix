@@ -18,6 +18,8 @@
         git
         vim
         curl
+        # Terminfo output only, so TERM=xterm-ghostty resolves over ssh.
+        ghostty.terminfo
         gnumake
         killall
       ];

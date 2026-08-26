@@ -38,6 +38,8 @@
       # brew-only formulae belong in users/mich/darwin.nix homebrew.
       environment.systemPackages = with pkgs; [
         gcc
+        # Terminfo output only, so TERM=xterm-ghostty resolves over ssh.
+        ghostty.terminfo
         gnumake
         killall
         vim

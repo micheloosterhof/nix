@@ -511,11 +511,9 @@ style: check against the repo, spec, one commit each) draws from here.
   VM OOM-freezing the guest is exactly the failure mode this catches.
   Self-contained addition to `modules/vm.nix`.
 - **VM/host one-liners** (Mic92, machines/, nixosModules/):
-  `pkgs.ghostty.terminfo` (terminfo output only) in the VM's
-  systemPackages so ghostty-over-SSH works — the lightweight version of
-  the srvos mixins-terminfo idea in the ryan4yin survey;
   `services.getty.autologinUser` on the throwaway VM;
   `services.dbus.implementation = "broker"`.
+  (`pkgs.ghostty.terminfo` done 2026-08-26, vm + server.)
 - **Slim the closure** (drupol) — `environment.defaultPackages =
   lib.mkForce [ ]` (drops nano/perl/rsync/strace);
   `documentation.*.enable = false` for headless (measurable eval win);
