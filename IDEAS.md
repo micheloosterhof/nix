@@ -1883,8 +1883,6 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 ### macOS quality-of-life — high value, brew-only
 
-- **betterdisplay** — Forces HiDPI on non-Retina external monitors, custom
-  resolutions, dummy displays. Essential with any external display.
 - **bluesnooze** — Stops Mac from reconnecting to BT audio on sleep/wake.
   Solves a real AirPods annoyance.
 
