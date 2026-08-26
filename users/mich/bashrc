@@ -94,8 +94,9 @@ alias mv='mv -i'
 type gtimeout >/dev/null 2>&1 && alias timeout=gtimeout
 
 # OSC escapes to the local terminal: clipboard copy and desktop
-# notifications that work from any ssh/tmux depth.
-alias pbcopy='osc52.sh'
+# notifications that work from any ssh/tmux depth. macOS has a native
+# pbcopy; only stand in for it where none exists.
+type pbcopy >/dev/null 2>&1 || alias pbcopy='osc52.sh'
 alias alert='osc777.sh'
 
 # ls
