@@ -14,7 +14,6 @@ let
   fusion = self.nixosConfigurations.vm-aarch64-fusion.config;
   utm = self.nixosConfigurations.vm-aarch64-utm.config;
   apple = self.nixosConfigurations.vm-aarch64-apple.config;
-  wsl = self.nixosConfigurations.wsl.config;
   helium = self.nixosConfigurations.helium.config;
   nitrogen = self.nixosConfigurations.nitrogen.config;
   mac = self.darwinConfigurations.neon.config;
@@ -80,12 +79,6 @@ lib.runTests {
   testHostnameGuardVm = {
     expr = lib.hasInfix "expected=dev" (fusion.system.preSwitchChecks.hostnameGuard or "");
     expected = true;
-  };
-  # wsl is an unnamed instance (WSL owns the hostname), so it must not be
-  # guarded.
-  testHostnameGuardSkipsUnnamedHost = {
-    expr = wsl.system.preSwitchChecks ? hostnameGuard;
-    expected = false;
   };
   # The GCE image is a template: instances get their hostname from metadata,
   # so the image must not pin one.
@@ -222,24 +215,10 @@ lib.runTests {
     expected = true;
   };
 
-  # The NixOS-WSL module is composed in and configured by the wsl host file.
-  testWslEnabled = {
-    expr = wsl.wsl.enable;
-    expected = true;
-  };
-  testWslDefaultUser = {
-    expr = wsl.wsl.defaultUser;
-    expected = "mich";
-  };
-
   # The profile axis: each host file sets my.profile.
   testFusionProfile = {
     expr = fusion.my.profile;
     expected = "workstation";
-  };
-  testWslProfile = {
-    expr = wsl.my.profile;
-    expected = "server";
   };
 
   # Settings shared by the vm and server aggregates (ssh.nix, docker.nix,

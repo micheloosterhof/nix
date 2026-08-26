@@ -3,7 +3,7 @@ ABOUTME: Humans should also read this — start here, then the docs/ it points a
 
 # AGENTS.md
 
-Personal NixOS / nix-darwin / WSL configurations for user `mich`. Originally
+Personal NixOS and nix-darwin configurations for user `mich`. Originally
 forked from `mitchellh/nixos-config`, since restructured around the dendritic
 pattern (flake-parts + import-tree).
 
@@ -41,7 +41,7 @@ File paths under `modules/` carry no mechanical meaning; paths containing
 templates).
 
 Current systems: `vm-aarch64-fusion`, `vm-aarch64-utm`, `vm-aarch64-apple`
-(workstation VMs), `wsl` (server), `helium`, `nitrogen` (headless servers),
+(workstation VMs), `helium`, `nitrogen` (headless servers),
 `neon` (nix-darwin), plus the `container-server` rootfs-tarball
 package and the `installer-iso` package.
 

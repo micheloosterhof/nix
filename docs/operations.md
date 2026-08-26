@@ -62,11 +62,6 @@ updates inside the VM go through `make rebuild`.
 
 `make vm/image` builds the VMDK alone and prints its `/nix/store` path.
 
-### WSL
-
-`nix build ".#nixosConfigurations.wsl.config.system.build.installer"` builds
-the installer tarball; import it with `wsl --import`.
-
 ### Cloud images (GCE)
 
 `make gce/image` builds a headless server GCE image (a GCS-uploadable
@@ -163,7 +158,7 @@ evaluates every host config, catching eval breakage before deploy.
 CI (`.github/workflows/check.yml`) runs the same `nix flake check` on every
 push. `.github/workflows/build.yml` builds every NixOS host closure on a
 natively matching runner (`ubuntu-24.04-arm` for the aarch64 VMs,
-`ubuntu-latest` for wsl/helium/nitrogen), so a green check means each
+`ubuntu-latest` for helium/nitrogen), so a green check means each
 machine provably builds. neon is deliberately not in the build matrix: its
 full config is evaluated by the eval-tests check, and the reasoning for
 eval-only coverage is in [build-venues.md](build-venues.md).

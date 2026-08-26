@@ -1,11 +1,11 @@
 # nixos-config
 
-Personal NixOS / nix-darwin / WSL configurations, all driven by one flake.
+Personal NixOS and nix-darwin configurations, all driven by one flake.
 Forked from [mitchellh/nixos-config](https://github.com/mitchellh/nixos-config).
 The active user is `mich`.
 
 Hosts: `neon` (nix-darwin), `vm-aarch64-{fusion,utm,apple}`
-(NixOS workstation VMs), `wsl`, and the headless servers `helium` and
+(NixOS workstation VMs), and the headless servers `helium` and
 `nitrogen`. The flake also builds a `container-server` rootfs tarball and a
 provisioning `installer-iso`.
 
@@ -44,14 +44,6 @@ open ~/Virtual\ Machines.localized/dev.vmwarevm
 
 First boot autologins to `mich` in i3, accepts your ed25519 key for SSH,
 sets hostname `dev`. For ongoing updates from inside the VM: `make rebuild`.
-
-### WSL
-
-```
-nix build ".#nixosConfigurations.wsl.config.system.build.installer"
-```
-
-Produces a tarball you import with `wsl --import`.
 
 ### Servers
 

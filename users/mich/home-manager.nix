@@ -160,7 +160,7 @@ in
   ])
   # GUI apps from nix on Linux graphical workstations and on macOS (preferred
   # over a manually-installed Zed.app so the version is declarative and current);
-  # not on headless hosts (WSL, apple-vm) which have nothing to draw to.
+  # not on headless hosts (servers, apple-vm) which have nothing to draw to.
   ++ (lib.optionals (gui || isDarwin) [
     pkgs.sioyek
     pkgs.zed-editor

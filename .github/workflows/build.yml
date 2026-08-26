@@ -44,9 +44,6 @@ jobs:
           - host: vm-aarch64-apple
             runner: ubuntu-24.04-arm
             attr: nixosConfigurations.vm-aarch64-apple.config.system.build.toplevel
-          - host: wsl
-            runner: ubuntu-latest
-            attr: nixosConfigurations.wsl.config.system.build.toplevel
           - host: helium
             runner: ubuntu-latest
             attr: nixosConfigurations.helium.config.system.build.toplevel

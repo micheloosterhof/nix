@@ -44,12 +44,11 @@ has to keep it passing.
 | output | system | can be built on |
 |---|---|---|
 | `nixosConfigurations.vm-aarch64-*` toplevel | aarch64-linux | Mac's linux-builder, `ubuntu-24.04-arm` |
-| `nixosConfigurations.{wsl,helium,nitrogen}` toplevel | x86_64-linux | `ubuntu-latest`, an x86_64 Linux box over ssh |
+| `nixosConfigurations.{helium,nitrogen}` toplevel | x86_64-linux | `ubuntu-latest`, an x86_64 Linux box over ssh |
 | `darwinConfigurations.neon.system` | aarch64-darwin **+ aarch64-linux** | Mac, or `macos-latest` **plus** a Linux venue |
 | `vmwareImage` | aarch64-linux | Mac's linux-builder, `ubuntu-24.04-arm` |
 | `gce-image` (repart, no KVM) | either | any runner of that arch |
 | `installer-iso`, `container-server` | either | any runner of that arch |
-| WSL `installer` tarball | x86_64-linux | `ubuntu-latest`, an x86_64 Linux box over ssh |
 
 Two consequences:
 
@@ -57,7 +56,7 @@ Two consequences:
   contains the customized linux-builder image. Any venue *building* neon
   needs that aarch64-linux path handed to it. This is structural.
 - **x86_64-linux is the awkward arch locally.** The Mac's linux-builder is
-  aarch64, so the wsl/helium/nitrogen closures and the x86_64 GCE image have
+  aarch64, so the helium/nitrogen closures and the x86_64 GCE image have
   no convenient local venue. CI is their natural home, with an x86_64 Linux
   box over ssh as the local escape hatch.
 
@@ -186,7 +185,6 @@ CI plumbing.
 | NixOS via nixos-infect | **no target exists** | — | — |
 | VMware dev VM | local (`make vm/launch`) | build the VMDK | unchanged |
 | GCE image | local (`make gce/image` + `gce/upload`) | build + upload via OIDC | unchanged |
-| WSL tarball | awkward locally (x86_64) | natural CI artifact | x86_64 box over ssh |
 | container / ISO | either | natural CI artifact | unchanged |
 
 **Fresh Mac.** The one genuine bootstrap dependency: the customized

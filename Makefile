@@ -90,7 +90,7 @@ endif
 SYSTEM_PROFILE := /nix/var/nix/profiles/system
 
 .PHONY: upp
-upp: ## Bump a single flake input: make upp INPUT=nixos-wsl
+upp: ## Bump a single flake input: make upp INPUT=home-manager
 	@test -n "$(INPUT)" || { echo "Usage: make upp INPUT=<flake-input>"; exit 1; }
 	nix flake update $(INPUT)
 

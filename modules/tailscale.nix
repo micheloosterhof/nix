@@ -1,4 +1,4 @@
-# ABOUTME: Tailscale on every NixOS host (VMs, servers, WSL). macOS gets it from
+# ABOUTME: Tailscale on every NixOS host (VMs and servers). macOS gets it from
 # ABOUTME: the tailscale-app homebrew cask instead. Authenticate with `tailscale up`.
 { ... }:
 {

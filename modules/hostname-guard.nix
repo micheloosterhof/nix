@@ -4,8 +4,8 @@
 {
   # Singleton configs — owned by exactly one machine — set my.hostnameGuard
   # beside their networking.hostName. Template images (gce, container-server,
-  # installer-iso) and unnamed instances (wsl: WSL owns the hostname) never
-  # enable it: they activate on machines they have never heard of, by design.
+  # installer-iso) never enable it: they activate on machines they have
+  # never heard of, by design.
   # Wrong-host deploys happen when NIXADDR and NIXNAME (or a defaulted
   # NIXNAME on a local `make rebuild`) disagree.
   flake.modules.nixos.base =

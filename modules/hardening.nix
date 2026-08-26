@@ -2,7 +2,7 @@
 # ABOUTME: module blacklist). Adapted from bivsk/nix-iv, which credits NotAShelf/nyx.
 #
 # Contributes to the vm and server aggregates, so it lands on fusion/utm/apple-vm
-# and helium/nitrogen but not on WSL or darwin. The upstream's module.sig_enforce /
+# and helium/nitrogen but not on darwin. The upstream's module.sig_enforce /
 # lockdown=confidentiality / lsm= / rootflags settings are deliberately omitted —
 # see the notes below.
 { ... }:

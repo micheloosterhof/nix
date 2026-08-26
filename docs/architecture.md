@@ -52,9 +52,9 @@ Every system is a composition along orthogonal axes:
 
 - **Substrate (what it runs on)** — `flake.modules.nixos.{fusion,utm,apple-vm}`:
   hypervisor drivers, guest tools, host-integration glue. Chosen by each host
-  file at composition time (imports cannot depend on `config`). GCE, WSL and
+  file at composition time (imports cannot depend on `config`). GCE and
   the container runtime are substrates too, currently encoded ad hoc
-  (`gce.nix`, inline in `wsl.nix`, `container.nix`).
+  (`gce.nix`, `container.nix`).
 - **Role (what it's for)** — NixOS options declared in `modules/profile.nix`:
 
 ```nix
@@ -89,7 +89,6 @@ The fleet along these axes:
 | vm-aarch64-fusion | arm | Fusion | workstation | lan (NATted) | singleton ("dev") | config + vmdk image |
 | vm-aarch64-utm | arm | UTM | workstation | lan (NATted) | singleton ("dev-utm") | config |
 | vm-aarch64-apple | arm | Apple Virt | workstation | lan (NATted) | singleton ("dev-apple") | config |
-| wsl | intel | WSL | server | lan (NATted) | unnamed instance | config + installer tarball |
 | helium | intel | metal/home | server | lan (home) | singleton | config |
 | nitrogen | intel | TransIP KVM | server | internet | singleton | config |
 | neon | arm | Mac metal | workstation | lan | singleton | config (darwin) |
@@ -123,7 +122,7 @@ are unrelated to the fleet.)
    file each under `modules/hosts/`. Currently: vm-aarch64-fusion (VMware,
    workstation), vm-aarch64-utm (UTM, workstation), vm-aarch64-apple (Apple
    Virtualization.framework "container machine", workstation but headless by
-   platform), wsl (server), helium and nitrogen (servers), neon (darwin).
+   platform), helium and nitrogen (servers), neon (darwin).
 
 2. **Container images** — `packages.<linux-system>.container-server`
    (`modules/container.nix`): NixOS as a root-filesystem tarball on top of
