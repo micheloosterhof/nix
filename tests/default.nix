@@ -376,6 +376,26 @@ lib.runTests {
     expr = nitrogen.networking.firewall.allowedTCPPorts;
     expected = [ 3333 ];
   };
+  # modules/provenance.nix: the git rev that built a system is queryable on
+  # the system itself (`nixos-version --json` / `darwin-version --json`),
+  # on darwin and NixOS alike.
+  testConfigurationRevisionNixos = {
+    expr = nitrogen.system.configurationRevision == (self.rev or self.dirtyRev or "dirty");
+    expected = true;
+  };
+  testConfigurationRevisionDarwin = {
+    expr = mac.system.configurationRevision == (self.rev or self.dirtyRev or "dirty");
+    expected = true;
+  };
+  # Login on a server names the exact inputs that built it. The nixpkgs
+  # rev must be the locked input's, not a hardcoded string.
+  testServerMotdProvenance = {
+    expr =
+      lib.hasInfix inputs.nixpkgs.rev nitrogen.users.motd
+      && lib.hasInfix nitrogen.system.nixos.release nitrogen.users.motd;
+    expected = true;
+  };
+
   # Servers resolve over Quad9 DoT via systemd-resolved (modules/dns.nix), so
   # name resolution works without a DHCP-provided or tailscale-forwarded
   # resolver (the datacenter DHCP registered nothing on one boot, and the
