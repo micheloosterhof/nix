@@ -260,36 +260,50 @@ in
     # rewrite. After the first activation, move ~/.ssh/config.before-hm
     # to ~/.ssh/config.local and your existing hosts will be picked up.
     includes = [ "~/.ssh/config.local" ];
-    settings = {
-      # Applies to every host: multiplex connections over one master socket
-      # (faster subsequent sessions, kept alive in the background), and force a
-      # terminal type the remote is guaranteed to know.
-      "*" = {
-        ControlMaster = "auto";
-        ControlPath = "~/.ssh/%r@%h:%p";
-        ControlPersist = "yes";
-        SetEnv = {
-          TERM = "xterm-256color";
+    settings =
+      let
+        # Hosts running this repo's config (plus anything on the tailnet).
+        fleet = [
+          "dev"
+          "nitrogen"
+          "helium"
+          "*.ts.net"
+        ];
+      in
+      {
+        # Applies to every host: multiplex connections over one master socket
+        # (faster subsequent sessions, kept alive in the background).
+        "*" = {
+          ControlMaster = "auto";
+          ControlPath = "~/.ssh/%r@%h:%p";
+          ControlPersist = "yes";
+        }
+        # Sign with Secure Enclave-backed (sk-type) keys via the system
+        # provider. Only consulted for sk keys; other key types unaffected.
+        // lib.optionalAttrs isDarwin {
+          SecurityKeyProvider = "/usr/lib/ssh-keychain.dylib";
         };
-      }
-      # Sign with Secure Enclave-backed (sk-type) keys via the system
-      # provider. Only consulted for sk keys; other key types unaffected.
-      // lib.optionalAttrs isDarwin {
-        SecurityKeyProvider = "/usr/lib/ssh-keychain.dylib";
+        dev = {
+          HostName = "192.168.85.146";
+          User = "mich";
+          IdentityFile = "~/.ssh/id_ed25519";
+        };
+        # Fleet hosts get agent forwarding so sudo there can authenticate
+        # against the local agent (pam_rssh). Scoped to owned machines and
+        # the tailnet, never "*": a forwarded socket is usable by the remote
+        # host's root for as long as the session lasts.
+        ${lib.concatStringsSep " " fleet} = {
+          ForwardAgent = "yes";
+        };
+        # Machines outside the fleet lack ghostty's terminfo, so force a
+        # terminal type they are guaranteed to know; the fleet installs
+        # ghostty.terminfo and sees the real TERM.
+        ${"* " + lib.concatMapStringsSep " " (h: "!" + h) fleet} = {
+          SetEnv = {
+            TERM = "xterm-256color";
+          };
+        };
       };
-      dev = {
-        HostName = "192.168.85.146";
-        User = "mich";
-        IdentityFile = "~/.ssh/id_ed25519";
-      };
-      # Fleet hosts get agent forwarding so sudo there can authenticate
-      # against the local agent (pam_rssh). Scoped to owned machines and
-      # the tailnet, never "*": a forwarded socket is usable by the remote
-      # host's root for as long as the session lasts.
-      "dev nitrogen helium *.ts.net" = {
-        ForwardAgent = "yes";
-      };
-    };
   };
 
   programs.direnv = {
