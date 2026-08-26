@@ -1840,10 +1840,6 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 ## CLI, cross-platform (traxys survey)
 
-- **oscclip** — OSC52 clipboard: copy from a shell inside the VM or over
-  SSH straight to the Mac clipboard, terminal-mediated, no X forwarding.
-  Ghostty supports OSC52 — a neat fit for the SSH-into-VM workflow.
-  (Superseded by ambroisie's osc52/osc777 scripts, section 2.)
 - **nix-tree** — interactive closure browser; answers "why is this VM image
   huge" better than `nix path-info -rsSh`.
 - **nix-du** — GC-root disk usage graph; pairs with `make gc`.
