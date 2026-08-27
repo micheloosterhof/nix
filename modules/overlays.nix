@@ -25,6 +25,10 @@ let
           # Stable's zed is far behind (1.3.x) and old builds fail to launch
           # against current GPU/library stacks.
           inherit (unstable) zed-editor;
+
+          # Stable's golink release embeds a 2023-era tsnet client that the
+          # tailscale console flags as outdated.
+          inherit (unstable) golink;
         }
       )
     ];

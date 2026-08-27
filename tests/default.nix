@@ -502,6 +502,12 @@ lib.runTests {
     expr = self.darwinConfigurations.neon.pkgs.gh.version;
     expected = (unstable "aarch64-darwin").gh.version;
   };
+  # golink from unstable: stable's 1.0.0 embeds a 2023-era tsnet, which the
+  # tailscale console flags as an outdated client.
+  testOverlayGolink = {
+    expr = self.nixosConfigurations.nitrogen.pkgs.golink.version;
+    expected = (unstable "x86_64-linux").golink.version;
+  };
 
   # The OCI-image output family: the container package evaluates to a
   # buildable derivation.
