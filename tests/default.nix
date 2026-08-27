@@ -422,6 +422,15 @@ lib.runTests {
     expr = nitrogen.sops.secrets ? canary;
     expected = true;
   };
+  # The repo is public: a plaintext file under secrets/ is published the
+  # moment it's pushed, and git history makes that permanent. Every file
+  # there must carry sops's ENC[...] ciphertext markers.
+  testSecretsAreEncrypted = {
+    expr = lib.filterAttrs (
+      name: _: !lib.hasInfix "ENC[" (builtins.readFile (../secrets + "/${name}"))
+    ) (builtins.readDir ../secrets);
+    expected = { };
+  };
 
   # golink is a feature aggregate nitrogen composes. The service joins the
   # tailnet as its own node (tsnet), so there is no vhost or firewall hole;
