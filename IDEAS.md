@@ -862,13 +862,20 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ---
 
-# 3. Blocked on the secrets decision
+# 3. Secrets: decided and implemented (2026-08-27) — queue now open
 
-The standing "no secrets management" decision is the biggest single
-unblock in this file: backup credentials, tailscale auto-join,
-vaultwarden, and several quality-of-life items all queue behind it.
+**Decided 2026-08-27: sops-nix.** Host SSH keys are the age identities
+(Misterio77 pattern), Michel's Secure Enclave key (age-plugin-se, Touch
+ID) is the editing identity, and every file under secrets/ is guarded by
+an eval test that fails CI on plaintext. Canary secret verified
+end-to-end on nitrogen. Still open from the implementation: YubiKey
+recovery recipients (age-plugin-yubikey, PIV) — generate on-key when the
+YubiKeys are at hand, add to .sops.yaml, `sops updatekeys`. Until then
+recovery is via any surviving host's root shell.
 
-## The options (pick one, or a combination)
+The "Unblocked once decided" list below is now an actionable queue.
+
+## The options considered (superseded by the decision above)
 
 - Misterio77: `sops.age.sshKeyPaths = map (k: k.path) (filter (k: k.type
   == "ed25519") config.services.openssh.hostKeys)` — the host's existing
@@ -936,7 +943,7 @@ vaultwarden, and several quality-of-life items all queue behind it.
   recipients listed alongside per-host keys, so secrets stay editable
   if all hosts die; worth copying into any future sops setup.
 
-## Unblocked once decided
+## Unblocked queue (decision made — pick and implement)
 
 - **Tailscale auto-join on first boot** (highest-leverage for fleet deploy;
   needs the secrets decision first). `base` enables tailscaled but it's inert
