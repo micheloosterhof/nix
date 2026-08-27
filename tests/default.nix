@@ -407,6 +407,18 @@ lib.runTests {
     expected = [ "--advertise-exit-node" ];
   };
 
+  # golink is a feature aggregate nitrogen composes. The service joins the
+  # tailnet as its own node (tsnet), so there is no vhost or firewall hole;
+  # the wiring that can silently break is the aggregate and its state dir.
+  testGolinkAggregate = {
+    expr = self.modules.nixos ? golink;
+    expected = true;
+  };
+  testNitrogenGolinkStateDir = {
+    expr = nitrogen.systemd.services.golink.serviceConfig.StateDirectory;
+    expected = "golink";
+  };
+
   # helium sits behind NAT on the trusted home LAN: the onboard NIC is a
   # trusted interface (openHAB multicast discovery), no bogon filtering, and
   # the home-automation services are wired.

@@ -8,6 +8,7 @@
       config.flake.modules.nixos.base
       config.flake.modules.nixos.server
       config.flake.modules.nixos.bogons
+      config.flake.modules.nixos.golink
 
       inputs.disko.nixosModules.disko
 
