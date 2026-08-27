@@ -1409,18 +1409,6 @@ service that joins the tailnet itself via an auth key from sops);
 radicale with bcrypt `htpasswd` auth from a sops file and persistence
 resolving the storage dir from config with a `hasAttrByPath` fallback.
 
-### golink — tailnet go/ short links (2026-08-27)
-
-- **golink** (github.com/tailscale/golink) — private `go/name` short-link
-  service; joins the tailnet as its own node, so no vhost, no cert, no
-  reverse proxy. Run on nitrogen for now. `pkgs.golink` is in the current
-  nixpkgs pin (1.0.0) but there is no upstream NixOS module — needs a
-  small systemd unit: DynamicUser, StateDirectory for the sqlite db, and
-  `TS_AUTHKEY` from an environment file (only needed for first login;
-  state carries the node identity afterward). The auth key is another
-  customer for the secrets decision (section 3). Reference module:
-  sebastianrasor's `tailscale-golink` (smaller-bits note above).
-
 ### Supporting service patterns
 
 - **Reverse-proxy self-registration** (both repos independently: ambroisie
