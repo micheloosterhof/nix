@@ -48,6 +48,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Secrets: sops-encrypted files in secrets/, decrypted at activation with
+    # each host's SSH host key as its age identity (see modules/secrets.nix).
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # One formatter/linter front-end: `nix fmt` and the formatting check
     # (nixfmt, deadnix, shellcheck, shfmt, actionlint) share one config.
     treefmt-nix = {

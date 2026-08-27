@@ -1,0 +1,19 @@
+# ABOUTME: sops recipient rules: which age keys can read which secrets/ file.
+# ABOUTME: Hosts use their SSH host key (ssh-to-age); michel-se is the Mac's
+# Secure Enclave editing identity (age-plugin-se, Touch ID-gated). Add YubiKey
+# recovery recipients here, then re-encrypt with `sops updatekeys`.
+keys:
+  - &michel-se age1se1q2jch5jugdc3ukfl6atuhyz608u9zlxcn7d6v2ad2vel0yg0unj768vhyw0
+  - &host-nitrogen age1p6v66mmncjtddtfxfff3ckwx07tlxg4e6e432wgfc8wkupxz84nq07c0ep
+  - &host-neon age12q23653w5vahhk39gy57sscdakz7kp94rvg9fa7h58wl3cn5pafqepddck
+creation_rules:
+  - path_regex: secrets/nitrogen\.yaml$
+    key_groups:
+      - age:
+          - *michel-se
+          - *host-nitrogen
+  - path_regex: secrets/neon\.yaml$
+    key_groups:
+      - age:
+          - *michel-se
+          - *host-neon

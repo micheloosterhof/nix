@@ -28,6 +28,12 @@
         # KVM guest agent: lets the provider do graceful shutdown / report the IP.
         services.qemuGuest.enable = true;
 
+        # This host's sops secrets, decrypted with its SSH host key at
+        # activation. The canary proves the decrypt path end to end; real
+        # secrets join this file as services need them.
+        sops.defaultSopsFile = ../../secrets/nitrogen.yaml;
+        sops.secrets.canary = { };
+
         # Non-standard ssh port (openFirewall follows it, so 22 closes).
         # 3333, not 4444: the home ISP silently drops outbound TCP to 4444
         # (verified by on-box tcpdump), which is why oxygen used 3333 too.

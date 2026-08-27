@@ -407,6 +407,22 @@ lib.runTests {
     expected = [ "--advertise-exit-node" ];
   };
 
+  # sops-nix rides in base on every platform; hosts decrypt with their own
+  # SSH host key (no per-host age key material to provision). The paths are
+  # cross-module wiring (openssh config → sops), so guard them.
+  testNitrogenSopsUsesHostKey = {
+    expr = nitrogen.sops.age.sshKeyPaths;
+    expected = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  };
+  testDarwinSopsUsesHostKey = {
+    expr = mac.sops.age.sshKeyPaths;
+    expected = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  };
+  testNitrogenCanarySecret = {
+    expr = nitrogen.sops.secrets ? canary;
+    expected = true;
+  };
+
   # golink is a feature aggregate nitrogen composes. The service joins the
   # tailnet as its own node (tsnet), so there is no vhost or firewall hole;
   # the wiring that can silently break is the aggregate and its state dir.
