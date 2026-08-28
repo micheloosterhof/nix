@@ -312,6 +312,14 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Repo, eval, and formatting guardrails
 
+- **remote/copy deploys always show "configuration dirty"** (spotted
+  2026-08-28 via nitrogen's motd): rsync to /nix-config excludes .git, so
+  the on-box flake has no self.rev and provenance.nix falls back to
+  "dirty" — the motd can never name the deployed commit. Options: rsync
+  .git too (cost: repo size, and dirtiness is then real), have remote/copy
+  drop the current `git rev-parse HEAD` into a file the motd reads, or
+  deploy by pushing to a bare repo / building from the github URL when
+  reachable. Small, but it defeats the point of login-time provenance.
 - **git-hooks.nix wired into `nix flake check` and the devShell** (ambroisie
   `flake/checks.nix` + `flake/dev-shells.nix`) — cachix's git-hooks
   flake-parts module with `pre-commit.check.enable = true`: deadnix,
