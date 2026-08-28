@@ -1,0 +1,11 @@
+# ABOUTME: age recovery identity for YubiKey Security Key #2 (fido2-hmac).
+# ABOUTME: Not key material: salt + credential id only (spec format v2).
+#
+# Decryption needs this file AND the physical key AND its FIDO2 PIN:
+#   SOPS_AGE_KEY_FILE=keys/age-recovery-yubikey-2.identity sops -d <file>
+# (age-plugin-fido2-hmac must be on PATH; a FIDO2 reset of the key
+# invalidates this credential permanently.)
+#
+# created: 2026-08-28T10:59:47+08:00
+# public key: age150uqx2ft6njslr4wv2mfsq70wjfm99egs798jdl2mfeewwdrsftsh7e2yr
+AGE-PLUGIN-FIDO2-HMAC-1QQPQRL9RKZ5LCLA9TUXED496CZGDKERH70KXCX7XP58F4FF0YCYK08CPTTTEG3WNL78HPHG3MQFK65EF0C4ZUMCH83SK0AEY8G6CQHPZL50YSA5FG6YHT7WXQP39PG4TQ0P6WTZCHXWCTHX267LTRRYCYNZ7FZCC722J3

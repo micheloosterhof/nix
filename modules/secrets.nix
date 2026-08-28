@@ -41,11 +41,15 @@ in
       hostKeyIdentity
       packages
       # Editing happens on the Mac: the Secure Enclave plugin must be on PATH
-      # for sops to encrypt to / decrypt with the age1se recipient.
+      # for sops to encrypt to / decrypt with the age1se recipient, and the
+      # fido2 plugin for recovery decryption with the YubiKeys (keys/*.identity).
       (
         { pkgs, ... }:
         {
-          environment.systemPackages = [ pkgs.age-plugin-se ];
+          environment.systemPackages = [
+            pkgs.age-plugin-se
+            pkgs.age-plugin-fido2-hmac
+          ];
         }
       )
     ];
