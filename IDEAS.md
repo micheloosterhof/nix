@@ -947,12 +947,12 @@ The "Unblocked once decided" list below is now an actionable queue.
 
 ## Unblocked queue (decision made — pick and implement)
 
-- **Tailscale auto-join on first boot** (highest-leverage for fleet deploy;
-  needs the secrets decision first). `base` enables tailscaled but it's inert
-  until `tailscale up`. A small boot service that pulls an auth key from GCP
-  Secret Manager (or instance metadata) and runs `tailscale up` makes every
-  instance self-join the tailnet — the turnkey "deploy many places" property.
-  Depends on picking a secrets story (agenix/sops or GCP Secret Manager).
+- **Tailscale auto-join on first boot** (highest-leverage for fleet
+  deploy). `base` enables tailscaled but it's inert until `tailscale up`.
+  A small boot service that reads a tagged auth key from a sops secret
+  (GCE instances could alternatively use GCP Secret Manager / instance
+  metadata) and runs `tailscale up` makes every instance self-join the
+  tailnet — the turnkey "deploy many places" property.
   Extension (decided 2026-08-25, fleet role split): exit nodes are the same
   mechanism plus a tag — tagged auth key, `--advertise-exit-node`, and
   tailnet-policy `autoApprovers.exitNode = ["tag:exit"]` so a fresh node is
