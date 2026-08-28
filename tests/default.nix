@@ -422,6 +422,23 @@ lib.runTests {
     expr = nitrogen.sops.secrets ? canary;
     expected = true;
   };
+  # nitrogen's login password comes from sops (decrypted before user
+  # creation), overriding the shared hashedPassword — the file option wins
+  # under mutableUsers = false. The VMs keep the committed hash until their
+  # host keys are enrolled as recipients.
+  testNitrogenPasswordFromSops = {
+    expr =
+      nitrogen.users.users.mich.hashedPasswordFile == nitrogen.sops.secrets."mich/hashedPassword".path;
+    expected = true;
+  };
+  testNitrogenPasswordSecretForUsers = {
+    expr = nitrogen.sops.secrets."mich/hashedPassword".neededForUsers;
+    expected = true;
+  };
+  testFusionPasswordStaysCommitted = {
+    expr = fusion.users.users.mich.hashedPasswordFile;
+    expected = null;
+  };
   # The repo is public: a plaintext file under secrets/ is published the
   # moment it's pushed, and git history makes that permanent. Every file
   # there must carry sops's ENC[...] ciphertext markers.

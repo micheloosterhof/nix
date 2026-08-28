@@ -14,38 +14,48 @@
 
       ../../users/mich/nixos.nix
 
-      {
-        my.profile = "server";
-        networking.hostName = "nitrogen";
-        my.hostnameGuard = true;
-        # Kernel-style names make the single virtio NIC always eth0; predictable
-        # naming would call it ens3 and tie the config to the VM's PCI layout —
-        # a mismatch after a provider-side change would leave the box with no
-        # network.
-        networking.usePredictableInterfaceNames = false;
-        networking.interfaces.eth0.useDHCP = true;
+      (
+        { config, ... }:
+        {
+          my.profile = "server";
+          networking.hostName = "nitrogen";
+          my.hostnameGuard = true;
+          # Kernel-style names make the single virtio NIC always eth0; predictable
+          # naming would call it ens3 and tie the config to the VM's PCI layout —
+          # a mismatch after a provider-side change would leave the box with no
+          # network.
+          networking.usePredictableInterfaceNames = false;
+          networking.interfaces.eth0.useDHCP = true;
 
-        # KVM guest agent: lets the provider do graceful shutdown / report the IP.
-        services.qemuGuest.enable = true;
+          # KVM guest agent: lets the provider do graceful shutdown / report the IP.
+          services.qemuGuest.enable = true;
 
-        # This host's sops secrets, decrypted with its SSH host key at
-        # activation. The canary proves the decrypt path end to end; real
-        # secrets join this file as services need them.
-        sops.defaultSopsFile = ../../secrets/nitrogen.yaml;
-        sops.secrets.canary = { };
+          # This host's sops secrets, decrypted with its SSH host key at
+          # activation. The canary proves the decrypt path end to end; real
+          # secrets join this file as services need them.
+          sops.defaultSopsFile = ../../secrets/nitrogen.yaml;
+          sops.secrets.canary = { };
 
-        # Non-standard ssh port (openFirewall follows it, so 22 closes).
-        # 3333, not 4444: the home ISP silently drops outbound TCP to 4444
-        # (verified by on-box tcpdump), which is why oxygen used 3333 too.
-        services.openssh.ports = [ 3333 ];
+          # Console-login password from sops rather than the committed hash in
+          # users/mich/nixos.nix (hashedPasswordFile wins under
+          # mutableUsers = false). neededForUsers decrypts it before user
+          # creation runs.
+          sops.secrets."mich/hashedPassword".neededForUsers = true;
+          users.users.mich.hashedPasswordFile = config.sops.secrets."mich/hashedPassword".path;
 
-        # Tailscale exit node: tailnet clients can route their internet
-        # traffic out through this box. "server" turns on the kernel
-        # forwarding sysctls; the set-flag is re-applied by tailscaled-set
-        # on every boot. Needs one-time approval in the admin console.
-        services.tailscale.useRoutingFeatures = "server";
-        services.tailscale.extraSetFlags = [ "--advertise-exit-node" ];
-      }
+          # Non-standard ssh port (openFirewall follows it, so 22 closes).
+          # 3333, not 4444: the home ISP silently drops outbound TCP to 4444
+          # (verified by on-box tcpdump), which is why oxygen used 3333 too.
+          services.openssh.ports = [ 3333 ];
+
+          # Tailscale exit node: tailnet clients can route their internet
+          # traffic out through this box. "server" turns on the kernel
+          # forwarding sysctls; the set-flag is re-applied by tailscaled-set
+          # on every boot. Needs one-time approval in the admin console.
+          services.tailscale.useRoutingFeatures = "server";
+          services.tailscale.extraSetFlags = [ "--advertise-exit-node" ];
+        }
+      )
 
       # Hardware (QEMU/KVM guest, virtio, BIOS). The qemu-guest profile pulls in
       # the virtio initrd modules.

@@ -22,6 +22,9 @@ in
       "wheel"
     ];
     shell = pkgs.bash;
+    # Console/GUI login password for hosts whose SSH host keys are not yet
+    # sops recipients (the workstation VMs). sops-enrolled hosts override
+    # this with hashedPasswordFile, which wins under mutableUsers = false.
     hashedPassword = "$y$j9T$XYLI8K6dN63ULBXuoqX0H/$WZpoiBJtwzPV6sEXsCJ3wvReXyIpc2G1d8A4rtvJlh7";
     openssh.authorizedKeys.keyFiles = authorizedKeyFiles;
   };
