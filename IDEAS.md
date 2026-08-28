@@ -868,10 +868,12 @@ style: check against the repo, spec, one commit each) draws from here.
 (Misterio77 pattern), Michel's Secure Enclave key (age-plugin-se, Touch
 ID) is the editing identity, and every file under secrets/ is guarded by
 an eval test that fails CI on plaintext. Canary secret verified
-end-to-end on nitrogen. Still open from the implementation: YubiKey
-recovery recipients (age-plugin-yubikey, PIV) — generate on-key when the
-YubiKeys are at hand, add to .sops.yaml, `sops updatekeys`. Until then
-recovery is via any surviving host's root shell.
+end-to-end on nitrogen. Recovery recipients (2026-08-28): both YubiKeys
+(Security Key C NFC, so age-plugin-fido2-hmac, not the PIV plugin) are
+enrolled with PIN-gated separate identities — the identity files in
+keys/ are salt+credential-id only, safe in the public repo; recovery =
+repo + physical key + FIDO2 PIN, both keys decrypt-tested. A FIDO2 reset
+of either YubiKey permanently invalidates its credential.
 
 The "Unblocked once decided" list below is now an actionable queue.
 
