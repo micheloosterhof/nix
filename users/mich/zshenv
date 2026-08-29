@@ -24,7 +24,6 @@ PATHS=( ${HOME}/.bin
         /etc/profiles/per-user/${USER}/bin
 	/usr/local/sbin
 	/usr/local/bin
-	/opt/homebrew/bin
 	/sbin
 	/bin
 	/usr/sbin
@@ -77,8 +76,18 @@ darwin)
   export BASH_SILENCE_DEPRECATION_WARNING=1
   # Secure Enclave provider for sk-type SSH keys (ssh-add/ssh-keygen)
   export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
-  # Homebrew shellenv: HOMEBREW_PREFIX, MANPATH/INFOPATH, /opt/homebrew/{bin,sbin} on PATH.
-  [ -x /opt/homebrew/bin/brew ] && eval "$(/opt/homebrew/bin/brew shellenv)"
+  # Homebrew environment, equivalent to `brew shellenv` for /opt/homebrew
+  # but inlined: the eval forks brew (bash) plus path_helper on every
+  # shell for output that is static for a fixed prefix.
+  if [ -x /opt/homebrew/bin/brew ]; then
+    export HOMEBREW_PREFIX=/opt/homebrew
+    export HOMEBREW_CELLAR=/opt/homebrew/Cellar
+    export HOMEBREW_REPOSITORY=/opt/homebrew
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:${PATH}"
+    export FPATH="/opt/homebrew/share/zsh/site-functions:${FPATH}"
+    [ -z "${MANPATH-}" ] || export MANPATH=":${MANPATH#:}"
+    export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}"
+  fi
 ;;
 esac
 
