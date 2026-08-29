@@ -25,12 +25,6 @@
       # unpredictable enpXsY names, so we don't hardcode one.
       networking.useDHCP = true;
 
-      # Default is [ perl rsync strace ]. We don't need perl; keep the rest.
-      environment.defaultPackages = with pkgs; [
-        rsync
-        strace
-      ];
-
       # List packages installed in system profile. To search, run:
       # $ nix search wget
       # Linux system-level packages only. Cross-platform CLI tools belong in

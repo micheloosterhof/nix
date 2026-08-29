@@ -15,7 +15,9 @@
       networking.useDHCP = lib.mkDefault false;
 
       environment.systemPackages = with pkgs; [
-        git
+        # Minimal: full git drags a perl environment (send-email, gitweb)
+        # onto every server; mich's own git comes from home.packages.
+        gitMinimal
         vim
         curl
         # Terminfo output only, so TERM=xterm-ghostty resolves over ssh.
