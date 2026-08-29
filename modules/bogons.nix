@@ -31,12 +31,12 @@
           chain input {
             type filter hook input priority filter - 10; policy accept;
             # The fullbogons lists contain loopback (127/8), CGNAT (100.64/10 —
-            # the tailnet), and RFC1918 (the docker bridge) space. Those are
+            # the tailnet), and RFC1918 (the podman bridge) space. Those are
             # bogons only when they arrive from the internet, so accept
             # local/overlay interfaces before the source-address drop.
             iif "lo" accept
             iifname "tailscale0" accept
-            iifname "docker0" accept
+            iifname "podman0" accept
             ip saddr @bogons4 drop
             ip6 saddr @bogons6 drop
           }

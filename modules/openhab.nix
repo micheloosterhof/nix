@@ -4,12 +4,12 @@
 {
   flake.modules.nixos.openhab = {
     # openHAB isn't packaged in nixpkgs, so run the official image via the
-    # docker backend (enabled in server.nix). Host networking lets it
+    # podman backend (enabled in podman.nix). Host networking lets it
     # auto-discover devices (UPnP/mDNS/KNX); its data lives under
     # /var/lib/openhab (restore the old install's conf/userdata there).
     # TODO: pin to a specific version/digest instead of latest.
     virtualisation.oci-containers = {
-      backend = "docker";
+      backend = "podman";
       containers.openhab = {
         image = "openhab/openhab:latest";
         autoStart = true;

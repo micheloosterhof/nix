@@ -1,6 +1,6 @@
 # ABOUTME: Base for bare-metal and cloud NixOS servers (non-VM): UTC time,
 # ABOUTME: per-host networking. Composed by the helium/nitrogen hosts.
-# ssh/docker/locale/kernel/accounts are shared feature files; tailscale is
+# ssh/podman/locale/kernel/accounts are shared feature files; tailscale is
 # on the shared base.
 { ... }:
 {
@@ -11,7 +11,7 @@
       time.timeZone = "UTC";
 
       # DHCP is configured per host on the real interface, so don't let the
-      # global switch bring up docker0/tailscale0 etc.
+      # global switch bring up podman0/tailscale0 etc.
       networking.useDHCP = lib.mkDefault false;
 
       environment.systemPackages = with pkgs; [

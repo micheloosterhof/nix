@@ -1,6 +1,6 @@
 # ABOUTME: Headless base for Linux VM guests: boot loader, hostname, DHCP +
 # ABOUTME: DoT DNS, open firewall. Carries no graphical stack; gui.nix adds
-# that when on. ssh/docker/locale/kernel/accounts are shared feature files.
+# that when on. ssh/podman/locale/kernel/accounts are shared feature files.
 { ... }:
 {
   flake.modules.nixos.vm =

@@ -22,7 +22,7 @@
 
       # Dynamic addressing: DHCP on the single GCE NIC (predictable names are
       # off in the GCE profile, so it's eth0). Per-interface, not the global
-      # switch, so it doesn't also try to DHCP docker0/tailscale0 (server.nix
+      # switch, so it doesn't also try to DHCP podman0/tailscale0 (server.nix
       # keeps the global switch off for that reason).
       networking.interfaces.eth0.useDHCP = true;
 
@@ -122,21 +122,8 @@
       # Appliance image: only the lean CLI set in the user environment.
       my.tools.full = false;
 
-      # Generic cloud image: containers via podman, not docker. The server
-      # aggregate enables docker (for the container-running pet servers);
-      # a generic cloud base shouldn't carry the daemon.
-      virtualisation.docker.enable = lib.mkForce false;
-      virtualisation.podman = {
-        enable = true;
-        dockerCompat = true;
-        # Weekly prune of stopped containers, unused networks, and (--all)
-        # images no container references, so container debris can't slowly
-        # eat a small disk.
-        autoPrune = {
-          enable = true;
-          flags = [ "--all" ];
-        };
-      };
+      # Containers via podman with docker compat, from the server aggregate
+      # (podman.nix).
 
       # gcloud / gsutil on the instance (base components only, no extras).
       environment.systemPackages = [ pkgs.google-cloud-sdk ];

@@ -18,7 +18,7 @@ let
         # Hide kernel pointers even from processes with CAP_SYSLOG.
         "kernel.kptr_restrict" = 2;
 
-        # eBPF hardening that keeps the JIT (so tailscale/docker/tor stay fast,
+        # eBPF hardening that keeps the JIT (so tailscale/podman/tor stay fast,
         # unlike disabling it): block the unprivileged bpf() syscall entirely —
         # everything we run uses BPF as root — and constant-blind JITed programs
         # against spray attacks.
@@ -128,7 +128,7 @@ let
         "tipc" # Transparent Inter-Process Communication
         "x25" # X.25
 
-        # Rare or insufficiently audited filesystems. overlay (docker) and the
+        # Rare or insufficiently audited filesystems. overlay (podman) and the
         # fuse-based vmhgfs (/host) are intentionally NOT here.
         "adfs"
         "affs"

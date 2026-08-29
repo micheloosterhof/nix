@@ -18,7 +18,7 @@ in
     isNormalUser = true;
     home = "/home/mich";
     extraGroups = [
-      "docker"
+      "podman"
       "wheel"
     ];
     shell = pkgs.bash;
