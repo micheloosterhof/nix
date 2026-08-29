@@ -149,7 +149,6 @@
       "spotify"
       "steam"
       "tailscale-app"
-      "visual-studio-code"
       "vlc"
       "whatcable"
       "whatsapp"
