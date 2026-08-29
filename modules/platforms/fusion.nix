@@ -110,6 +110,13 @@
         zramSwap.enable = true;
         boot.kernel.sysctl."vm.swappiness" = 180;
 
+        # Fusion's virtual NVMe drops completion interrupts under load; each
+        # lost one freezes an I/O for the 30s timeout until the kernel polls
+        # ("nvme ... timeout, completion polled" + io-pressure spikes). Poll
+        # queues bypass interrupt delivery; the kernel clamps the count to
+        # what the vCPUs/device support.
+        boot.kernelParams = [ "nvme.poll_queues=32" ];
+
         # Size of the generated VMDK base image in MiB. Default "auto" sizes
         # to the closure + small headroom, which fills up quickly during
         # iterative nixos-rebuilds. 80 GiB gives comfortable margin.
