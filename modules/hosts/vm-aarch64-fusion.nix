@@ -95,6 +95,11 @@ in
         boot.extraModulePackages = [ ];
 
         swapDevices = [ ];
+
+        # No atime writes: nix builds read huge numbers of store files, and
+        # even relatime's once-a-day updates are journal traffic the vmdk
+        # (and its stall-prone virtual NVMe) doesn't need. Nothing reads atime.
+        fileSystems."/".options = [ "noatime" ];
       }
 
       # A disko-provisioned disk carries the labels above, so the running
