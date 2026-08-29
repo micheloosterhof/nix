@@ -89,7 +89,6 @@ in
     pkgs.claude-code
     pkgs.codex
     pkgs.coreutils-prefixed
-    pkgs.cosign
     pkgs.croc
     pkgs.duckdb
     # Headless: no ffplay/SDL or the audio/GUI library tail — these hosts
