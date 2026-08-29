@@ -137,8 +137,8 @@ setopt INTERACTIVE_COMMENTS
 #############################################################################
 LS_OPT=''
 if [ -t 1 ]; then
-  COLORS=$(tput colors 2>/dev/null)
-  [ $? -ne 0 ] && COLORS=0
+  zmodload zsh/terminfo 2>/dev/null
+  COLORS=${terminfo[colors]:-0}
   [ $COLORS -gt 0 ] && [ x$OS = "xfreebsd" ] && LS_OPT='-G'
   [ $COLORS -gt 0 ] && [ x$OS = "xdarwin" ] && LS_OPT='-G'
   [ $COLORS -gt 0 ] && [ x$OS = "xlinux" ] && LS_OPT='--color=auto'
@@ -170,7 +170,7 @@ autoload -Uz compinit && compinit
 
 bindkey -e
 
-type terraform >/dev/null 2>&1 && complete -o nospace -C $(which terraform) terraform
+type terraform >/dev/null 2>&1 && complete -o nospace -C $commands[terraform] terraform
 
 # Generated live so the glue always matches the installed kubectl (a
 # vendored snapshot mishandles newer directives like activeHelp).
