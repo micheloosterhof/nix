@@ -498,6 +498,16 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Servers and VMs
 
+- **Perlless activation** (parked 2026-08-29 during the closure-size
+  sweep): the last ~30 MiB of perl on a server is NixOS's own activation
+  scripts (setup-etc.pl, update-users-groups.pl). Removing them means
+  systemd-initrd + `system.etc.overlay` + `services.userborn` (+
+  `system.forbiddenDependenciesRegexes = ["perl"]` as the guard). Boot-path
+  change on a remote BIOS-only VPS and it touches the sops
+  `neededForUsers` password path — needs a VM boot test (Batch-C pattern)
+  before nitrogen. Also parked: toolkit git → gitMinimal (would drop the
+  ~10 MiB perl module env everywhere, but loses send-email/gitk/svn).
+
 - **fail2ban escalating bans** (ambroisie fail2ban module) —
   `bantime-increment = { enable = true; rndtime = "5m"; }` + DEFAULT jail
   `findtime`/`bantime` — jittered, escalating bans for nitrogen's exposed
