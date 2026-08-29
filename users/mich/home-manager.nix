@@ -96,7 +96,6 @@ in
     pkgs.git-ls # ls that shows each file's git status and last commit
     pkgs.gitleaks
     pkgs.hashcat
-    pkgs.jadx
     pkgs.kubo
     pkgs.miller
     pkgs.nix-du # store disk-usage graph (pipe to graphviz `dot`)
