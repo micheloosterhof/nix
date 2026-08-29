@@ -443,6 +443,9 @@ in
 
   programs.go = {
     enable = true;
+    # Env config only: the toolchain itself comes from the go template flake.
+    # Any go binary still reads GOPATH/GOPRIVATE from ~/.config/go/env.
+    package = null;
     env.GOPATH = "${config.home.homeDirectory}/code/go";
     env.GOPRIVATE = [
       "github.com/micheloosterhof"
