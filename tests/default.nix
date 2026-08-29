@@ -119,7 +119,6 @@ lib.runTests {
   # images (GCE) carry only the lean CLI set.
   testApplianceHomeLacksFullToolkit = {
     expr = lib.filter (n: lib.elem n (homePackageNames gce)) [
-      "hashcat"
       "claude-code"
       "ffmpeg"
     ];
@@ -135,13 +134,13 @@ lib.runTests {
   };
   testPetServerKeepsFullToolkit = {
     expr = lib.all (n: lib.elem n (homePackageNames helium)) [
-      "hashcat"
+      "ffmpeg"
       "ast-grep"
     ];
     expected = true;
   };
   testWorkstationHomeKeepsFullToolkit = {
-    expr = lib.any (p: (p.pname or p.name) == "hashcat") fusion.home-manager.users.mich.home.packages;
+    expr = lib.any (p: (p.pname or p.name) == "ffmpeg") fusion.home-manager.users.mich.home.packages;
     expected = true;
   };
 

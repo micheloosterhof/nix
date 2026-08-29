@@ -95,7 +95,6 @@ in
     pkgs.ffmpeg
     pkgs.git-ls # ls that shows each file's git status and last commit
     pkgs.gitleaks
-    pkgs.hashcat
     pkgs.kubo
     pkgs.miller
     pkgs.nix-du # store disk-usage graph (pipe to graphviz `dot`)
@@ -111,7 +110,6 @@ in
     pkgs.rtorrent
     pkgs.tor
     pkgs.torsocks
-    pkgs.unicorn
     pkgs.visidata
     pkgs.yubikey-manager
 
