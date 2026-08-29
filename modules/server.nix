@@ -10,6 +10,12 @@
       # Servers keep UTC; localize in the log/app layer.
       time.timeZone = "UTC";
 
+      # Weekly fstrim returns freed blocks to the provider's thin-provisioned
+      # storage (nitrogen's virtio disk advertises discard). Not on the
+      # Fusion/UTM VMs: their virtual NVMe offers no discard, so trim there
+      # is a no-op — vmdk reclaim goes through vmware-toolbox-cmd disk shrink.
+      services.fstrim.enable = true;
+
       # DHCP is configured per host on the real interface, so don't let the
       # global switch bring up podman0/tailscale0 etc.
       networking.useDHCP = lib.mkDefault false;

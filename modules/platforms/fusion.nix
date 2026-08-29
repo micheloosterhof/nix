@@ -103,6 +103,13 @@
         # This works through our custom module imported above
         virtualisation.vmware.guest.enable = true;
 
+        # Swap without touching the virtual disk: the host file has no swap
+        # partition, so memory pressure during parallel builds means OOM kills.
+        # zram compresses in RAM (no vmdk growth, no host I/O); with zram,
+        # swapping is cheap, so swappiness goes high instead of low.
+        zramSwap.enable = true;
+        boot.kernel.sysctl."vm.swappiness" = 180;
+
         # Size of the generated VMDK base image in MiB. Default "auto" sizes
         # to the closure + small headroom, which fills up quickly during
         # iterative nixos-rebuilds. 80 GiB gives comfortable margin.
