@@ -11,8 +11,6 @@
 # delete unwanted files
 rm -f ~/.shosts ~/.rhosts ~/.bash_history ~/.lesshst
 
-[ "$TERM" = "xterm" ] && title $LOGNAME@$HOSTNAME
-
 [ -z "$TMUX" ] && type tmux >/dev/null 2>&1 && tmux list-sessions 2>/dev/null | sed 's/^/# tmux /'
 
 #last -3 $LOGNAME # | egrep "^$LOGNAME" | sed 's/^/# /' || echo

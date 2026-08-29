@@ -20,7 +20,6 @@ brname () {
   fi
 }
 
-title () { echo -n "]0;$*"; }
 set -b
 
 # PROMPT
