@@ -183,7 +183,7 @@ type direnv >/dev/null 2>&1 && eval "$(direnv hook zsh)"
 # shows at a glance which environment it has loaded; OSC 111 restores the
 # default when the env unloads. Registered after the direnv hook so it
 # sees the state direnv just set for this prompt.
-typeset -g _tab_tint_applied='' _tab_tint_dir='' _tab_tint_color=''
+typeset -g _tab_tint_applied=''
 direnv-tab-tint () {
   local dir=${DIRENV_DIR-}
   dir=${dir#-}
@@ -194,17 +194,17 @@ direnv-tab-tint () {
     fi
     return
   fi
-  # Dark tints keep the default foreground readable. The cksum pipeline
-  # costs three process forks, so the color is memoized per directory.
-  if [[ $dir != $_tab_tint_dir ]]; then
-    local -a palette=(
-      '#16233a' '#1b3021' '#3a2016' '#2e1b3a'
-      '#163a36' '#3a3316' '#3a1626' '#20263a'
-    )
-    _tab_tint_dir=$dir
-    _tab_tint_color=$palette[$(( $(print -rn -- $dir | cksum | cut -d' ' -f1) % $#palette + 1 ))]
-  fi
-  local color=$_tab_tint_color
+  # Dark tints keep the default foreground readable.
+  local -a palette=(
+    '#16233a' '#1b3021' '#3a2016' '#2e1b3a'
+    '#163a36' '#3a3316' '#3a1626' '#20263a'
+  )
+  # djb2 over the path, in shell arithmetic so the per-prompt hook
+  # forks no processes.
+  local -i h=5381
+  local c
+  for c in ${(s::)dir}; do (( h = (h * 33 + #c) & 0x7fffffff )); done
+  local color=${palette[h % $#palette + 1]}
   if [[ $color != $_tab_tint_applied ]]; then
     print -n "\e]11;$color\e\\"
     _tab_tint_applied=$color
