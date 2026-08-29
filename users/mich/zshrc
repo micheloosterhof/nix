@@ -155,7 +155,7 @@ fi
 # OS specific aliases
 #############################################################################
 case $OS in
-debian)
+linux)
 ;;
 darwin)
   alias top="/usr/bin/top -o cpu"

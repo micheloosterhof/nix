@@ -119,7 +119,7 @@ if [ -t 1 ]; then
 fi
 
 case $OS in
-debian)
+linux)
 ;;
 darwin)
   alias top="/usr/bin/top -o cpu"
