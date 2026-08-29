@@ -120,7 +120,7 @@ lib.runTests {
   testApplianceHomeLacksFullToolkit = {
     expr = lib.filter (n: lib.elem n (homePackageNames gce)) [
       "claude-code"
-      "ffmpeg"
+      "ffmpeg-headless"
     ];
     expected = [ ];
   };
@@ -134,13 +134,13 @@ lib.runTests {
   };
   testPetServerKeepsFullToolkit = {
     expr = lib.all (n: lib.elem n (homePackageNames helium)) [
-      "ffmpeg"
+      "ffmpeg-headless"
       "ast-grep"
     ];
     expected = true;
   };
   testWorkstationHomeKeepsFullToolkit = {
-    expr = lib.any (p: (p.pname or p.name) == "ffmpeg") fusion.home-manager.users.mich.home.packages;
+    expr = lib.any (p: (p.pname or p.name) == "ffmpeg-headless") fusion.home-manager.users.mich.home.packages;
     expected = true;
   };
 

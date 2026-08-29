@@ -92,7 +92,9 @@ in
     pkgs.cosign
     pkgs.croc
     pkgs.duckdb
-    pkgs.ffmpeg
+    # Headless: no ffplay/SDL or the audio/GUI library tail — these hosts
+    # transcode, they don't play.
+    pkgs.ffmpeg-headless
     pkgs.git-ls # ls that shows each file's git status and last commit
     pkgs.gitleaks
     pkgs.kubo
