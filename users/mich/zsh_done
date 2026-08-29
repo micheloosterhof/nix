@@ -123,8 +123,11 @@ __done_is_ignored_command() {
     if [ -z "$DONE_EXCLUDE" ]; then
         return 1
     fi
+    # PCRE via zsh's own matcher: DONE_EXCLUDE uses lookahead, which only
+    # GNU grep -P understands — macOS BSD grep chokes on it.
     # shellcheck disable=2154
-    printf '%s' "$__done_last_command" | grep -q -P "$DONE_EXCLUDE"
+    setopt local_options re_match_pcre
+    [[ "$__done_last_command" =~ $DONE_EXCLUDE ]]
 }
 
 __done_notify() {
