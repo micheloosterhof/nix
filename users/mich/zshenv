@@ -9,9 +9,9 @@
 umask 077
 ulimit -c 0
 
-# This is an attempt to create order from chaos in platform naming
-# All info is derived from uname and lowercased.  OS patchlevel is truncated.
-export OS=`uname -s | sed -e 's/  */-/g;y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/'`
+# This is an attempt to create order from chaos in platform naming:
+# $OSTYPE with the version stripped, e.g. darwin, linux, freebsd.
+export OS=${OSTYPE%%[-0-9.]*}
 #export OSVERSION=`uname -r`; OSVERSION=`expr "$OSVERSION" : '[^0-9]*\([0-9]*\.[0-9]*\)'`
 #export MACHINE=`uname -m | sed -e 's/  */-/g;y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/'`
 #export PLATFORM="$MACHINE-$OS-$OSVERSION"
