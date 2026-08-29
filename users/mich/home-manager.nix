@@ -86,9 +86,7 @@ in
     pkgs.asciinema
     pkgs.ast-grep
     pkgs.bitwarden-cli
-    pkgs.cargo
     pkgs.claude-code
-    pkgs.clippy
     pkgs.codex
     pkgs.coreutils-prefixed
     pkgs.cosign
@@ -113,8 +111,6 @@ in
     pkgs.qpdf
     pkgs.restic
     pkgs.rtorrent
-    pkgs.rustc
-    pkgs.rustfmt
     pkgs.tor
     pkgs.torsocks
     pkgs.unicorn
