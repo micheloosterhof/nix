@@ -111,7 +111,6 @@ in
     pkgs.rtorrent
     pkgs.tor
     pkgs.torsocks
-    pkgs.visidata
     pkgs.yubikey-manager
 
     # Node is required for Copilot.vim
