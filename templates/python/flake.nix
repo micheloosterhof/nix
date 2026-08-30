@@ -1,5 +1,5 @@
 {
-  description = "Python dev shell (interpreter, pyright, mypy, ruff)";
+  description = "Python dev shell (interpreter, pip, pyright, mypy, ruff)";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
@@ -26,6 +26,9 @@
               mypy
               pyright
               python3
+              # pip can't install into the read-only store; use it against a
+              # venv (python -m venv .venv) or with --user.
+              python3Packages.pip
               ruff
             ];
           };
