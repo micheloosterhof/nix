@@ -10,6 +10,9 @@
       test -e /nix/.fseventsd/no_log || touch /nix/.fseventsd/no_log
       test -e /nix/.metadata_never_index || touch /nix/.metadata_never_index
       chflags hidden /nix
+      # The marker file above is legacy and current macOS mostly ignores it;
+      # mdutil is the supported switch. Harmless if already off.
+      mdutil -i off /nix >/dev/null 2>&1 || true
     '';
   };
 }
