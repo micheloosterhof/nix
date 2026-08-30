@@ -26,8 +26,6 @@
               mypy
               pyright
               python3
-              # pip can't install into the read-only store; use it against a
-              # venv (python -m venv .venv) or with --user.
               python3Packages.pip
               ruff
             ];
