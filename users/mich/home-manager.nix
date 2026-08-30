@@ -105,6 +105,8 @@ in
     pkgs.oils-for-unix
     pkgs.p7zip
     pkgs.pre-commit
+    pkgs.python314
+    pkgs.python314Packages.pip
     pkgs.qpdf
     pkgs.restic
     pkgs.rtorrent
