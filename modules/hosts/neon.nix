@@ -20,6 +20,11 @@
           networking.hostName = "neon";
           my.hostnameGuard = true;
 
+          # Block unsolicited incoming connections. Signed apps are still
+          # auto-allowed (the default), so this stays prompt-free for normal
+          # software; only unsigned/ad-hoc binaries that listen will prompt.
+          networking.applicationFirewall.enable = true;
+
           # Match the nixbld gid used by the upstream nixos.org installer (30000).
           # nix-darwin's default is 350, which would trip its gid-mismatch assertion.
           ids.gids.nixbld = 30000;
