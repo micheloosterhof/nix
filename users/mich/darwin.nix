@@ -157,7 +157,6 @@
       "whatsapp"
       "wireshark-app"
       "yubico-authenticator"
-      "zoom"
       "zotero"
     ];
   };
