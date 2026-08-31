@@ -137,6 +137,11 @@ in
     # Runs language models locally. Darwin-only because neon is the one host
     # with a GPU to run them on; the Linux VMs get no passthrough.
     pkgs.ollama
+    # Logs into captive portals with a throwaway Chrome instance, resolving
+    # DNS via the DHCP server so Tailscale DNS can't break the redirect.
+    # Config: captive-browser.toml below. Darwin-only: the laptop is the
+    # host that meets guest wifi.
+    pkgs.captive-browser
   ])
   ++ (lib.optionals gui [
     # Under VMware's vmwgfx GPU, Chromium's GPU-process sandbox blocks the lazy
@@ -206,6 +211,12 @@ in
     };
     vim_mode = true;
     load_direnv = "direct";
+  };
+
+  # captive-browser reads ~/.config/captive-browser.toml; darwin-only, to
+  # match the package above.
+  home.file.".config/captive-browser.toml" = lib.mkIf isDarwin {
+    source = ./captive-browser.toml;
   };
 
   # macOS file associations: register Zed as the default app for these
