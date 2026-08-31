@@ -222,14 +222,14 @@ lib.runTests {
     expected = "workstation";
   };
 
-  # Settings shared by the vm and server aggregates (ssh.nix, docker.nix,
+  # Settings shared by the vm and server aggregates (ssh.nix, podman.nix,
   # locale.nix, accounts.nix): asserted on a VM here, on a server below.
   testVmSshKeyOnly = {
     expr = fusion.services.openssh.settings.PasswordAuthentication;
     expected = false;
   };
-  testVmDocker = {
-    expr = fusion.virtualisation.docker.enable;
+  testVmPodman = {
+    expr = fusion.virtualisation.podman.enable;
     expected = true;
   };
   # The built locale set stays exactly the two locales the settings
@@ -298,8 +298,8 @@ lib.runTests {
     expr = nitrogen.security.pam.rssh.settings.auth_key_file;
     expected = "/etc/ssh/authorized_keys.d/$ruser";
   };
-  testServerDocker = {
-    expr = helium.virtualisation.docker.enable;
+  testServerPodman = {
+    expr = helium.virtualisation.podman.enable;
     expected = true;
   };
 
@@ -352,7 +352,7 @@ lib.runTests {
       in
       lib.hasInfix ''iif "lo" accept'' content
       && lib.hasInfix ''iifname "tailscale0" accept'' content
-      && lib.hasInfix ''iifname "docker0" accept'' content;
+      && lib.hasInfix ''iifname "podman0" accept'' content;
     expected = true;
   };
   testNitrogenSshPort = {
