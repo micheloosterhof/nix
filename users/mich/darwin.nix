@@ -76,6 +76,9 @@
     # Quit the printer app automatically once print jobs finish.
     CustomUserPreferences."com.apple.print.PrintingPrefs"."Quit When Finished" = true;
 
+    # Siri is unused on this machine; keep the assistant off.
+    CustomUserPreferences."com.apple.assistant.support"."Assistant Enabled" = false;
+
     # Check for, download, and install minor + security updates automatically.
     CustomUserPreferences."com.apple.SoftwareUpdate" = {
       AutomaticCheckEnabled = true;
