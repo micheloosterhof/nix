@@ -312,6 +312,14 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Repo, eval, and formatting guardrails
 
+- **namaka snapshot tests over rendered configs** (zentralwerk/network
+  `flake.nix` checks.namaka + `scripts/generate-tests.sh`): golden-file
+  eval tests — snapshot the *rendered* artifact (their bird.conf and kea
+  JSON per container; ours would be the bogons nft table, sshd_config,
+  the golink unit) so a refactor's blast radius shows up as a reviewable
+  text diff instead of a boolean assertion. Sits between our eval-tests
+  and a VM boot test; test cases are generated per host, `namaka check ||
+  namaka review` to accept changes. namaka is in nixpkgs.
 - **remote/copy deploys always show "configuration dirty"** (spotted
   2026-08-28 via nitrogen's motd): rsync to /nix-config excludes .git, so
   the on-box flake has no self.rev and provenance.nix falls back to
@@ -1006,6 +1014,16 @@ The "Unblocked once decided" list below is now an actionable queue.
 
 ## Backup and DR — first priority (2026-08-25 fleet discussion)
 
+- **Cold-standby via a flag file** (zentralwerk/network
+  `server/lxc-containers.nix`): both servers carry identical config for
+  every workload; `lxc@` units gate on `ConditionPathExists =
+  /etc/start-containers`, so which box is live is one touch/rm, and
+  failover is "run enable-containers on the spare". Their workload units
+  also set `restartIfChanged = false` so a host rebuild never bounces the
+  services. Cheap DR shape for the helium/nitrogen role split once
+  services multiply — the config is always deployed everywhere, only the
+  activation flag moves.
+
 Per the fleet role split: helium is the fleet's only stateful machine
 and the only backup target; offsite copy (house = total-loss failure
 domain) is the one DR item that can't be solved by redeploying.
@@ -1229,6 +1247,15 @@ domain) is the one DR item that can't be solved by redeploying.
   `--login`; portable to a zsh bridge.
 
 ## Deploy and provisioning
+
+- **Self-fencing risky deploys** (zentralwerk/network switch templates):
+  every remote change that can cut off access arms an automatic revert
+  *before* applying — Junos `commit confirmed 5` (second ssh confirms;
+  if it never lands the switch rolls itself back), Cisco `reload in 5` +
+  probe + `reload cancel`. Same shape as the bootctl
+  set-default/set-oneshot pattern proven on the fusion VM 2026-08-29;
+  steal for anything remote where a bad config means a console trip
+  (nitrogen firewall/network changes).
 
 - **Idempotent push deploy via prebuilt closure** (sebastianrasor
   `hercules-ci.nix`) — build `config.system.build.toplevel` locally or in
@@ -1720,6 +1747,23 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 ## lib and module mechanics
 
+- **Standalone evalModules data layer** (zentralwerk/network
+  `nix/lib/config/`): the whole site — nets, hosts, VLANs, cabling — is
+  one typed option tree evaluated with `lib.evalModules` *outside* NixOS,
+  exported as `self.lib.config`, consumed by hosts and plain packages
+  (device scripts, reports) alike, with a large eval-time assertion suite
+  over the dataset (duplicate IPs/VLANs/ports, cross-references). The
+  grown-up version of the fleet-axes idea if the fleet ever gets big
+  enough to want hosts-as-data; their wart to avoid: options.nix is
+  imported twice (standalone + NixOS), blocking readOnly on derived
+  options.
+- **Validate rendered configs with their real parser at build time**
+  (zentralwerk/network `container/lxc-config.nix`): the generated lxc
+  config is checked in the sandbox by compiling a tiny C program against
+  liblxc and calling load_config — because liblxc silently ignores
+  everything after a bad line. Generalizes to `nginx -t`, `sshd -t`,
+  `nft -c` as derivation checks on any config our modules render.
+
 - **Option-typing tricks** (sebastianrasor `nixos-modules/persistence.nix`
   + home variant): `lib.types.coercedTo str (d: { directory = d; }) attrs`
   lets one list accept bare strings or attrsets; `lib.optionalAttrs
@@ -2034,6 +2078,15 @@ Kept for the record so the same paths don't get re-surveyed.
 # 8. Survey log
 
 What was surveyed when; sections above carry per-item attribution.
+
+- 2026-08-31 — `zentralwerk/network` (C3D2 Dresden building network:
+  2 NixOS servers, 82 LXC router containers, 20 switches, 77 OpenWrt
+  APs, all generated from one data model). Harvested: namaka snapshots,
+  cold-standby flag file, self-fencing deploys, standalone evalModules
+  data layer, parser-validated rendered configs. Noted but not taken:
+  per-AP OpenWrt image building (no APs here), GPG dummy-secrets swap
+  (inferior to our sops setup — their secrets land in the world-readable
+  store), hostname-regex module selection and an nmap IFD as warts.
 
 - 2026-06-11 — `ryan4yin/nix-config` + the configs its README references
   (srvos found here).
