@@ -140,7 +140,9 @@ lib.runTests {
     expected = true;
   };
   testWorkstationHomeKeepsFullToolkit = {
-    expr = lib.any (p: (p.pname or p.name) == "ffmpeg-headless") fusion.home-manager.users.mich.home.packages;
+    expr = lib.any (
+      p: (p.pname or p.name) == "ffmpeg-headless"
+    ) fusion.home-manager.users.mich.home.packages;
     expected = true;
   };
 
