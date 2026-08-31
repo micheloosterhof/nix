@@ -79,6 +79,9 @@
     # Siri is unused on this machine; keep the assistant off.
     CustomUserPreferences."com.apple.assistant.support"."Assistant Enabled" = false;
 
+    # No Apple personalized advertising.
+    CustomUserPreferences."com.apple.AdLib".allowApplePersonalizedAdvertising = false;
+
     # Check for, download, and install minor + security updates automatically.
     CustomUserPreferences."com.apple.SoftwareUpdate" = {
       AutomaticCheckEnabled = true;
