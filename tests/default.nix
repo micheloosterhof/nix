@@ -222,15 +222,11 @@ lib.runTests {
     expected = "workstation";
   };
 
-  # Settings shared by the vm and server aggregates (ssh.nix, podman.nix,
-  # locale.nix, accounts.nix): asserted on a VM here, on a server below.
+  # Settings shared by the vm and server aggregates (ssh.nix, locale.nix,
+  # accounts.nix): asserted on a VM here, on a server below.
   testVmSshKeyOnly = {
     expr = fusion.services.openssh.settings.PasswordAuthentication;
     expected = false;
-  };
-  testVmPodman = {
-    expr = fusion.virtualisation.podman.enable;
-    expected = true;
   };
   # The built locale set stays exactly the two locales the settings
   # reference (nixpkgs computes it from defaultLocale + extraLocaleSettings);
@@ -298,11 +294,6 @@ lib.runTests {
     expr = nitrogen.security.pam.rssh.settings.auth_key_file;
     expected = "/etc/ssh/authorized_keys.d/$ruser";
   };
-  testServerPodman = {
-    expr = helium.virtualisation.podman.enable;
-    expected = true;
-  };
-
   # The server hosts. Both are headless server-profile machines with the
   # kernel hardening applied via the server aggregate and key-only ssh.
   testHeliumProfile = {
