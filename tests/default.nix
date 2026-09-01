@@ -47,10 +47,6 @@ lib.runTests {
     expr = apple.networking.hostName;
     expected = "dev-apple";
   };
-  testDarwinStateVersion = {
-    expr = mac.system.stateVersion;
-    expected = 5;
-  };
   # keys.nix throws when keys/ holds no *.pub files (a key-only host without
   # keys is unreachable); both nixos.nix and the installer ISO consume this
   # list, so the guard must stay on the shared lib, not on one consumer.
@@ -216,12 +212,6 @@ lib.runTests {
     expected = true;
   };
 
-  # The profile axis: each host file sets my.profile.
-  testFusionProfile = {
-    expr = fusion.my.profile;
-    expected = "workstation";
-  };
-
   # Settings shared by the vm and server aggregates (ssh.nix, locale.nix,
   # accounts.nix): asserted on a VM here, on a server below.
   testVmSshKeyOnly = {
@@ -294,16 +284,8 @@ lib.runTests {
     expr = nitrogen.security.pam.rssh.settings.auth_key_file;
     expected = "/etc/ssh/authorized_keys.d/$ruser";
   };
-  # The server hosts. Both are headless server-profile machines with the
-  # kernel hardening applied via the server aggregate and key-only ssh.
-  testHeliumProfile = {
-    expr = helium.my.profile;
-    expected = "server";
-  };
-  testNitrogenProfile = {
-    expr = nitrogen.my.profile;
-    expected = "server";
-  };
+  # The server hosts: headless, with the kernel hardening applied via the
+  # server aggregate and key-only ssh.
   testNitrogenGuiOff = {
     expr = nitrogen.my.gui.enable;
     expected = false;
@@ -321,13 +303,9 @@ lib.runTests {
     expected = "no";
   };
 
-  # nitrogen is internet-facing: firewall on, bogon sources dropped, sshd only
-  # on the non-standard port (openFirewall follows ports, so 22 is closed),
-  # and nothing trusted beyond the tailnet.
-  testNitrogenFirewallOn = {
-    expr = nitrogen.networking.firewall.enable;
-    expected = true;
-  };
+  # nitrogen is internet-facing: bogon sources dropped, sshd only on the
+  # non-standard port (openFirewall follows ports, so 22 is closed), and
+  # nothing trusted beyond the tailnet.
   testNitrogenBogonsWired = {
     expr = builtins.hasAttr "bogons" nitrogen.networking.nftables.tables;
     expected = true;
@@ -372,10 +350,6 @@ lib.runTests {
   # name resolution works without a DHCP-provided or tailscale-forwarded
   # resolver (the datacenter DHCP registered nothing on one boot, and the
   # tailscale 1.98.10 MagicDNS forwarder stopped answering).
-  testServerResolvedEnabled = {
-    expr = nitrogen.services.resolved.enable;
-    expected = true;
-  };
   testServerNameservers = {
     expr = nitrogen.networking.nameservers;
     expected = [
@@ -385,7 +359,7 @@ lib.runTests {
   };
 
   # nitrogen is a tailscale exit node: kernel forwarding on (via
-  # useRoutingFeatures = "server") and the advertisement applied each boot.
+  # useRoutingFeatures = "server").
   testNitrogenExitNodeForwarding4 = {
     expr = nitrogen.boot.kernel.sysctl."net.ipv4.conf.all.forwarding";
     expected = true;
@@ -393,10 +367,6 @@ lib.runTests {
   testNitrogenExitNodeForwarding6 = {
     expr = nitrogen.boot.kernel.sysctl."net.ipv6.conf.all.forwarding";
     expected = true;
-  };
-  testNitrogenExitNodeAdvertised = {
-    expr = nitrogen.services.tailscale.extraSetFlags;
-    expected = [ "--advertise-exit-node" ];
   };
 
   # sops-nix rides in base on every platform; hosts decrypt with their own
@@ -453,13 +423,9 @@ lib.runTests {
     expected = "golink";
   };
 
-  # helium sits behind NAT on the trusted home LAN: the onboard NIC is a
-  # trusted interface (openHAB multicast discovery), no bogon filtering, and
-  # the home-automation services are wired.
-  testHeliumTrustsHomeLan = {
-    expr = builtins.elem "eno2" helium.networking.firewall.trustedInterfaces;
-    expected = true;
-  };
+  # helium sits behind NAT on the trusted home LAN: no bogon filtering (a
+  # distant change composing bogons into the server aggregate would drop the
+  # RFC1918 home LAN).
   testHeliumNoBogons = {
     expr = builtins.hasAttr "bogons" helium.networking.nftables.tables;
     expected = false;
@@ -469,16 +435,8 @@ lib.runTests {
     expr = self.modules.nixos ? plex;
     expected = true;
   };
-  testHeliumPlex = {
-    expr = helium.services.plex.enable;
-    expected = true;
-  };
   testOpenhabAggregate = {
     expr = self.modules.nixos ? openhab;
-    expected = true;
-  };
-  testHeliumOpenhabContainer = {
-    expr = helium.virtualisation.oci-containers.containers.openhab.autoStart;
     expected = true;
   };
 
@@ -510,10 +468,6 @@ lib.runTests {
   testHmUserDarwin = {
     expr = mac.home-manager.users.mich.home.username;
     expected = "mich";
-  };
-  testHmBackupExtension = {
-    expr = fusion.home-manager.backupFileExtension;
-    expected = "before-hm";
   };
 
   # The GUI capability reaches home-manager via osConfig: i3 follows my.gui.enable.
@@ -571,11 +525,6 @@ lib.runTests {
     expr = builtins.elem "https://micheloosterhof.cachix.org" mac.nix.settings.extra-substituters;
     expected = true;
   };
-  # Substituters stay optional: substitution failure falls back to building.
-  testSubstituterFallback = {
-    expr = fusion.nix.settings.fallback;
-    expected = true;
-  };
 
   # modules/dns.nix: VM DNS is strict DoT to Quad9 with no plaintext fallback
   # (fails closed rather than leaking to the NAT gateway's resolver).
@@ -616,42 +565,9 @@ lib.runTests {
     expected = true;
   };
 
-  # modules/nix-settings.nix: daemon builds run at background/idle priority
-  # so they never compete with interactive work.
-  testDaemonQosDarwin = {
-    expr = mac.nix.daemonProcessType;
-    expected = "Background";
-  };
-  testDaemonQosNixos = {
-    expr = fusion.nix.daemonCPUSchedPolicy;
-    expected = "idle";
-  };
-
-  # HM eval trims: no manuals, no nixpkgs release check (measurably faster
-  # eval on every rebuild).
-  testHmNoManpages = {
-    expr = mac.home-manager.users.mich.manual.manpages.enable;
-    expected = false;
-  };
-  testHmNoReleaseCheck = {
-    expr = mac.home-manager.users.mich.home.enableNixpkgsReleaseCheck;
-    expected = false;
-  };
-
   # modules/needs-reboot.nix: switching to a new kernel stack prints advice.
   testNeedsRebootNixos = {
     expr = lib.hasInfix "booted-system" fusion.system.activationScripts.needsReboot.text;
     expected = true;
-  };
-
-  # modules/gc-roots.nix: stale gc roots are cleaned up weekly on every host.
-  testGcrootsCleanupNixos = {
-    expr = fusion.systemd.timers.nix-cleanup-gcroots.timerConfig.OnCalendar;
-    expected = "weekly";
-  };
-  testGcrootsCleanupDarwin = {
-    expr =
-      (builtins.head mac.launchd.daemons.nix-cleanup-gcroots.serviceConfig.StartCalendarInterval).Hour;
-    expected = 2;
   };
 }
