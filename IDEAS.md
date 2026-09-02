@@ -410,6 +410,24 @@ style: check against the repo, spec, one commit each) draws from here.
   PR already carries the input diff; this is the same rule for hand-run
   bumps. Worth adding to our AGENTS.md alongside the existing "call out
   lock regeneration" rule.
+- **Claude Code managed-settings layer** (malob
+  `darwin/claude-managed-settings.nix`) — nix generates
+  `/Library/Application Support/ClaudeCode/managed-settings.json` (the
+  highest-precedence settings layer) holding only the path-dependent
+  bits: `additionalDirectories` pointing at the nix repo and
+  Edit/Write permission allows for it, interpolated per host — Claude
+  can always edit the config repo without prompts on any machine.
+  Everything else stays in the user-editable settings file. His
+  companion `home/claude.nix` reconciles third-party skills from
+  skills.sh declaratively on each activation (nuke and repave) and is
+  worth reading for the 1Password-FIFO-with-timeout secrets handling
+  even though we'd feed it from sops.
+- **Third-party agent skills as pinned flake inputs** (madmaxieee) —
+  skill repos as `flake = false` inputs with individual skills
+  symlinked into the agent config dir: lockfile-pinned versions
+  instead of a vendored copy or floating clone. The flake-input
+  counterpart to the nvfetcher item in CI micro-patterns; same
+  pattern serves editor/shell plugin sources.
 - **Claude Code hygiene** (srid, dustinlyons): add `permissions.deny` rules
   for `rg`/`find`/`grep` over `/nix*` to the tracked
   `users/mich/claude/settings.json` — stops agents from crawling the store
@@ -467,6 +485,17 @@ style: check against the repo, spec, one commit each) draws from here.
   flake>` makes `nix run my#...` and `nix flake init -t my#<template>`
   work from any directory without a path. One line next to the existing
   `registry.nixpkgs` pin in `modules/nix-settings.nix`.
+- **`pkgs-x86` Rosetta escape hatch** (malob overlays) — on
+  aarch64-darwin only, expose `pkgs-x86 = import nixpkgs { system =
+  "x86_64-darwin"; }` so a package broken on Apple Silicon can be
+  swapped for its Rosetta build with one `inherit (final.pkgs-x86)`.
+  His live example is exemplary workaround hygiene: zsh pinned from
+  master with the nixpkgs issue, root cause, and fixing commit cited.
+- **Task-oriented devShells on the config flake** (malob `devShells`:
+  `pdf` with ghostscript/poppler/tesseract/pypdf, `docx`, a nix-dev
+  shell with deadnix/statix/nixd/nixfmt) — ad-hoc toolchains per task
+  rather than per project, reachable as `nix develop my#pdf` via the
+  self-registry alias item above. A different niche from templates/.
 - **`pkgs.master`/`pkgs.unstable` overlay inheriting `final.config`**
   (drupol) — extra-channel attrs that propagate allowUnfree etc.,
   without a second `import nixpkgs` at call sites; compare our
@@ -613,6 +642,9 @@ style: check against the repo, spec, one commit each) draws from here.
 - **Auto-tmux on ssh login** (ambroisie zsh module `launchTmux` option) —
   `[ -z "$TMUX" ] && exec tmux new-session` via `lib.mkBefore` in
   initContent; `exec` so no orphan login shell.
+- **`LESSUTFCHARDEF` for Nerd Font icons** (malob) —
+  `"E000-F8FF:p,F0000-FFFFD:p,100000-10FFFD:p"`: less 632+ hides PUA
+  characters by default, so icons vanish in less/bat without it.
 - **lesskey readline bindings** (ambroisie `modules/home/pager/`) —
   `programs.less.config` gives `^a ^e ^w \eb \ef ^p ^n` etc. inside less's
   search/command line, `Q` quits without clearing the screen, and `LESS`
@@ -856,6 +888,17 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## macOS / darwin
 
+- **Firewall + loginwindow hardening** (malob `darwin/general.nix` +
+  `darwin/defaults.nix`; tjmaynes agrees on the loginwindow pair) —
+  `networking.applicationFirewall.enableStealthMode = true` (drop
+  ICMP/probe responses; one line on top of the firewall enabled for
+  the ERNW audit), `system.defaults.loginwindow.GuestEnabled = false`,
+  `loginwindow.DisableConsoleAccess = true`.
+- **prefmanager** (malob's own tool, flake input) — watches macOS
+  `defaults` domains live so the key behind any GUI toggle can be
+  discovered; the tool for the remaining audit leftovers (AirPlay
+  receiver et al.) and a natural companion to the symbolic-hotkeys
+  item above.
 - **macOS/darwin one-liners** (vic) — `ApplePressAndHoldEnabled = false`;
   darwin tooling installed from the pinned nix-darwin input; `nix.gc`
   wrapped in `optionalAttrs config.nix.enable` so modules eval on
@@ -932,6 +975,13 @@ style: check against the repo, spec, one commit each) draws from here.
   touching only the generated file. Upstream trackers bump on their own
   cadence with zero flake.lock churn — the lock-free counterpart to the
   skills-as-flake-inputs item.
+- **CI builds the real darwin config** (malob `githubCI` +
+  `.github/workflows/ci.yml`) — the laptop config with identity
+  overridden and homebrew/`/etc/shells` mkForce'd off builds on a
+  `macos-latest` runner and pushes to cachix. Noted as the pattern to
+  reach for only if the 2026-08-23 eval-only-neon CI decision is ever
+  revisited; the makeOverridable identity item (§4) is what makes it
+  cheap.
 - **gh-flake-update's pre/post build distinction** (drupol
   `pkgs/by-name/gh-flake-update/`) — build selected toplevels *before*
   `nix flake update` so "already broken" and "update broke it" are
@@ -1075,6 +1125,12 @@ The "Unblocked once decided" list below is now an actionable queue.
   Relevant for user-scoped tokens, and the only sops path on
   foreign-Linux HM-only hosts (the helium homeConfigurations idea)
   where system sops doesn't exist.
+- **Runtime secret injection via wrapper** (malob `home/packages.nix`
+  `mkOpRunWrapper`) — wrap a tool so its token becomes an env var only
+  at exec time (his: `op run` for nix-update/nixpkgs-review GitHub
+  tokens), built with `symlinkJoin` so completions and man pages from
+  the original package survive. Ports to sops-fed secrets; the
+  never-touches-disk-or-store pattern for tool credentials.
   Extension (decided 2026-08-25, fleet role split): exit nodes are the same
   mechanism plus a tag — tagged auth key, `--advertise-exit-node`, and
   tailnet-policy `autoApprovers.exitNode = ["tag:exit"]` so a fresh node is
@@ -1247,6 +1303,24 @@ domain) is the one DR item that can't be solved by redeploying.
   HM nh module aliases the right switch command per config type.
   Directly addresses our known follow-up (hardcoded user in gui/fusion
   modules).
+- **`users.primaryUser` typed option + overridable host template**
+  (malob `modules/darwin/users.nix` + `lib/mkDarwinSystem.nix`) — the
+  stronger sibling of the specialArg item above: identity (username,
+  fullName, email, nixConfigDirectory) as a typed option set injected
+  into both the darwin config and HM (`home.user-info`), with the host
+  wrapped in `lib.makeOverridable` so variants are one `.override`
+  (his `githubCI` = same laptop config, runner identity, homebrew
+  mkForce'd off). The concrete implementation of the fleet-axes
+  identity axis and singleton→template conversion.
+- **homeConfigurations for foreign-Linux hosts** (malob + madmaxieee
+  independently) — a standalone `homeConfigurations.<host>` output run
+  with `home-manager switch --flake` on machines whose OS isn't ours;
+  the two settings that make it work on a foreign distro are
+  `nix.package = pkgs.nix` (so `nix.settings` applies without a system
+  module) and `TERMINFO_DIRS` pointing at the HM profile. The path to
+  bringing helium (Debian, drifting from the repo) under repo
+  management without an OS conversion; pairs with the HM-level sops
+  item in §3.
 - **Cross-class sharing via hoisted options** (mightyiam) — shared
   values live in one top-level option (`options.nix.settings` at the
   flake-parts level), and the nixos and home-manager modules each
@@ -1379,6 +1453,11 @@ domain) is the one DR item that can't be solved by redeploying.
 
 ## Deploy and provisioning
 
+- **Bootstrap darwin configurations** (malob `darwinConfigurations
+  .bootstrap-arm`) — a minimal config as a first-activation target on a
+  fresh Mac. Our equivalent gotcha (first activation must use the
+  un-customized linux-builder or it cache-misses) lives as prose in
+  neon.nix; a bootstrap target would encode it as something runnable.
 - **Self-fencing risky deploys** (zentralwerk/network switch templates):
   every remote change that can cut off access arms an automatic revert
   *before* applying — Junos `commit confirmed 5` (second ssh confirms;
@@ -2322,7 +2401,7 @@ What was surveyed when; sections above carry per-item attribution.
 - 2026-09-01/02 — `madmaxieee/nix-config` and `malob/nix-config`.
   Adopted immediately: dock mru-spaces/show-recents,
   `init.defaultRefFormat = "files"` (jj/reftable), captive-browser (own
-  survey). Standouts not yet filed: malob's `users.primaryUser` typed
+  survey). Standouts (filed 2026-09-02): malob's `users.primaryUser` typed
   identity + `makeOverridable` host template (fixes the hardcoded-user
   follow-up), Claude Code managed-settings.json layer, stealth
   mode/loginwindow hardening, `prefmanager`; madmaxieee's
