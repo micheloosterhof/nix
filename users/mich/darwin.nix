@@ -52,6 +52,13 @@
       _FXShowPosixPathInTitle = true;
     };
 
+    # Keep Spaces in their assigned order (no most-recently-used reshuffle)
+    # and drop the recent-apps section from the Dock.
+    dock = {
+      mru-spaces = false;
+      show-recents = false;
+    };
+
     # Warning banner shown on the login window.
     loginwindow.LoginwindowText = "Unauthorized access to this machine is prohibited.  Use of this system is limited to authorized individuals only.  All activity is monitored.";
 
