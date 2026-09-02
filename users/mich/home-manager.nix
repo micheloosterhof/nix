@@ -108,6 +108,9 @@ in
     pkgs.python314
     pkgs.python314Packages.pip
     pkgs.qpdf
+    pkgs.qrencode # QR codes from the CLI (wifi creds, URLs to phones)
+    pkgs.rbw # Bitwarden CLI with a background agent (no re-login per call)
+    pkgs.rclone # sync/mount against cloud storage backends
     pkgs.restic
     pkgs.rtorrent
     pkgs.tor
