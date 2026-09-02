@@ -381,6 +381,9 @@ in
       # First push of a new branch creates the upstream, no --set-upstream.
       push.autoSetupRemote = true;
       init.defaultBranch = "main";
+      # jj cannot read the experimental reftable format (git 2.45+), so new
+      # repos stay on the classic loose-refs layout.
+      init.defaultRefFormat = "files";
       # Drop remote-tracking refs for branches deleted upstream on fetch.
       fetch.prune = true;
       # Remember conflict resolutions and replay them (pays off with the
