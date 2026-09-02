@@ -731,6 +731,16 @@ style: check against the repo, spec, one commit each) draws from here.
   conditional config, starship jj module replacing the `git_*` modules.
   Plus the pattern of wrapping any signing TUI with `ssh-add -l ||
   ssh-add` first.
+- **jj working-copy guards** (enocla) — `fsmonitor.backend = "watchman"`
+  (fast snapshots in big repos; needs the watchman package) and
+  `snapshot.max-new-file-size = "10MiB"` (jj refuses to auto-snapshot a
+  stray tarball instead of baking it into history).
+- **jj revset aliases** (shikanime-labs `programs.jujutsu.settings`) —
+  `prune` = abandon `empty() & mutable() & conflicts()`; `stack`/
+  `restack` rebase aliases built on `trunk()` and `closest_merge(@)`.
+  Complements the drupol/vic revset library above.
+- **`diff.colorMoved = "default"`** (enocla) — moved code rendered
+  distinctly in git diffs; rides along with the batch-A7 gitconfig set.
 - **gh wrapper `--unset GITHUB_TOKEN`** (mightyiam) — a stray env token
   from direnv/CI can't shadow the keyring login.
 - **lazygit tuning** (mightyiam + drupol) — pager cascade
@@ -843,6 +853,11 @@ style: check against the repo, spec, one commit each) draws from here.
   required checks) then `gh pr merge --rebase --auto`. Together with
   vic's PAT-pushing bump job, two working implementations of the
   ci-dispatch-pr-gotcha fix.
+- **GitHub App token instead of a PAT** (shikanime-labs
+  `actions/create-github-app-token` + a repo-scoped "operator" App) —
+  the stronger variant of the two PAT items above: App-minted tokens
+  trigger required checks on pushed PRs, don't expire, and scope to the
+  repo instead of the account. Prefer this when fixing update-lock.
 - **gh-flake-update's pre/post build distinction** (drupol
   `pkgs/by-name/gh-flake-update/`) — build selected toplevels *before*
   `nix flake update` so "already broken" and "update broke it" are
@@ -1050,6 +1065,21 @@ domain) is the one DR item that can't be solved by redeploying.
 - **ZFS replication via `services.zfs.autoReplication`** (GaetanLepage)
   — one option block + knownHosts pin; simpler than syncoid. Relevant to
   the helium backup story only if ZFS ever enters the picture.
+- **Time Machine target on a NixOS server** (totoroot
+  `modules/services/time-machine.nix`) — Samba with the `fruit:aapl` /
+  `catia fruit streams_xattr` VFS stack plus Avahi `_adisk` records
+  (netatalk deliberately retired, nmbd off to dodge crashes), shares as
+  typed submodules. Would let neon back up to helium over the LAN
+  declaratively — a direct answer to the macOS-audit backup TODO.
+- **Option-gated backup module shape** (eh8 `modules/nixos/kopia-backup.nix`)
+  — per-host `paths` list option; non-empty wires a sops repository
+  token, a oneshot `connect → snapshot → disconnect` service, and a 4am
+  randomized timer, ~40 lines. Same shape works with the restic already
+  in `home.packages` (or `services.restic.backups`); combines with the
+  ambroisie baseline-path-list item above.
+- **vorta cask** (mrkuz) — borg-backup GUI with a committed
+  default-profile JSON, if the neon side wants a GUI instead of
+  Time Machine.
 - **Boot-generation pinning** (EmergentMind): `just pin` copies the current
   systemd-boot entry to `hosts/<n>/pinned-boot-entry.conf` (title
   "PINNED:"), registers a GC root for that generation, and the module
@@ -2131,3 +2161,26 @@ What was surveyed when; sections above carry per-item attribution.
 - 2026-08-26 — `GaetanLepage/nix-config` (structural + nuggets, one
   pass) and the dendritic small-tricks sweep (mightyiam, drupol, vix
   dotfile layers). Triage/re-sort of this file the same day.
+- 2026-09-01/02 — `madmaxieee/nix-config` and `malob/nix-config`.
+  Adopted immediately: dock mru-spaces/show-recents,
+  `init.defaultRefFormat = "files"` (jj/reftable), captive-browser (own
+  survey). Standouts not yet filed: malob's `users.primaryUser` typed
+  identity + `makeOverridable` host template (fixes the hardcoded-user
+  follow-up), Claude Code managed-settings.json layer, stealth
+  mode/loginwindow hardening, `prefmanager`; madmaxieee's
+  skills-as-flake-inputs. Skipped: nix-homebrew vs. the cleanup="none"
+  policy, Determinate Nix (breaks linux-builder — malob's own TODO).
+- 2026-09-02 — six-repo parallel survey: `totoroot/dotfiles`,
+  `enocla/nix-config`, `mrkuz/macos-config`, `tjmaynes/config`,
+  `shikanime-labs/machines`, `eh8/chenglab`. Shortlist filed above
+  (Time Machine target + kopia-shape backup, GitHub App token for
+  update-lock, jj guards/revsets, colorMoved). The `nix.gc.automatic`
+  "gap" two reviewers reported was false — nix-settings.nix sets it.
+  Not yet filed, in the conversation record: mrkuz's ephemeral
+  `nix run .#*-vm` NixOS VMs on macOS + minimize.nix, tjmaynes's
+  refusing Makefile targets and docs-drift/hygiene tests, eh8's
+  remote initrd unlock and `sops.templates`, shikanime's comin GitOps
+  and VictoriaMetrics fleet observability, enocla's sops-encrypted
+  private ssh inventory, assorted macOS defaults and packages.
+  Unanimous skips: Determinate Nix/Lix (third sighting), unstable-only
+  nixpkgs, stringly identity blobs.
