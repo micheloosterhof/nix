@@ -319,7 +319,16 @@ style: check against the repo, spec, one commit each) draws from here.
   the golink unit) so a refactor's blast radius shows up as a reviewable
   text diff instead of a boolean assertion. Sits between our eval-tests
   and a VM boot test; test cases are generated per host, `namaka check ||
-  namaka review` to accept changes. namaka is in nixpkgs.
+  namaka review` to accept changes. namaka is in nixpkgs. Companion
+  detail (darwin-modular-services `tests/lib/assertions.sh`, borrowed
+  from home-manager's nmt): normalize every `/nix/store/<hash>-name`
+  to a zeroed hash before diffing, ~10 lines of sed — the trick that
+  lets snapshot fixtures survive nixpkgs bumps.
+- **shellspec tests for repo shell libraries** (mitchty `spec/*.sh`
+  over `src/lib.sh`) — actual unit tests for shell helpers, run via
+  shellspec (in nixpkgs). The `~/.bin` scripts and Makefile helpers
+  have no tests today; pairs with the actionlint/shellcheck lint-gate
+  item from tjmaynes.
 - **remote/copy deploys always show "configuration dirty"** (spotted
   2026-08-28 via nitrogen's motd): rsync to /nix-config excludes .git, so
   the on-box flake has no self.rev and provenance.nix falls back to
@@ -735,12 +744,31 @@ style: check against the repo, spec, one commit each) draws from here.
   (fast snapshots in big repos; needs the watchman package) and
   `snapshot.max-new-file-size = "10MiB"` (jj refuses to auto-snapshot a
   stray tarball instead of baking it into history).
-- **jj revset aliases** (shikanime-labs `programs.jujutsu.settings`) —
-  `prune` = abandon `empty() & mutable() & conflicts()`; `stack`/
-  `restack` rebase aliases built on `trunk()` and `closest_merge(@)`.
-  Complements the drupol/vic revset library above.
+- **thoughtpolice jj revset library** (astratagem/dotfield
+  `src/features/jujutsu/revset-aliases.nix`, from the thoughtpolice
+  gist; absorbs the shikanime-labs aliases filed 2026-09-02) —
+  `stack(x, n)` = `ancestors(reachable(x, mutable()), n)`; `open()` =
+  all stacks reachable from `@` or `mine()`; `ready()` = `open()` minus
+  descendants of a `blacklist()` matching `wip:`/`private:` description
+  prefixes; `mine()` OR-ing all the user's email identities; plus
+  shikanime's `prune` = abandon `empty() & mutable() & conflicts()`.
+  Companion aliases: `harvest`/`eject` (squash into/out of `@`),
+  `cat` = `file show`, `credit` = `file annotate`. The complete
+  what's-in-flight/what's-submittable workflow, richer than the
+  drupol/vic library above.
 - **`diff.colorMoved = "default"`** (enocla) — moved code rendered
   distinctly in git diffs; rides along with the batch-A7 gitconfig set.
+- **gitconfig stragglers, September sweep** (marcusramberg + shuntaka) —
+  `log.follow = true` (follow renames in `git log <file>`),
+  `fetch.all = true`, `submodule.recurse = true`, `core.whitespace =
+  "trailing-space,space-before-tab"`; shuntaka's `rbsync` alias
+  (dirty-tree-guarded `fetch --prune` + rebase onto `@{upstream}`,
+  falling back to auto-detected `origin/HEAD`).
+- **Declarative gh extensions** (marcusramberg `home/git.nix`) —
+  `programs.gh.extensions = [ gh-poi gh-notify gh-dash ... ]` pins the
+  extension set instead of `gh extension install` drift; gh-poi (delete
+  local branches whose PRs merged) and gh-notify (notifications in the
+  terminal) are the two worth starting with.
 - **gh wrapper `--unset GITHUB_TOKEN`** (mightyiam) — a stray env token
   from direnv/CI can't shadow the keyring login.
 - **lazygit tuning** (mightyiam + drupol) — pager cascade
@@ -809,6 +837,17 @@ style: check against the repo, spec, one commit each) draws from here.
 - **`systemd.user.startServices = "sd-switch"`** (ambroisie) — user
   services restart on HM switch by diffing units. (drupol also sets it —
   rycee-recommended.)
+- **direnv config block** (clo4 + berbiche) — `programs.direnv.config`:
+  `strict_env = true` (bash strict mode while evaluating `.envrc`),
+  `hide_env_diff = true` (quieter loads), and `whitelist.prefix =
+  [ "~/src" ]` so own checkouts skip the `direnv allow` ritual. The
+  config block is unset here today; IDEAS previously had only
+  `warn_timeout`/`watch_file`.
+- **Completion cache keyed on binary mtime** (franckrasolo
+  `home/zsh/completions.cache.zsh`) — `_cache_completion` regenerates
+  `<tool> completion zsh` output only when the binary is newer than the
+  cached copy, else sources the cache. Targets the completion cost
+  listed as a remaining hotspot in the zsh-startup profiling notes.
 - **Custom direnv stdlib helpers** (ambroisie `modules/home/direnv/lib/`)
   — extra `use …` functions (nix_shell, postgres, python) shipped via
   home-manager next to the existing offline-aware stdlib.
@@ -821,6 +860,32 @@ style: check against the repo, spec, one commit each) draws from here.
   darwin tooling installed from the pinned nix-darwin input; `nix.gc`
   wrapped in `optionalAttrs config.nix.enable` so modules eval on
   Determinate-managed Macs. (`remapCapsLockToControl` done 2026-08-26.)
+- **Declarative macOS symbolic hotkeys, applied live** (franckrasolo
+  `darwin/macOS/keyboard.nix`; jdheyburn independently via
+  `CustomUserPreferences."com.apple.symbolichotkeys"`) — write
+  `AppleSymbolicHotKeys` dicts (60/61 = input-source switch, 64 =
+  Spotlight Cmd+Space, Mission Control grabs), then apply without
+  logout via the private `activateSettings -u` binary
+  (SystemAdministration.framework). Same activation script disables
+  Terminal's "Open man Page" Services via `defaults write pbs
+  NSServicesStatus`; jdheyburn adds `NSUserKeyEquivalents` to
+  neutralize per-menu-item shortcuts (accidental Cmd+M). The nix path
+  to the "GUI toggle" class of audit leftovers.
+- **Control Center menu-bar items via ByHost plist** (franckrasolo
+  `darwin/macOS/menubar.nix`) — `CustomUserPreferences` on the ByHost
+  path (`~/Library/Preferences/ByHost/com.apple.controlcenter.plist`),
+  8 = hide / 9 = show per module, plus hiding the Spotlight menu icon.
+  Transferable bit: some defaults domains only take effect per-host.
+- **macOS defaults odds, September sweep** (franckrasolo, clo4,
+  jdheyburn) — `universalaccess.reduceMotion = true`;
+  `NSGlobalDomain."com.apple.sound.beep.volume"` (+ `.sound` in
+  `".GlobalPreferences"`); `dock.autohide-delay = 0.0` +
+  `autohide-time-modifier = 0.0`; `NSGlobalDomain
+  .NSWindowShouldDragOnGesture = true` (ctrl+cmd-drag any window from
+  anywhere); global-domain `AppleShowAllExtensions` (the finder-domain
+  one here doesn't cover save dialogs); `menuExtraClock.ShowDate` /
+  `ShowDayOfWeek`; `CustomUserPreferences."com.apple.TextEdit"
+  .RichText = 0`.
 - **keyd mac-modifier layout for Linux** (vic `macos-keys.nix`) —
   left-Alt as ⌘ with Cmd-C/V/T/W translated: Mac muscle memory inside
   the Fusion/UTM VMs.
@@ -858,6 +923,15 @@ style: check against the repo, spec, one commit each) draws from here.
   the stronger variant of the two PAT items above: App-minted tokens
   trigger required checks on pushed PRs, don't expire, and scope to the
   repo instead of the account. Prefer this when fixing update-lock.
+- **nvfetcher for non-flake source tracking** (shuntaka9576
+  `nvfetcher.toml` + `_sources/generated.nix` + a daily workflow) —
+  upstream sources that shouldn't be flake inputs (Go tools built from
+  source, `anthropics/skills`) declared in one TOML, materialized as
+  `pkgs.sources.*` via overlay (`buildGoModule { inherit
+  (pkgs.sources.pet) pname version src; }`); the cron opens a PR
+  touching only the generated file. Upstream trackers bump on their own
+  cadence with zero flake.lock churn — the lock-free counterpart to the
+  skills-as-flake-inputs item.
 - **gh-flake-update's pre/post build distinction** (drupol
   `pkgs/by-name/gh-flake-update/`) — build selected toplevels *before*
   `nix flake update` so "already broken" and "update broke it" are
@@ -994,6 +1068,13 @@ The "Unblocked once decided" list below is now an actionable queue.
   (GCE instances could alternatively use GCP Secret Manager / instance
   metadata) and runs `tailscale up` makes every instance self-join the
   tailnet — the turnkey "deploy many places" property.
+- **Home-manager-level sops** (astratagem/dotfield
+  `src/features/secrets/default.nix`) — a second sops-nix layer inside
+  HM decrypting with the *user's* ssh key (`sops.age.sshKeyPaths` on
+  the home side): user-owned secrets with no root/system involvement.
+  Relevant for user-scoped tokens, and the only sops path on
+  foreign-Linux HM-only hosts (the helium homeConfigurations idea)
+  where system sops doesn't exist.
   Extension (decided 2026-08-25, fleet role split): exit nodes are the same
   mechanism plus a tag — tagged auth key, `--advertise-exit-node`, and
   tailnet-policy `autoApprovers.exitNode = ["tag:exit"]` so a fresh node is
@@ -1080,6 +1161,26 @@ domain) is the one DR item that can't be solved by redeploying.
 - **vorta cask** (mrkuz) — borg-backup GUI with a committed
   default-profile JSON, if the neon side wants a GUI instead of
   Time Machine.
+- **Dead-man's-switch for backup jobs** (jdheyburn
+  `modules/nixos/backup/usb.nix`) — self-hosted `services.healthchecks`
+  + restic `backupPrepareCommand` curling `/ping/<uuid>/start` and
+  `backupCleanupCommand` curling `/ping/<uuid>/$status`, extracting the
+  real `ExecStartPre` exit status via `systemctl show -p ExecStartPre`
+  so a failed pre-command isn't reported as success. The monitoring
+  half missing from the module shapes above: a backup that silently
+  stops running gets noticed.
+- **Offsite copy as unit ordering** (jdheyburn, same file) — an
+  `rclone`-to-B2 service with `wantedBy`/`after =
+  [ "restic-backups-<name>.service" ]`: local snapshot then offsite as
+  systemd dependency, no cron choreography. Candidate mechanism for
+  the helium offsite item in §4.
+- **encrypt_if_changed + deterministic tar** (dustinlyons
+  `modules/nixos/backups.nix`) — age output is randomized per run, so
+  the script hashes the *plaintext* (`<file>.age.sha256` beside the
+  ciphertext) and skips re-encryption when unchanged; archives built
+  with `--sort=name --owner=0 --group=0 --numeric-owner --mtime=@0` so
+  they're byte-comparable. Useful wherever change detection gates an
+  encrypted or archived artifact.
 - **Boot-generation pinning** (EmergentMind): `just pin` copies the current
   systemd-boot entry to `hosts/<n>/pinned-boot-entry.conf` (title
   "PINNED:"), registers a GC root for that generation, and the module
@@ -1519,9 +1620,29 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   and (via a `countValues` lib helper) no port or subdomain claimed
   twice, each with a named message. Steal for any future vhost
   self-registration module.
+- **Service catalog fan-out** (jdheyburn `catalog.nix`, 301 lines) —
+  one `services.<name>` entry (host, port, module list, dashboard
+  metadata) drives five consumers: Caddy vhost, AdGuard DNS rewrites,
+  blackbox-exporter probe targets, per-node Prometheus scrapes, and
+  Dashy dashboard tiles. Mechanism is plain attrsets — build it on
+  typed options (the GaetanLepage host-registry item) if adopted; the
+  *scope* of declare-once/everything-follows is the idea.
+- **OCI container privilege hardening** (clo4
+  `hosts/homeserver1/minecraft/servers/family.nix`) — pinned uid/gid
+  system user + group, `systemd.tmpfiles` for the data dir (0770), and
+  `virtualisation.oci-containers.containers.<n>.user = "uid:gid"` so
+  root is dropped at launch and the uid holds inside the container.
+  Directly applicable to helium's openhab container, which runs with
+  defaults. Side nugget: serve on a non-default port + SRV record so
+  scanners miss it and clients need no port.
 
 ## Sandboxing and agents
 
+- **nono — Landlock sandbox for agent processes** (marcusramberg
+  `home/packages.nix`; in nixpkgs) — kernel-enforced filesystem
+  sandboxing aimed at AI agents/MCP workloads. First
+  kernel-enforcement candidate in this section; Linux-only (Landlock),
+  so fleet hosts and VMs, not neon.
 - **agentspace — sandboxed agent microVMs** (shazow `vms/agentspace/`,
   library at `github:shazow/agentspace`): run coding agents in
   full-autonomy mode inside a QEMU/KVM microVM instead of on the
@@ -1927,6 +2048,15 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   with citations, bound to the wireguard address only, plus a systemd
   ordering fix for the VPN-bind race. Feeds the dgx-spark/gce-gpu
   memory item.
+- **llama-swap on macOS with models as fixed-output derivations**
+  (mitchty `nix/darwinModules/llama-swap.nix` + `fetchhf` in
+  `nix/lib.nix`) — HuggingFace GGUFs become hash-pinned `fetchurl`
+  derivations (cacheable, GC-able store paths instead of `~/.ollama`
+  state); a launchd daemon runs llama-swap, lazy-loading/swapping
+  models with per-model TTLs and exclusive groups within a RAM budget,
+  YAML generated from nix. The declarative story for neon's currently
+  unmanaged ollama; a lighter `ollama.nix` launchd module sits beside
+  it if TTL-swapping is overkill.
 
 ---
 
@@ -1934,6 +2064,34 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 - **hyperfine** for benchmarks
 - **fq** (https://terminaltrove.com/fq/) — jq for binary formats
+
+## CLI shortlist (September 2026 sweeps — 18-repo rounds)
+
+The picks from ~90 new packages across the two September rounds; the
+full lists live in the per-repo review record.
+
+- **rbw** — Bitwarden CLI with a background agent (no re-login per
+  call); candidate replacement for bitwarden-cli
+- **gron** / **jless** / **dasel** — JSON to greppable lines; JSON/YAML
+  TUI pager; jq-style queries over JSON/YAML/TOML/CSV in one tool
+- **moreutils** — sponge/vipe/ts/chronic classics
+- **pv** — pipe progress meter
+- **ipcalc** / **dateutils** — subnet math; date arithmetic CLIs
+- **xh** — fast httpie-style HTTP client
+- **ov** — feature-rich pager; **gitu** — magit-style git TUI
+- **termshark** — wireshark TUI (pairs with the wireshark cask)
+- **grc** — generic colouriser for ping/dig/mount output
+- **caligula** — TUI disk imaging (pairs with the installer ISO)
+- **taplo** — TOML formatter/linter (nothing formats TOML here)
+- **vhs** — scripted terminal recording → GIF (beside asciinema)
+- **pet** / **ghq** — snippet manager; repo organizer under one root
+- **rage** — Rust age implementation (faster than age)
+- **git-sizer** — repo-size analysis; **stress-ng**/**fio** — CPU and
+  disk load tools for server validation
+- **navi** — fzf cheatsheet TUI (see the versioned-cheatsheets idea)
+- CTF kit for the external security flake, not home.packages:
+  gobuster, rustscan, sqlmap, stegseek, binwalk, pwndbg, ghidra-bin,
+  john, hexedit, patchelf (berbiche `profiles/ctf/`)
 
 ## CLI, cross-platform (traxys survey)
 
@@ -2184,3 +2342,23 @@ What was surveyed when; sections above carry per-item attribution.
   private ssh inventory, assorted macOS defaults and packages.
   Unanimous skips: Determinate Nix/Lix (third sighting), unstable-only
   nixpkgs, stringly identity blobs.
+- 2026-09-02 — ten-repo parallel survey, deduped against this file at
+  source: `franckrasolo/dotfiles.nix`, `dustinlyons/nixos-config`
+  (delta since the 2026-07-07 survey — thin, as expected),
+  `mitchty/nix`, `jdheyburn/nixos-configs`, `clo4/nix-dotfiles`,
+  `shuntaka9576/dotfiles`, `marcusramberg/nix-config`,
+  `berbiche/dotfiles`, `DigitalBrewStudios/darwin-modular-services`
+  (shim library, not a config), `astratagem/dotfield`. Shortlist filed
+  above: llama-swap FOD models, symbolic hotkeys + ByHost defaults,
+  completion cache, backup dead-man's-switch + rclone ordering +
+  encrypt_if_changed, service-catalog fan-out, OCI container
+  hardening, nvfetcher, nono, thoughtpolice jj revsets (supersedes the
+  shikanime entry), gh extensions, direnv config, HM-level sops,
+  shellspec + snapshot store-path normalization, gitconfig stragglers,
+  CLI shortlist in §6. Lessons noted, not filed: source-NAT defeats
+  IP allowlists (dustinlyons ran open for 10 minutes); modular
+  services (nixpkgs#372170 / nix-darwin#1765) as a watch item for
+  one-definition systemd+launchd services. Skips: clan-core and
+  Blueprint (frameworks owning composition), Determinate/Lix (4th–5th
+  sightings), LLM-commit-message exfiltration (2nd), NOPASSWD-ALL
+  sudo, per-package pinned nixpkgs inputs.
