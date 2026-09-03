@@ -1,10 +1,12 @@
 ---
 name: jujutsu
-description: This document instructs Claude Code to use `jj` (Jujutsu) instead of `git` for version control operations. jj is a Git-compatible VCS that provides a simpler mental model and powerful history editing.
+description: Use jj (Jujutsu) instead of git for version control. Load when the repository is configured for jj (a .jj directory exists) or when asked to work with jj, bookmarks, revsets, or jj history editing.
 ---
 # Jujutsu (jj) Usage Guide for Claude Code
 
-This document instructs Claude Code to use `jj` (Jujutsu) instead of `git` for version control operations. jj is a Git-compatible VCS that provides a simpler mental model and powerful history editing.
+jj is a Git-compatible VCS with a simpler mental model and powerful history
+editing. When this skill is loaded, use jj instead of git for version
+control operations.
 
 ## Core Concepts
 
