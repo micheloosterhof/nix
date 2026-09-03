@@ -329,6 +329,18 @@ style: check against the repo, spec, one commit each) draws from here.
   shellspec (in nixpkgs). The `~/.bin` scripts and Makefile helpers
   have no tests today; pairs with the actionlint/shellcheck lint-gate
   item from tjmaynes.
+- **Generated docs site from module comments + options JSON**
+  (barrucadu `scripts/documentation.sh` + `docs/book.toml`) — module
+  header comments plus the evaluated `NIXOS_OPTIONS_JSON` render into
+  an mdbook site: per-host pages, per-module pages, full options
+  reference with types/defaults/declared-in links. The ABOUTME
+  convention here is already the input half; the pipeline makes it
+  browsable and drift-proof.
+- **Per-alert runbooks keyed by alertname** (barrucadu
+  `docs/src/runbooks/`) — when an alert fires, a doc named after it
+  says what to do; migrations are step-numbered checklists referencing
+  the repo's own tools. The fleet-ops upgrade of the mrkuz
+  manual-steps item (§2 macOS list).
 - **remote/copy deploys always show "configuration dirty"** (spotted
   2026-08-28 via nitrogen's motd): rsync to /nix-config excludes .git, so
   the on-box flake has no self.rev and provenance.nix falls back to
@@ -428,6 +440,31 @@ style: check against the repo, spec, one commit each) draws from here.
   instead of a vendored copy or floating clone. The flake-input
   counterpart to the nvfetcher item in CI micro-patterns; same
   pattern serves editor/shell plugin sources.
+- **The four-layer declarative agent stack** (takeokunn
+  `home-manager/ai-tools/` — the reference implementation for
+  nix-managing Claude Code and friends; supersedes reading the
+  scattered items above piecemeal). (1) home-manager's
+  `programs.claude-code` module used to full depth: settings,
+  `permissions.deny` generated from one shared `bashDenyPatterns`
+  list, **PreToolUse guard hooks** (`block-destructive-git`,
+  `block-bare-cd`) shipped as typed `hooks.*` options with an
+  `assert` tying the hook list to the shared names; agents/commands
+  from markdown dirs. (2) **mcp-servers-nix** (natsukium):
+  `evalModule` renders MCP config declaratively; one shared server
+  definition adapted per-CLI (claude-code/opencode/codex) by a tiny
+  converter. (3) **llm-agents.nix** (numtide): daily-updated agent
+  CLI packages incl. `ccusage` — alternative to sadjow/claude-code-nix.
+  (4) **agent-skills-nix** (Kyure-A): vendor skill repos (anthropics,
+  cloudflare, aws, …) as pinned inputs with per-source subdir/depth
+  filters and cross-vendor conflict handling — the catalog upgrade of
+  the skills-as-flake-inputs item. Caveat from the review: their
+  conflict-exclusion regexes are write-only; do set-difference in nix
+  instead.
+- **Per-identity Claude config via `CLAUDE_CONFIG_DIR`** (jwiegley
+  `bin/persona`) — one command flips git identity/signing, `gh auth
+  switch`, and the whole `~/.claude` per persona. Related nugget:
+  scope a single gh call to another account with `GH_TOKEN="$(gh auth
+  token --user X)" gh ...` without switching the global login.
 - **Claude Code hygiene** (srid, dustinlyons): add `permissions.deny` rules
   for `rg`/`find`/`grep` over `/nix*` to the tracked
   `users/mich/claude/settings.json` — stops agents from crawling the store
@@ -473,6 +510,25 @@ style: check against the repo, spec, one commit each) draws from here.
   WHY comment, a documentation style worth imitating. (GaetanLepage)
 - Substituters as a data list with explicit `?priority=N` params, keys
   via `builtins.catAttrs`. (GaetanLepage)
+- **`make verify-inputs` — NAR-hash guard for path/local-git flakes**
+  (jwiegley `Makefile` + `bin/lib/local-git-inputs.py`) — before
+  locking, check every local git input for skip-worktree /
+  assume-unchanged files, uninitialized submodules, and gitlinks
+  without `submodules=true`: `nix flake update` hashes the
+  *filesystem* while rebuild hashes the *git archive*, so any of those
+  produce activation-time NAR mismatches. Companion rule worth
+  adopting as documentation even without the tool: never run `nix
+  flake update` under sudo — root and user fetcher caches diverge.
+- **`make travel-ready`** (jwiegley) — one target that refreshes every
+  project's direnv cache and drops remote-builder dependencies before
+  going offline; laptop-leaves-home as an explicit repo operation.
+  There is no offline-prep story in the Makefile today.
+- **Last-known-good compatibility overlay** (jwiegley
+  `overlays/00-last-known-good.nix`) — one dedicated, ordered overlay
+  file where every regressed package is pinned to a recorded
+  known-good nixpkgs snapshot via `fetchTree`: the systematized
+  version of the malob one-off pin, all regression pins in one place
+  with their provenance instead of scattered workarounds.
 - **Rebuild ergonomics one-liners** (EmergentMind): `git add
   --intent-to-add .` before every build (kills the "path does not exist"
   flake gotcha for new files — belongs in `make switch`/`make test`);
@@ -554,6 +610,17 @@ style: check against the repo, spec, one commit each) draws from here.
   before nitrogen. Also parked: toolkit git → gitMinimal (would drop the
   ~10 MiB perl module env everywhere, but loses send-email/gitk/svn).
 
+- **`networking.nftables.stopRuleset`** (oddlama `config/nftables.nix`)
+  — a minimal drop-policy ruleset (established/related + ssh port +
+  icmp only) that NixOS installs whenever the nftables unit stops or
+  fails mid-reload: the firewall can never end up open, and the host
+  can never end up unreachable, during a bad switch. Upstream option,
+  ~2 dozen lines; take verbatim for nitrogen's bogons/firewall setup.
+- **Outbound mail on every host** (xddxdd
+  `nixos/minimal-components/smtp.nix`) — fleet-wide `programs.msmtp`
+  with a sops-stored relay password so cron/systemd/backup failures
+  can actually send email. An ops category the servers lack entirely;
+  pairs with barrucadu's `$SERVICE_RESULT` alerting in Backup and DR.
 - **fail2ban escalating bans** (ambroisie fail2ban module) —
   `bantime-increment = { enable = true; rndtime = "5m"; }` + DEFAULT jail
   `findtime`/`bantime` — jittered, escalating bans for nitrogen's exposed
@@ -673,6 +740,19 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## ssh
 
+- **Post-quantum ssh crypto pinning** (reckenrode
+  `modules/by-name/op/openssh/nixos-module.nix` + xddxdd
+  `nixos/minimal-components/ssh-harden.nix` — two independent
+  sightings) — sshd `KexAlgorithms
+  mlkem768x25519-sha256,sntrup761x25519-sha512` first, ed25519-only
+  host/pubkey algorithms, etm-only MACs / aes256-gcm. OpenSSH ≥9.9
+  ships mlkem. Nothing pins crypto algorithms here today; fits the
+  Anduril-STIG thread for nitrogen's internet-facing sshd.
+- **ssh client hardening baseline** (jwiegley `config/ssh.nix`
+  `Host *`) — `HashKnownHosts yes`, `VerifyHostKeyDNS yes`,
+  `StrictHostKeyChecking yes`, `ForwardAgent no` as the default with
+  per-host relaxation; none of these are set in programs.ssh, and only
+  accept-new/ForwardAgent-scoping variants are filed above.
 - **`StreamLocalBindUnlink = "yes"` in sshd** (drupol) — server removes
   stale forwarded unix sockets, the fix for agent/gpg socket forwarding
   breaking on reconnect. Direct fit for the ssh-into-VM workflow.
@@ -899,6 +979,35 @@ style: check against the repo, spec, one commit each) draws from here.
   discovered; the tool for the remaining audit leftovers (AirPlay
   receiver et al.) and a natural companion to the symbolic-hotkeys
   item above.
+- **Per-user defaults via HM `targets.darwin.defaults`** (reckenrode
+  `modules/by-name/de/defaults/`) — write arbitrary defaults domains
+  at HM activation instead of system activation, including domains
+  nix-darwin has no options for: declarative **Safari** hardening
+  (`AutoOpenSafeDownloads = false`, AutoFill toggles, search
+  provider). Travels to any HM-only host.
+- **Keyboard-AI killers + F-keys** (reckenrode; fnState also jwiegley)
+  — `NSAutomaticInlinePredictionEnabled`,
+  `NSAutomaticTextCompletionEnabled`,
+  `WebAutomaticSpellingCorrectionEnabled` all false (completes the
+  substitution-killer block in darwin.nix), `"com.apple.keyboard
+  .fnState" = 1` (F1–F12 as function keys), `"com.apple.sound.beep
+  .feedback" = 0`, `screencapture.type = "png"`.
+- **Unfree as an explicit allowlist** (reckenrode) —
+  `allowUnfreePredicate = pkg: elem (getName pkg) [ ... ]` instead of
+  neon's blanket `allowUnfree = true`: every unfree package is named.
+  Cheap posture win matching the audit mindset.
+- **Log paths for the linux-builder** (thiagokokada
+  `modules/nix-darwin/nix/linux-builder.nix`) —
+  `launchd.daemons.linux-builder.serviceConfig.StandardOutPath/
+  StandardErrorPath = "/var/log/darwin-builder.log"`: two lines; the
+  builder currently logs nowhere and debugging means `sudo ssh
+  linux-builder`.
+- **Remote NixOS host as the Mac's builder, declaratively**
+  (reckenrode `hosts/josette/configuration.nix`) — `nix.buildMachines`
+  with inline base64 `publicHostKey` (no TOFU), `protocol = "ssh-ng"`,
+  plus an `/etc/ssh/ssh_config.d/` Match-block drop-in for the builder
+  user/agent/port. The wiring pattern if neon ever uses helium as a
+  builder beside the local VM.
 - **macOS/darwin one-liners** (vic) — `ApplePressAndHoldEnabled = false`;
   darwin tooling installed from the pinned nix-darwin input; `nix.gc`
   wrapped in `optionalAttrs config.nix.enable` so modules eval on
@@ -982,6 +1091,21 @@ style: check against the repo, spec, one commit each) draws from here.
   reach for only if the 2026-08-23 eval-only-neon CI decision is ever
   revisited; the makeOverridable identity item (§4) is what makes it
   cheap.
+- **Workflows generated from nix** (thiagokokada `actions/*.nix` →
+  committed YAML via `nix eval`) — job steps and host lists derive
+  from the flake's own `nixosConfigurations`/`darwinConfigurations`
+  attrs, so adding a host adds its CI step; a `validate-flakes` job
+  guards staleness. Distinct from the vic runtime-matrix item: the
+  whole workflow file is generated, committed, and diffable.
+- **Two-stage lock-bump CI** (thiagokokada `actions/update-flakes.nix`
+  + `-after.nix`) — the scheduled bump builds cheap x86_64-linux and
+  opens the PR; a `workflow_run`-triggered second stage builds
+  darwin/aarch64 only if stage one passed. Expensive runners never
+  chew on a broken bump.
+- **flat-flake lock hygiene check** (xddxdd's own tool, flake input) —
+  CI assertion that flake.lock holds no duplicated transitive inputs,
+  i.e. every `follows` is actually wired. One check target; fits the
+  "a lock refresh is a real version bump" discipline.
 - **gh-flake-update's pre/post build distinction** (drupol
   `pkgs/by-name/gh-flake-update/`) — build selected toplevels *before*
   `nix flake update` so "already broken" and "update broke it" are
@@ -1237,6 +1361,25 @@ domain) is the one DR item that can't be solved by redeploying.
   with `--sort=name --owner=0 --group=0 --numeric-owner --mtime=@0` so
   they're byte-comparable. Useful wherever change detection gates an
   encrypted or archived artifact.
+- **Restic hardening + verification trio** (barrucadu
+  `shared/restic-backups/default.nix`) — backups run as an
+  unprivileged `backups` user with `AmbientCapabilities =
+  "CAP_DAC_READ_SEARCH"` (read everything, root nowhere) and
+  narrowly-scoped per-backup NOPASSWD dump sudoRules; a scheduled
+  `restic check` service verifies repository *integrity* (the third
+  leg after "take snapshots" and jdheyburn's "did it run"); `postStop`
+  + `$SERVICE_RESULT` alerts on any non-success with no monitoring
+  stack needed.
+- **Restore procedure as a flake app** (barrucadu `scripts/backups.sh`)
+  — `nix run .#backups -- snapshots/restore` versions the operator
+  tooling beside the backup config; restores land in
+  `/tmp/restic-restore-<snapshot>` by default. Recovery stops being
+  tribal knowledge.
+- **External monitors reconciled from repo data** (xddxdd
+  `tools/sync-uptimerobot-monitors.py`) — create/patch/delete
+  UptimeRobot (free tier) monitors via API to match the nix host
+  registry: the externally-hosted dead-man's-switch complement to the
+  self-hosted healthchecks item above.
 - **Boot-generation pinning** (EmergentMind): `just pin` copies the current
   systemd-boot entry to `hosts/<n>/pinned-boot-entry.conf` (title
   "PINNED:"), registers a GC root for that generation, and the module
@@ -1458,6 +1601,14 @@ domain) is the one DR item that can't be solved by redeploying.
   fresh Mac. Our equivalent gotcha (first activation must use the
   un-customized linux-builder or it cache-misses) lives as prose in
   neon.nix; a bootstrap target would encode it as something runnable.
+- **Tailnet policy and DNS as Terraform in the config repo**
+  (foo-dogsquared `terraform/tailscale.tf`, `terraform/dns.tf`) — the
+  tailscale ACL (`tagOwners`, groups, ssh rules, `autoApprovers`) and
+  public DNS records as resources beside the fleet config. Extends the
+  shikanime GitHub-settings-in-Terraform item to the two control
+  planes this fleet actually depends on; the §3 exit-node
+  `autoApprovers` plan assumes console clicking today. DNS caveat:
+  needs a TransIP provider.
 - **Self-fencing risky deploys** (zentralwerk/network switch templates):
   every remote change that can cut off access arms an automatic revert
   *before* applying — Junos `commit confirmed 5` (second ssh confirms;
@@ -2171,6 +2322,19 @@ full lists live in the per-repo review record.
 - CTF kit for the external security flake, not home.packages:
   gobuster, rustscan, sqlmap, stegseek, binwalk, pwndbg, ghidra-bin,
   john, hexedit, patchelf (berbiche `profiles/ctf/`)
+- From the 2026-09-03 eight-repo round: **rustic** (Rust
+  restic-compatible backup engine, config-file driven),
+  **fast-nix-gc** (much faster store GC, Mic92), **zsh-histdb** +
+  oddlama's skim picker (sqlite zsh history, the daemon-less atuin
+  alternative), **lnav** (log navigator TUI with SQL over log lines),
+  **doggo** (DNS client with DoH/DoT/DoQ + JSON), **mdq** (jq for
+  markdown), **ccusage** (Claude Code token/cost reports),
+  **nix-your-shell** (`nix develop` lands in zsh not bash), **page**
+  (neovim as $PAGER), **realise-symlink** (store symlink → writable
+  copy in place), **git-fuzzy**, **gallery-dl** (yt-dlp's
+  image-gallery sibling), **uxplay** (AirPlay receiver on Linux —
+  audit-relevant twist on the AirPlay TODO), classics **expect** /
+  **dos2unix** / **mediainfo**
 
 ## CLI, cross-platform (traxys survey)
 
@@ -2441,3 +2605,30 @@ What was surveyed when; sections above carry per-item attribution.
   Blueprint (frameworks owning composition), Determinate/Lix (4th–5th
   sightings), LLM-commit-message exfiltration (2nd), NOPASSWD-ALL
   sudo, per-package pinned nixpkgs inputs.
+- 2026-09-03 — eight-repo "high-commit authors" round, selected by a
+  GitHub sweep (134 active personal repos with nix in the name,
+  ranked by commit count; list in the session scratchpad):
+  `reckenrode/nixos-configs` (nixpkgs darwin maintainer),
+  `jwiegley/nix-config`, `oddlama/nix-config`, `xddxdd/nixos-config`,
+  `thiagokokada/nix-configs`, `foo-dogsquared/nixos-config`,
+  `barrucadu/nixfiles`, `takeokunn/nixos-configuration`. Shortlist
+  filed above: stopRuleset, PQ ssh pinning (2 independent sightings)
+  + client baseline, restic hardening/verification trio + restore
+  flake app + UptimeRobot reconciler, msmtp fleet mail, generated
+  docs site + per-alert runbooks, generated workflows + two-stage
+  lock CI + flat-flake, verify-inputs + never-sudo-flake-update,
+  travel-ready, last-known-good overlay, HM darwin defaults (Safari)
+  + keyboard-AI killers + unfree allowlist + linux-builder logs +
+  remote-builder wiring, the takeokunn agent stack +
+  CLAUDE_CONFIG_DIR personas, tailnet/DNS as Terraform, §6 package
+  batch. Noted, unfiled: oddlama's distributed-config push model,
+  eval-time encrypted PII (nix-plugins cost), nix-topology,
+  deterministicIds, zoned nftables; barrucadu per-host observability
+  + SNS→ntfy pattern, podman pods as systemd units with 127.0.0.1
+  port defaults, ~/tmp auto-sweep; xddxdd fleet-patched nixpkgs,
+  geo-IP flake input; thiagokokada per-host activation apps,
+  restore-backups HM module, release-skew gate (jwiegley);
+  foo-dogsquared module-level VM tests, crowdsec. Skips: LT
+  mega-helper and category-enable cascades (dendritic wins again),
+  impermanence (3rd decline), LSQuarantine=false, nightly
+  --recreate-lock-file upgrades, Lix/Determinate (6th sighting).
