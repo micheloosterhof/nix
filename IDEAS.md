@@ -324,6 +324,14 @@ style: check against the repo, spec, one commit each) draws from here.
   from home-manager's nmt): normalize every `/nix/store/<hash>-name`
   to a zeroed hash before diffing, ~10 lines of sed — the trick that
   lets snapshot fixtures survive nixpkgs bumps.
+- **Per-host test VMs via `virtualisation.vmVariant`** (LongerHV
+  `nixos/mordor/vm-variant.nix`) — `nixos-rebuild build-vm --flake
+  .#<host>` boots the *real host config* in qemu, with a per-host
+  `vmVariant` block mkForce-neutralizing only what can't work in a VM
+  (VPN interfaces, autologin + known password). The missing middle
+  between the eval tests and hardware: smoke-boot nitrogen's or
+  helium's config on the Mac's linux-builder, with the stubbed
+  assumptions declared in one file.
 - **shellspec tests for repo shell libraries** (mitchty `spec/*.sh`
   over `src/lib.sh`) — actual unit tests for shell helpers, run via
   shellspec (in nixpkgs). The `~/.bin` scripts and Makefile helpers
@@ -610,6 +618,25 @@ style: check against the repo, spec, one commit each) draws from here.
   before nitrogen. Also parked: toolkit git → gitMinimal (would drop the
   ~10 MiB perl module env everywhere, but loses send-email/gitk/svn).
 
+- **Unattended disk encryption via TPM2** (lovesegfault
+  `configurations/nixos/hegel/tpm-decrypt.nix`; the manual sibling is
+  eh8's `remote-unlock.nix` initrd sshd) — a small LUKS credstore
+  holds the data key, TPM2-sealed to PCR 7 (Secure Boot) *plus* PCR 15
+  with `tpm2-measure-pcr=yes` so the key unseals only during initrd
+  and never on the running system (credits oddlama's attack writeup).
+  ~600 lines with re-enrollment and troubleshooting runbooks — the
+  best-documented answer to the STIG no-disk-encryption finding for
+  hosts that must reboot unattended; eh8's ssh-with-forced-command
+  initrd is the option where a human unlock is acceptable.
+- **BBR + cake on the internet path** (lovesegfault
+  `fast-networking.nix`) — `net.core.default_qdisc = "cake"`,
+  `net.ipv4.tcp_congestion_control = "bbr"`, plus `tcp_mtu_probing`,
+  rfc1337, and conntrack/buffer sizing. Candidate for nitrogen.
+- **SMART health monitoring** (heywoodlh `nixos/modules/scrutiny.nix`;
+  LongerHV's `services.prometheus.exporters.smartctl` is the
+  exporter-only variant) — disk-failure early warning for helium, the
+  fleet's one stateful machine; a monitoring category nothing else
+  filed covers.
 - **`networking.nftables.stopRuleset`** (oddlama `config/nftables.nix`)
   — a minimal drop-policy ruleset (established/related + ssh port +
   icmp only) that NixOS installs whenever the nftables unit stops or
@@ -852,6 +879,21 @@ style: check against the repo, spec, one commit each) draws from here.
   conditional config, starship jj module replacing the `git_*` modules.
   Plus the pattern of wrapping any signing TUI with `ssh-add -l ||
   ssh-add` first.
+- **jj for the GitHub PR flow** (mrcjkb
+  `home-manager-base/programs/jujutsu.nix`; gvolpe agrees on
+  signing.behavior) — `templates.git_push_bookmark = "\"mo/push-\" ++
+  change_id.short()"` (deterministic push-bookmark names, the missing
+  piece for jj-with-PRs), `templates.commit_trailers =
+  format_signed_off_by_trailer(self)`, `signing.behavior = "own"`
+  (sign only your own commits — middle ground between always-sign and
+  the sign-on-push item above), `fsmonitor.watchman
+  .register-snapshot-trigger = true`, and branch-relative log aliases
+  (`l = (main..@):: | (main..@)-`).
+- **gitconfig stragglers, round two** (jtojnar + mrcjkb) —
+  `core.fsmonitor = true` (builtin FS-monitor daemon; big-repo status
+  speedup), `core.commentChar = ";"` (frees `#` so markdown headings
+  survive in commit messages), `push.followTags = true` (annotated
+  tags ride along).
 - **jj working-copy guards** (enocla) — `fsmonitor.backend = "watchman"`
   (fast snapshots in big repos; needs the watchman package) and
   `snapshot.max-new-file-size = "10MiB"` (jj refuses to auto-snapshot a
@@ -949,6 +991,11 @@ style: check against the repo, spec, one commit each) draws from here.
 - **`systemd.user.startServices = "sd-switch"`** (ambroisie) — user
   services restart on HM switch by diffing units. (drupol also sets it —
   rycee-recommended.)
+- **Centralized direnv layout dirs** (lovesegfault
+  `modules/home/dev/default.nix` `programs.direnv.stdlib`) —
+  `direnv_layout_dir` hashes `$PWD` into
+  `$XDG_CACHE_HOME/direnv/layouts/`: no `.direnv/` litter in any
+  repo, and one GC-able cache.
 - **direnv config block** (clo4 + berbiche) — `programs.direnv.config`:
   `strict_env = true` (bash strict mode while evaluating `.envrc`),
   `hide_env_diff = true` (quieter loads), and `whitelist.prefix =
@@ -968,6 +1015,19 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## macOS / darwin
 
+- **Application-firewall allowlist reconciliation** (heywoodlh
+  `base/sshd.nix` postActivation) — `socketfilterfw --listapps` grepped
+  for stale `/nix/store/*/bin/<listener>` entries, old paths
+  `--remove`d, the current one `--add`ed/`--unblockapp`ed on each
+  activation. Store paths churn every rebuild, so the per-binary
+  allowlist of the firewall enabled for the ERNW audit silently goes
+  stale for any nix-installed listener; this is the fix.
+- **Commands as launchable apps** (heywoodlh
+  `home/modules/applications.nix` `createApp`) — render any shell
+  command into a minimal real `.app` bundle (Info.plist + icns) on
+  darwin or a `.desktop` file on Linux, so nix-defined commands are
+  Spotlight/launcher-visible. Complements mac-app-util, which only
+  handles existing bundles.
 - **Firewall + loginwindow hardening** (malob `darwin/general.nix` +
   `darwin/defaults.nix`; tjmaynes agrees on the loginwindow pair) —
   `networking.applicationFirewall.enableStealthMode = true` (drop
@@ -1361,6 +1421,11 @@ domain) is the one DR item that can't be solved by redeploying.
   with `--sort=name --owner=0 --group=0 --numeric-owner --mtime=@0` so
   they're byte-comparable. Useful wherever change detection gates an
   encrypted or archived artifact.
+- **rrsync-confined backup receivers** (jtojnar azazel backup wiring)
+  — OpenSSH's restricted-rsync as the forced command on the backup ssh
+  key, so the receiving end can only rsync into one directory.
+  Receiver-side key confinement, composing with every backup shape
+  here.
 - **Restic hardening + verification trio** (barrucadu
   `shared/restic-backups/default.nix`) — backups run as an
   unprivileged `backups` user with `AmbientCapabilities =
@@ -1710,6 +1775,14 @@ domain) is the one DR item that can't be solved by redeploying.
 
 ## Caching and builders
 
+- **EC2 instances as remote builders — a dedicated profile**
+  (lovesegfault `modules/nixos/profiles/ec2-builder.nix`) — documents
+  the EC2 eval caveats up front (hostname set dynamically, so no
+  hostname guard; EBS-image hosts import amazon-image.nix themselves),
+  mounts `/nix/var/nix/builds` as tmpfs (`size=33%`,
+  `huge=within_size`) so builds never touch EBS, enables nix-ld. The
+  same profile shape ports to GCE; pairs with the aws-image item in
+  GCE projects below.
 - **Self-hosted binary cache via harmonia** (both repos independently:
   ambroisie `modules/nixos/services/nix-cache/`, sebastianrasor
   `nixos-modules/harmonia.nix`) — serve the builder's store signed with a
@@ -1865,9 +1938,21 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   Directly applicable to helium's openhab container, which runs with
   defaults. Side nugget: serve on a non-default port + SRV record so
   scanners miss it and clients need no port.
+- **Pin the openhab container by digest** (LongerHV
+  `modules/nixos/otbr.nix` shows the shape: `nix-prefetch-docker` with
+  `imageDigest` + `hash`, regen command committed as a comment) —
+  helium's oci-container runs a mutable `:latest` tag today, so the
+  deployed service isn't reproducible and upgrades happen whenever
+  podman pulls. Closer to a bug than an idea; a version tag is the
+  minimum fix, a digest pin the full one.
 
 ## Sandboxing and agents
 
+- **firejail-wrapped GUI apps** (mrcjkb
+  `desktop-programs/firejail.nix`) — NixOS's typed
+  `programs.firejail.wrappedBinaries` ships sandboxed browser
+  wrappers; the lightweight GUI-app sandbox layer for the Fusion/UTM
+  VMs' chromium/firefox, a niche nothing else in this section covers.
 - **nono — Landlock sandbox for agent processes** (marcusramberg
   `home/packages.nix`; in nixpkgs) — kernel-enforced filesystem
   sandboxing aimed at AI agents/MCP workloads. First
@@ -1929,6 +2014,35 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 ## GCE projects (self-originated)
 
+- **AWS image target beside the GCE one** (research pass 2026-09-03;
+  references: NixOS/amis, the AWS NitroTPM/Secure Boot deep-dive, the
+  AL2023 uefivars worked example) — the repart+UKI pipeline ports to
+  EC2 nearly 1:1: build a UEFI variable store carrying the ephemeral
+  cert as PK/KEK/db with awslabs `python-uefivars`, upload the raw
+  image as an EBS snapshot with awslabs `coldsnap` (no S3/vmimport),
+  then `aws ec2 register-image --boot-mode uefi --uefi-data ...
+  --tpm-support v2.0 --imds-support v2.0 --ena-support`
+  (`--architecture arm64` for Graviton; registration must be CLI).
+  Reuse nixpkgs `amazon-image.nix` only as the profile layer (ena
+  module, NVMe io_timeout, ec2-data/amazon-init — likely disabling
+  amazon-init the way the GCE image avoids on-instance rebuilds), the
+  role google-compute-config plays today; srvos `hardware-amazon` is
+  the curated baseline to skim first. NitroTPM means the TPM-sealed
+  keys idea (§3) works on EC2 too. Nice-to-haves: account-level
+  serial-console enable; an IMDS `spot/instance-action` poller if spot
+  ever matters.
+- **GCE pipeline refinements** (same research pass) — register the
+  `IDPF` guest-OS feature + `idpf` kernel module beside the existing
+  gve pattern (C4/C4A present IDPF NICs, not gVNIC — same story, one
+  generation later); Confidential VM is one image variant away
+  (`SEV_SNP_CAPABLE`/`TDX_CAPABLE` guest features; UEFI+vTPM already
+  in place; launch with `--confidential-compute-type=SEV_SNP`);
+  `--architecture=ARM64` is required on an aarch64 `images create`
+  and easy to miss; use an image `--family` + `gcloud compute images
+  deprecate` for lifecycle instead of tracking image names in the
+  Makefile; `eth0.useDHCP` covers v4 only — dual-stack subnets need
+  the v6 enable; watch the google-guest-agent v2 ("core plugin")
+  rewrite land in a lock bump via the closure diff.
 - **GPU GCE image variant (`gce-gpu`)** — a separate x86_64 image for GCP GPU
   instances (T4/L4/V100/A100/H100; GCP has no aarch64 GPUs), layering the
   NVIDIA datacenter driver + CUDA onto the existing base+server+gce
@@ -1958,6 +2072,24 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 ## Other decisions
 
+- **apple/container as a runtime target — watch item** (research pass
+  2026-09-03; references: apple/container v1.0.0 2026-06-09,
+  halfwhey/nix-apple-container) — Apple's native container CLI runs
+  one lightweight VM per container (Containerization.framework), OCI
+  only, Apple silicon only, macOS 26 the effective floor (degraded
+  before; container-to-container networking needs 26). Implications
+  here: the `container-server` rootfs tarball won't import (no
+  `docker import` equivalent — an "apple" variant must emit an OCI
+  archive via dockerTools/nix2container instead); nix-built OCI
+  images cross-built on the linux-builder load fine;
+  halfwhey/nix-apple-container is the nix-darwin integration to copy
+  (containers as launchd agents, nix2container layers streamed from
+  store paths, optional Linux builder containers as a
+  linux-builder-VM alternative). Gotchas to test first: VPN/tunnel
+  interfaces break port forwarding (tailscale runs on neon), and the
+  runtime needs the primary user logged in. Not adoptable until neon
+  is on macOS 26; orbstack/colima remain the practical alternatives
+  meanwhile.
 - **nix-homebrew** (dustinlyons, wimpysworld) — `zhaofengli/nix-homebrew`
   installs Homebrew itself declaratively and can pin the core/cask taps
   in flake.lock (`mutableTaps = false`) — the cask layer becomes
@@ -2335,6 +2467,38 @@ full lists live in the per-repo review record.
   image-gallery sibling), **uxplay** (AirPlay receiver on Linux —
   audit-relevant twist on the AirPlay TODO), classics **expect** /
   **dos2unix** / **mediainfo**
+- From the 2026-09-03 Tier-2 round (two independent sightings marked
+  ×2): **tcpdump** (a real gap — never declared despite the
+  network-debugging habit), **hydra-check** ×2 (has Hydra built X on
+  channel Y? — pairs with the stable-base policy), **difftastic** ×2
+  (structural syntax-aware diff; `diff.external` candidate),
+  **git-lfs** ×2 (absent from the git setup), **blocky** ×2
+  (single-binary filtering DNS, helium LAN candidate), **searxng** ×2
+  (self-hosted metasearch, helium service candidate), **resholve**
+  (resolve every command in a shell script to a store path — the
+  proper packaging for `~/.bin`), **manix** (CLI search over
+  nix/NixOS/HM docs and options), **nix-search** (fast indexed
+  nixpkgs search), **systemctl-tui** (units + logs in one TUI),
+  **eternal-terminal** (roaming-surviving remote terminal with
+  scrollback), **tmate**/**upterm** (instant terminal sharing),
+  **dumbpipe** (iroh p2p pipe), **broot** (tree navigator with staged
+  ops), **yj** (YAML↔TOML↔JSON↔HCL), **minio-client** (S3 CLI for
+  the offsite thread), **proxychains-ng** (broader torsocks),
+  **prettyping**, **signal-cli**, **scrcpy** (Android mirroring),
+  **cargo-sweep**, **git-part-pick** / **git-auto-fixup** (partial
+  cherry-pick; blame-driven fixups), **advcp** (cp/mv with progress),
+  **nix-monitored** (transparent nom wrapping), **feedback**
+  (declarative watch-loops), **scrutiny** (SMART dashboard),
+  **rayhunter** (EFF stingray detector — security-research lane),
+  **fleetctl** (osquery fleet CLI), **tpm2-tools** (companions to the
+  TPM2 unlock item), **odt2txt**, **w3m**, **carbonyl** (Chromium in
+  the terminal), **aerc**, **newsboat**, **marp-cli**/**mdp**
+  (markdown slides), **playerctl** (VM media control), **msedit**;
+  casks **aldente** (battery charge limit), **launchcontrol** (GUI
+  launchd manager), **topnotch**, **macs-fan-control**,
+  **languagetool-desktop**, **element**, **balenaetcher**, brew
+  **sleepwatcher** (scripts on sleep/wake); paid, noted only:
+  daisydisk, macupdater
 
 ## CLI, cross-platform (traxys survey)
 
@@ -2632,3 +2796,24 @@ What was surveyed when; sections above carry per-item attribution.
   mega-helper and category-enable cascades (dendritic wins again),
   impermanence (3rd decline), LSQuarantine=false, nightly
   --recreate-lock-file upgrades, Lix/Determinate (6th sighting).
+- 2026-09-03 — Tier-2 round (seven repos, package-emphasis brief) plus
+  two research passes: `lovesegfault/nix-config`, `gvolpe/nix-config`,
+  `jtojnar/nixfiles`, `heywoodlh/nixos-configs`,
+  `LongerHV/nixos-configuration`, `NobbZ/nixos-config`,
+  `mrcjkb/nixfiles`; research on AWS/GCP images and on
+  apple/container. Filed above: TPM2 unattended disk unlock, BBR+cake,
+  SMART monitoring, rrsync receivers, socketfilterfw reconciliation,
+  createApp, firejail GUI sandboxing, direnv layout dirs, vmVariant
+  test VMs, EC2-builder profile, the aws-image + GCE-refinement
+  research blocks, the openhab digest-pin bug, the apple/container
+  watch item, jj-for-PRs + gitconfig stragglers, §6 package batch.
+  Noted, unfiled: jtojnar's Anubis scraper shield + cargo-sweep user
+  timer; heywoodlh's rayhunter/ntfy relay detail and darwin
+  sshd-extraConfig gap; mrcjkb's nix-community builder ssh blocks;
+  NobbZ's patched-coreutils shape; gvolpe/NobbZ mostly pre-absorbed
+  (their genre fully harvested by earlier rounds). Skips: Determinate
+  ecosystem (7th), impermanence (4th), nebula (tailscale is settled),
+  no-mitigations kernel param, option-cascade frameworks (3rd),
+  weakened backup sshd MACs (hmac-sha1 — the anti-pattern of the PQ
+  item). Tier-2 bench still unreviewed: chvp, AlexNabokikh, Kidsan,
+  CnTeng, kurnevsky, Sciencentistguy, josephst.
