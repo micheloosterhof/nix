@@ -193,7 +193,9 @@ describes the thing's actual purpose.
 
 ## Writing non-code
 YOU MUST use ISO 24495-1 Plain Language: give readers only what they need,
-ordered by what they need first, in short sentences with everyday words
+ordered by what they need first, in short sentences with everyday words.
+Remove all mannered prose: write plain declarative sentences, no rhetorical
+flourishes, cute epithets, or figurative color
 
 ## Project Context
 
