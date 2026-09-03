@@ -324,6 +324,14 @@ style: check against the repo, spec, one commit each) draws from here.
   from home-manager's nmt): normalize every `/nix/store/<hash>-name`
   to a zeroed hash before diffing, ~10 lines of sed — the trick that
   lets snapshot fixtures survive nixpkgs bumps.
+- **nix-darwin module test suite** (DavSanchez `lib/darwin-tests.nix`
+  + `tests/darwin/*.nix`, wired as `checks.aarch64-darwin`) — each
+  test file is a darwin module plus a `test` script asserting on the
+  built system (grep the generated activation script, inspect
+  rendered files, negative-test a whitelist), with `makeTestSuite`
+  auto-discovering test files. ~90 lines, copyable; the middle layer
+  between the eval tests and nothing for darwin modules with
+  behavior.
 - **Per-host test VMs via `virtualisation.vmVariant`** (LongerHV
   `nixos/mordor/vm-variant.nix`) — `nixos-rebuild build-vm --flake
   .#<host>` boots the *real host config* in qemu, with a per-host
@@ -648,6 +656,12 @@ style: check against the repo, spec, one commit each) draws from here.
   with a sops-stored relay password so cron/systemd/backup failures
   can actually send email. An ops category the servers lack entirely;
   pairs with barrucadu's `$SERVICE_RESULT` alerting in Backup and DR.
+- **phone-push** (chvp `modules/base/phone-push/default.nix`) — a
+  10-line script on every host: `curl $(cat $SECRET_URL) -d
+  "$(hostname): $@"`, with the push endpoint URL kept as a secret (a
+  secret ntfy-style topic URL is the auth). The cheapest
+  server-wants-attention primitive; the push counterpart of the msmtp
+  item above.
 - **fail2ban escalating bans** (ambroisie fail2ban module) —
   `bantime-increment = { enable = true; rndtime = "5m"; }` + DEFAULT jail
   `findtime`/`bantime` — jittered, escalating bans for nitrogen's exposed
@@ -682,6 +696,10 @@ style: check against the repo, spec, one commit each) draws from here.
   (`command-not-found` checked 2026-08-26: already off everywhere — the
   NixOS default follows `nix.channel.enable`, which the repo disables,
   and the HM option defaults off. Nothing declared; Michel's call.)
+- **Server closure one-liners, second batch** (Weathercold
+  `nixos/modules/profiles/server.nix`) — `fonts.fontconfig.enable =
+  false` on headless hosts; and declare `time.timeZone = "UTC"`
+  explicitly so the convention is enforced, not assumed.
 - **sudo-rs** (mightyiam + drupol independently) — `security.sudo.enable
   = false; security.sudo-rs.enable = true`: memory-safe sudo, drop-in.
 - User in `systemd-journal` group — full `journalctl` without sudo
@@ -780,6 +798,21 @@ style: check against the repo, spec, one commit each) draws from here.
   `StrictHostKeyChecking yes`, `ForwardAgent no` as the default with
   per-host relaxation; none of these are set in programs.ssh, and only
   accept-new/ForwardAgent-scoping variants are filed above.
+- **ssh over WebSocket on 443** (kurnevsky `modules/websocat-ssh.nix`
+  + `modules/server/websocat-ssh-server.nix`) — server side: a ~15-line
+  DynamicUser unit bridging `wss://host/wssh` to `127.0.0.1:22` behind
+  an nginx `proxyWebsockets` location; client side: the mirror unit
+  exposing a local port. Reaches nitrogen from networks where only
+  443/TLS passes — the principled version of the port-3333 workaround.
+  Same repo has a `websocat-wg` pair for WireGuard, plus `iodine.nix`
+  (DNS tunnel) and `hans.nix` (ICMP tunnel) as further fallbacks.
+- **Forge host-key pinning** (josephst
+  `hosts/common/ssh-infrastructure.nix`) — `programs.ssh.knownHosts`
+  carries the github.com/gitlab.com ed25519 keys declaratively, so
+  fresh hosts never TOFU the forges. Small delta on the filed fleet
+  knownHosts item.
+- **`IPQoS none`** (Kidsan) — disables DSCP marking on ssh packets;
+  the known fix when ssh stalls behind QoS-mangling routers or VPNs.
 - **`StreamLocalBindUnlink = "yes"` in sshd** (drupol) — server removes
   stale forwarded unix sockets, the fix for agent/gpg socket forwarding
   breaking on reconnect. Direct fit for the ssh-into-VM workflow.
@@ -1015,6 +1048,12 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## macOS / darwin
 
+- **Hosts-file blocklist module** (DavSanchez
+  `modules/darwin/stevenblack.nix`) — `networking.hostFiles` from the
+  packaged StevenBlack list with category extensions and a
+  regex-validated whitelist applied at build time. Ad/malware blocking
+  on neon itself, no daemons; complements the blocky-for-helium
+  package candidate.
 - **Application-firewall allowlist reconciliation** (heywoodlh
   `base/sshd.nix` postActivation) — `socketfilterfw --listapps` grepped
   for stale `/nix/store/*/bin/<listener>` entries, old paths
@@ -1150,7 +1189,11 @@ style: check against the repo, spec, one commit each) draws from here.
   `macos-latest` runner and pushes to cachix. Noted as the pattern to
   reach for only if the 2026-08-23 eval-only-neon CI decision is ever
   revisited; the makeOverridable identity item (§4) is what makes it
-  cheap.
+  cheap. Operational detail (DavSanchez
+  `hosts/darwin/ci/linux-builder-bootstrap.nix`): QEMU aborts instead
+  of falling back when HVF init fails on Actions runners, so the
+  linux-builder needs a wrapper rewriting `accel=hvf:tcg` to
+  `accel=tcg` there.
 - **Workflows generated from nix** (thiagokokada `actions/*.nix` →
   committed YAML via `nix eval`) — job steps and host lists derive
   from the flake's own `nixosConfigurations`/`darwinConfigurations`
@@ -1309,6 +1352,11 @@ The "Unblocked once decided" list below is now an actionable queue.
   Relevant for user-scoped tokens, and the only sops path on
   foreign-Linux HM-only hosts (the helium homeConfigurations idea)
   where system sops doesn't exist.
+- **sops key-rotation targets** (CnTeng `Makefile`) — `update-keys` =
+  `fd secrets.yaml --exec sops updatekeys --yes` (re-wrap after a
+  recipient change), `rotate-keys` = `sops rotate -i` (new data key
+  per file). The rotation story the sops setup here lacks; two
+  Makefile lines.
 - **Runtime secret injection via wrapper** (malob `home/packages.nix`
   `mkOpRunWrapper`) — wrap a tool so its token becomes an env var only
   at exec time (his: `op run` for nix-update/nixpkgs-review GitHub
@@ -1408,7 +1456,10 @@ domain) is the one DR item that can't be solved by redeploying.
   real `ExecStartPre` exit status via `systemctl show -p ExecStartPre`
   so a failed pre-command isn't reported as success. The monitoring
   half missing from the module shapes above: a backup that silently
-  stops running gets noticed.
+  stops running gets noticed. Cleaner mechanism (josephst
+  `modules/nixos/healthchecks.nix`): a module that gives any systemd
+  unit start/success/fail ping services, with the URL delivered via
+  `LoadCredential` so it never appears in the unit environment.
 - **Offsite copy as unit ordering** (jdheyburn, same file) — an
   `rclone`-to-B2 service with `wantedBy`/`after =
   [ "restic-backups-<name>.service" ]`: local snapshot then offsite as
@@ -1673,7 +1724,10 @@ domain) is the one DR item that can't be solved by redeploying.
   shikanime GitHub-settings-in-Terraform item to the two control
   planes this fleet actually depends on; the §3 exit-node
   `autoApprovers` plan assumes console clicking today. DNS caveat:
-  needs a TransIP provider.
+  needs a TransIP provider. CnTeng's `infra/` adds two planes:
+  Cloudflare R2 buckets, and least-privilege API tokens minted as
+  `cloudflare_api_token` resources — service credentials themselves
+  declarative.
 - **Self-fencing risky deploys** (zentralwerk/network switch templates):
   every remote change that can cut off access arms an automatic revert
   *before* applying — Junos `commit confirmed 5` (second ssh confirms;
@@ -1775,6 +1829,23 @@ domain) is the one DR item that can't be solved by redeploying.
 
 ## Caching and builders
 
+- **OrbStack's NixOS machine as flake-managed host and builder**
+  (josephst `hosts/nixos/orbstack/` +
+  `hosts/darwin/Josephs-MacBook-Air/orbstack.nix`) — the OrbStack
+  guest is a real nixosConfiguration (lxc-container profile +
+  OrbStack's generated module, bootloaders forced off), and the Mac
+  wires `nix.buildMachines` at OrbStack's local listener
+  (`127.0.0.1:32222`, `~/.orbstack/ssh/id_ed25519`; the GUI ssh
+  helper fails when the daemon invokes it as root). Alternative to
+  the qemu linux-builder: instant boot, dynamic memory; cost is a
+  dependency on the OrbStack app running.
+- **niks3 with GitHub-OIDC push auth** (CnTeng
+  `nixos/modules/services/niks3.nix`) — Mic92's S3-backed cache
+  server (theirs on Cloudflare R2) with `oidc.providers.github`
+  scoped to the repo, so CI pushes authenticate with short-lived
+  OIDC tokens instead of a stored signing secret. Relevant to the
+  cachix signing key in CI secrets; `NIX_CACHE_PRIORITY=50` ranks it
+  below cache.nixos.org.
 - **EC2 instances as remote builders — a dedicated profile**
   (lovesegfault `modules/nixos/profiles/ec2-builder.nix`) — documents
   the EC2 eval caveats up front (hostname set dynamically, so no
@@ -1945,9 +2016,27 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   deployed service isn't reproducible and upgrades happen whenever
   podman pulls. Closer to a bug than an idea; a version tag is the
   minimum fix, a digest pin the full one.
+- **Ephemeral file-sharing jail** (chvp
+  `modules/services/data-access/default.nix`) — a NixOS container
+  with `ephemeral = true`, read-write and read-only bind mounts of
+  the same data directory, sftp on a non-standard port, and
+  basic-auth nginx autoindex in front: a sacrificial box for handing
+  files to third parties, reset on restart.
 
 ## Sandboxing and agents
 
+- **Per-app bubblewrap wrappers** (kurnevsky `modules/sandbox.nix` +
+  `modules/sandbox/bwrap.nix`) — `wrap drv bins` symlinkJoins
+  sandboxed launchers over the original package, preserving
+  override/overrideAttrs, with runtime escape hatches (`WHITELIST`,
+  `WITH_NETWORK`, `UNSANDBOXED`) and a fake `flatpak` shim answering
+  the xdg document portal so file-access prompts still work. The
+  per-app mechanism this section lacks: agentspace is VMs, nono is
+  Landlock, firejail is profiles.
+- **torjail** (kurnevsky `modules/torjail.nix`) — a network namespace
+  whose traffic is forced through tor's `TransPort`/`DNSPort` via
+  nftables NAT: any program runs over Tor without app-level SOCKS
+  config. Extends the installed tor/torsocks pair.
 - **firejail-wrapped GUI apps** (mrcjkb
   `desktop-programs/firejail.nix`) — NixOS's typed
   `programs.firejail.wrappedBinaries` ships sandboxed browser
@@ -2089,7 +2178,12 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   interfaces break port forwarding (tailscale runs on neon), and the
   runtime needs the primary user logged in. Not adoptable until neon
   is on macOS 26; orbstack/colima remain the practical alternatives
-  meanwhile.
+  meanwhile. First operator sighted (BrianHicks
+  `dotfiles/container/default.nix`): pairs it with `socktainer`, a
+  Docker-socket API shim so docker-CLI tooling works against
+  apple/container, and a committed preset script (`container system
+  property set build.rosetta true`, cpu/memory budgets) as the config
+  surface the CLI lacks.
 - **nix-homebrew** (dustinlyons, wimpysworld) — `zhaofengli/nix-homebrew`
   installs Homebrew itself declaratively and can pin the core/cask taps
   in flake.lock (`mutableTaps = false`) — the cask layer becomes
@@ -2499,6 +2593,25 @@ full lists live in the per-repo review record.
   **languagetool-desktop**, **element**, **balenaetcher**, brew
   **sleepwatcher** (scripts on sleep/wake); paid, noted only:
   daisydisk, macupdater
+- From the 2026-09-03 final round (×2 = two sightings): **sshfs** (a
+  real gap given the fleet-over-ssh workflow), **zbar** (decode QR
+  codes — the pair to qrencode), **backrest** ×2 (restic web
+  UI/scheduler), **bat-extras** ×2, **diffoscope** (deep recursive
+  archive/binary diff), **rr** (record/replay debugger), **nix-diff**
+  (why two derivations differ), **fclones** (duplicate finder),
+  **par2cmdline-turbo** (bit-rot parity for the backup thread),
+  **reptyr** (reattach a process to tmux), **podman-tui**,
+  **openconnect** (AnyConnect-compatible VPN client), **scc**,
+  **perf**, **websocat**, **pizauth** (OAuth2 agent for CLI tools),
+  **sherlock** (OSINT username search), **translate-shell**,
+  **copyparty** (single-binary file server; helium candidate),
+  **audiobookshelf** (helium media candidate), **lrzsz**,
+  **mktorrent**, **isd**, **hydra-check** and **difftastic** (both
+  re-confirmed ×2 across rounds); agent lane: **rtk** (token-cheap
+  bash rewriting hooks), **agent-browser**, **openspec**, **handy**
+  (local push-to-talk); cask **disk-inventory-x** (free daisydisk);
+  security flake: metasploit, radare2, aircrack-ng, dsniff,
+  arp-scan, exploitdb
 
 ## CLI, cross-platform (traxys survey)
 
@@ -2817,3 +2930,19 @@ What was surveyed when; sections above carry per-item attribution.
   weakened backup sshd MACs (hmac-sha1 — the anti-pattern of the PQ
   item). Tier-2 bench still unreviewed: chvp, AlexNabokikh, Kidsan,
   CnTeng, kurnevsky, Sciencentistguy, josephst.
+- 2026-09-03 — final bench round, ten repos, closing the GitHub
+  sweep: chvp, AlexNabokikh, Kidsan (dead mirror — rank candidates by
+  `git log`, not the API updated-at), CnTeng, kurnevsky,
+  Sciencentistguy, josephst, Weathercold, BrianHicks, DavSanchez.
+  Filed above: websocat-ssh/iodine/hans transports, bwrap wrappers,
+  torjail, forge host-key pinning, IPQoS none, darwin module test
+  suite, stevenblack hosts module, HVF→TCG CI detail, OrbStack
+  builder, niks3 OIDC cache, healthchecks LoadCredential refinement,
+  phone-push, file-sharing jail, socktainer note, sops rotation
+  targets, Cloudflare token plane, fontconfig/UTC server lines, §6
+  package batch. Noted, unfiled: kurnevsky `-march=native` helper and
+  README ops one-liners; BrianHicks claude plugins-from-package-src
+  with eval assertions; AlexNabokikh symbolic-hotkey rebind catalog
+  (implementation reference), independent dendritic adoption
+  (validation). Yield confirms saturation: three of ten near zero.
+  44 personal repos surveyed total; sweep closed.
