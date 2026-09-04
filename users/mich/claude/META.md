@@ -36,6 +36,11 @@ ABOUTME: Read before adding or editing rules. Not deployed; runtime interpretati
 - Rule count is itself a cost: per-rule compliance drops as rules accumulate,
   and conflicting rules degrade even unrelated ones. Prefer merging into an
   existing rule over adding a new one.
+- Before a correction becomes a rule, pick its bucket (Vercel's design.md
+  triage): judgment goes in prose, reusable mechanics go in a tool,
+  template, or config the agent uses, and mechanical failures go in a
+  check code enforces (hook, lint, eval test). Prose is the last resort,
+  not the default — a rule nothing enforces is the weakest of the three.
 - Worked example: "every bugfix needs a failing test first" was too strong.
   The intent was guarding against regression from a distance (the LC_ALL
   export silently defeating LC_TIME), so the rule became: write the test when
