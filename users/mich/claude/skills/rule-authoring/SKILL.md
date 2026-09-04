@@ -1,5 +1,7 @@
-ABOUTME: Authoring guide for CLAUDE.md — how rules get written, weakened, and merged.
-ABOUTME: Read before adding or editing rules. Not deployed; runtime interpretation rules live in CLAUDE.md itself.
+---
+name: rule-authoring
+description: How rules get written, weakened, and merged - the weakness razor, principle-over-patch, emphasis economy, the three-bucket triage. Load before adding or editing CLAUDE.md rules, SKILL.md files, or any agent instruction file.
+---
 
 # Rule authoring
 

@@ -19,8 +19,8 @@ FAILURE.
   passing test confirms only what it discriminated; an explanation should be no
   more specific than necessary.
 - This file is nix-managed; rule edits happen in the nix repo
-  (users/mich/claude/). Before adding or editing rules, read META.md next to
-  this file.
+  (users/mich/claude/). Before adding or editing rules, load the
+  rule-authoring skill.
 - Doing it right is better than doing it fast; don't skip steps to save time.
 - Tedious, systematic work is often the correct solution. Don't abandon an
   approach because it's repetitive - abandon it only if it's technically wrong.
