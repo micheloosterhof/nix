@@ -10,7 +10,8 @@ unless a project explicitly overrides them.
 
 Detailed per-domain standards live in skills — load the matching one before
 writing, reviewing, or configuring code in that domain: `nfr-rust`,
-`nfr-python`, `nfr-go`, `nfr-frontend`, `nfr-docker`, `nfr-ci`.
+`nfr-python`, `nfr-go`, `nfr-typescript`, `nfr-frontend`, `nfr-docker`,
+`nfr-ci`.
 
 ---
 
@@ -24,6 +25,7 @@ Choose the right tool for the job:
 | Scripting, protocol emulation, glue code | Python | Rapid iteration, ecosystem |
 | Web services, API servers | Go | Simple concurrency, fast compile |
 | Frontend | TypeScript (strict) | Type safety in the browser |
+| Agent tooling (Claude Code hooks/plugins, MCP servers) | TypeScript (strict) | The agent ecosystem is Node-native |
 
 Never use JavaScript directly. All frontend code is TypeScript.
 
@@ -128,8 +130,8 @@ Non-negotiables that apply even without loading them:
 ## 8. Frontend
 
 TypeScript only; Vue (Composition API) or vanilla — avoid React; dark mode
-from day one; fewer than 10 production deps. Full stack and config: load
-`nfr-frontend`.
+from day one. Browser stack and config: load `nfr-frontend`; the TypeScript
+language standards: load `nfr-typescript`.
 
 ## 9. Version Control
 
