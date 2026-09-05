@@ -13,7 +13,7 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 The cheap wins scattered across the surveys, checked against the repo
 and turned into concrete changes. None is implemented today: `zramSwap`,
 `initrd.systemd`, `useNetworkd`, `nix-output-monitor`,
-`programs.nh`, `intent-to-add`, `warn-dirty` and `FailureAction` appear
+`programs.nh`, `intent-to-add` and `warn-dirty` appear
 nowhere in the repo outside this file.
 
 Two source bullets turned out to be wrong or more expensive than
@@ -148,26 +148,6 @@ on a remote-rebuilt VM), so either leave `flake` unset and rely on cwd, or
 set it per host file. `make rebuild`/`make gc` keep their names and call nh
 underneath. Decision: whether to hand GC scheduling to nh. Test: an eval
 assertion that exactly one of the two GC mechanisms is enabled per host.
-
-**10. sshd-or-reboot watchdog** (`modules/server.nix`):
-
-```nix
-# A headless box whose sshd fails at boot is unreachable; reboot instead
-# of sitting there.
-systemd.services.openssh = {
-  wantedBy = [ "boot-complete.target" ];
-  unitConfig.FailureAction = "reboot";
-};
-```
-
-Decision is scope, and it matters: `server` is also composed into the GCE
-image, where a persistent sshd failure would turn into a reboot loop that
-costs money and hides the cause. Options: put it on `server` and accept
-that; put it on the two pet servers' host files only (helium, nitrogen);
-or put it on `server` and override it off in `modules/gce.nix`. Prefer the
-host files — nitrogen is the machine this is actually insurance for (remote,
-non-standard ssh port 3333, nothing else to reach it by except the tailnet).
-Test: eval assertion on whichever hosts get it.
 
 ## Batch C — needs a VM boot test, not just an eval
 
@@ -2740,6 +2720,19 @@ Kept for the record so the same paths don't get re-surveyed.
   without it.
 - **lanzaboote** — the repart+signed-UKI pipeline covers our Secure Boot
   case; lanzaboote solves a different (interactive laptop) case.
+- **sshd-or-reboot watchdog** (`FailureAction = "reboot"` on sshd, was
+  batch B10) — decided 2026-09-05: a persistent sshd failure reboot-loops
+  with no exit. The upstream pattern pairs it with systemd-boot boot
+  counting (Nth failed boot falls back to the previous generation);
+  nitrogen boots GRUB/BIOS, so only the loop half would land. The loop
+  also fires on a bad `switch` (into the now-default bad generation) and
+  shrinks the provider-console rescue window to seconds. The failure it
+  insures against is rare anyway: NixOS validates sshd_config at build
+  and regenerates missing host keys in preStart. Side note: the surveyed
+  snippet targets `systemd.services.openssh`, but the unit is `sshd` — as
+  written it is a no-op. If reachability insurance is ever wanted,
+  Tailscale SSH as an independent second door is the better direction
+  (its own security discussion).
 - **GaetanLepage's CI** — `nix flake check` runs only on PRs touching
   `flake.nix`/`flake.lock` (paths filter), so module changes land
   unchecked. Keep our eval-all-hosts CI.
