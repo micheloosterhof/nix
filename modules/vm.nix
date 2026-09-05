@@ -25,6 +25,10 @@
       # unpredictable enpXsY names, so we don't hardcode one.
       networking.useDHCP = true;
 
+      # Cap journal growth: the default cap is 10% of the filesystem, a lot
+      # of a ~40 GiB virtual disk spent on logs nobody reads.
+      services.journald.extraConfig = "SystemMaxUse=1G";
+
       # List packages installed in system profile. To search, run:
       # $ nix search wget
       # Linux system-level packages only. Cross-platform CLI tools belong in

@@ -12,7 +12,7 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 
 The cheap wins scattered across the surveys, checked against the repo
 and turned into concrete changes. None is implemented today: `zramSwap`,
-`journald`, `initrd.systemd`, `useNetworkd`, `nix-output-monitor`,
+`initrd.systemd`, `useNetworkd`, `nix-output-monitor`,
 `programs.nh`, `intent-to-add`, `warn-dirty` and `FailureAction` appear
 nowhere in the repo outside this file.
 
@@ -51,14 +51,6 @@ stage:
 against junk: `--intent-to-add` honours `.gitignore`, which already covers
 `result`, `backup.tar.gz*` and `iso/nixos.iso`. Not the remote targets —
 `remote/copy` rsyncs the worktree and does not care. No test (Makefile).
-
-**3. Cap journal growth** (`modules/vm.nix` and `modules/server.nix`, or
-once on the shared base). `services.journald.extraConfig = "SystemMaxUse=1G"`.
-The VMs run a ~40 GiB virtual disk and the servers are small; the default
-cap is 10% of the filesystem, which is a lot of disk spent on logs nobody
-reads. Note `server` is composed into the GCE image too (`flake.lib.gceSystem`
-= base + server + gce), which is if anything a stronger reason to cap.
-Test: an eval assertion on one VM and one server.
 
 **4. zram swap** (`modules/vm.nix`). `zramSwap.enable = true`. Compressed
 RAM-backed swap so a big `nix build` in the guest degrades instead of

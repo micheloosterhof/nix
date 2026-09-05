@@ -20,6 +20,10 @@
       # global switch bring up podman0/tailscale0 etc.
       networking.useDHCP = lib.mkDefault false;
 
+      # Cap journal growth: the disks are small and the default cap is 10%
+      # of the filesystem. mkDefault so a host can keep more (nitrogen does).
+      services.journald.extraConfig = lib.mkDefault "SystemMaxUse=1G";
+
       environment.systemPackages = with pkgs; [
         # Minimal: full git drags a perl environment (send-email, gitweb)
         # onto every server; mich's own git comes from home.packages.

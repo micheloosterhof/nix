@@ -30,6 +30,10 @@
           # KVM guest agent: lets the provider do graceful shutdown / report the IP.
           services.qemuGuest.enable = true;
 
+          # Internet-facing pet server: keep more journal than the server
+          # aggregate's 1G default so incidents stay diagnosable.
+          services.journald.extraConfig = "SystemMaxUse=4G";
+
           # This host's sops secrets, decrypted with its SSH host key at
           # activation. The canary proves the decrypt path end to end; real
           # secrets join this file as services need them.

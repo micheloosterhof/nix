@@ -526,6 +526,30 @@ lib.runTests {
     expected = true;
   };
 
+  # vm.nix/server.nix: journald is capped at 1G (the default cap is 10% of
+  # the filesystem — a lot of disk for logs nobody reads on a ~40 GiB VM).
+  testVmJournaldCapped = {
+    expr = lib.hasInfix "SystemMaxUse=1G" fusion.services.journald.extraConfig;
+    expected = true;
+  };
+  testServerJournaldCapped = {
+    expr = lib.hasInfix "SystemMaxUse=1G" helium.services.journald.extraConfig;
+    expected = true;
+  };
+  # nitrogen keeps more logs: its host file overrides the server aggregate's
+  # mkDefault, and the override must fully replace the 1G line (lines-type
+  # options concatenate equal-priority definitions).
+  testNitrogenJournaldLargerCap = {
+    expr = {
+      larger = lib.hasInfix "SystemMaxUse=4G" nitrogen.services.journald.extraConfig;
+      defaultGone = lib.hasInfix "SystemMaxUse=1G" nitrogen.services.journald.extraConfig;
+    };
+    expected = {
+      larger = true;
+      defaultGone = false;
+    };
+  };
+
   # modules/dns.nix: VM DNS is strict DoT to Quad9 with no plaintext fallback
   # (fails closed rather than leaking to the NAT gateway's resolver).
   testVmDnsOverTls = {
