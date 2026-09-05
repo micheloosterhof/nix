@@ -770,7 +770,13 @@ style: check against the repo, spec, one commit each) draws from here.
   `Host *`) — `HashKnownHosts yes`, `VerifyHostKeyDNS yes`,
   `StrictHostKeyChecking yes`, `ForwardAgent no` as the default with
   per-host relaxation; none of these are set in programs.ssh, and only
-  accept-new/ForwardAgent-scoping variants are filed above.
+  accept-new/ForwardAgent-scoping variants are filed above. → skip
+  (2026-09-05): ForwardAgent scoping is already implemented (fleet match
+  block; a `ForwardAgent no` in `"*"` would first-match-win over it and
+  break pam_rssh sudo); strict checking is covered better by the filed
+  accept-new/knownHosts/forge-pinning items; HashKnownHosts hides names
+  this public repo already lists; VerifyHostKeyDNS is a no-op — no SSHFP
+  records published (checked) and no DNSSEC-validated resolution.
 - **ssh over WebSocket on 443** (kurnevsky `modules/websocat-ssh.nix`
   + `modules/server/websocat-ssh-server.nix`) — server side: a ~15-line
   DynamicUser unit bridging `wss://host/wssh` to `127.0.0.1:22` behind
