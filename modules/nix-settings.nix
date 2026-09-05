@@ -33,6 +33,10 @@ let
           # ~/.nix-profile / ~/.nix-defexpr dotfiles.
           use-xdg-base-directories = true;
 
+          # Remote builders substitute from the caches themselves instead of
+          # receiving every dependency over ssh from the client.
+          builders-use-substitutes = true;
+
           # Substituters are best-effort: an unreachable cache costs 5
           # seconds (not a hang), and a failed substitution falls back to a
           # local build (not an error). Keeps the cachix cache and roaming

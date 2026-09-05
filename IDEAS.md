@@ -13,31 +13,25 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 The cheap wins scattered across the surveys, checked against the repo
 and turned into concrete changes. None is implemented today: `zramSwap`,
 `journald`, `initrd.systemd`, `useNetworkd`, `nix-output-monitor`,
-`programs.nh`, `intent-to-add`, `warn-dirty`,
-`builders-use-substitutes` and `FailureAction` appear nowhere in the repo
-outside this file.
+`programs.nh`, `intent-to-add`, `warn-dirty` and `FailureAction` appear
+nowhere in the repo outside this file.
 
 Two source bullets turned out to be wrong or more expensive than
 advertised — see nh and registry pinning. Each item below is one commit.
 
 ## Batch A — no decision to make
 
-**1. Two nix.settings keys** (`modules/nix-settings.nix`, in the `settings`
+**1. One nix.settings key** (`modules/nix-settings.nix`, in the `settings`
 block around line 40). Add:
 
 ```nix
 # The repo is worked on dirty most of the time; the warning on every
 # build is noise.
 warn-dirty = false;
-# Remote builders substitute from the caches themselves instead of
-# receiving every dependency over ssh from the client.
-builders-use-substitutes = true;
 ```
 
-`builders-use-substitutes` only bites on neon (the one host with
-`nix.buildMachines`), but it is a client-side setting and harmless on the
-rest, so it stays in the shared block. Test: one eval assertion per key
-alongside the existing `testSubstituterFallback` in `tests/default.nix`.
+Test: one eval assertion alongside the existing
+`testSubstituterFallback` in `tests/default.nix`.
 
 **2. `git add --intent-to-add` before local builds** (`Makefile`). A
 path-flake in a git worktree only sees tracked files, so a newly written
