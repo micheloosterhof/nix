@@ -805,7 +805,11 @@ style: check against the repo, spec, one commit each) draws from here.
   `programs.ssh.enableDefaultConfig = false` so the rendered config is
   exactly what's written. ambroisie's companion: `includes =
   [ "config.local" ]` (and the same in gitconfig) for unversioned
-  per-machine entries.
+  per-machine entries. → skip (2026-09-05): enableDefaultConfig=false and
+  the config.local include are already set; the ForwardAgent scoping is
+  already achieved by the explicit fleet match block (which canonicalization
+  can't replace — dev is off-tailnet on a plain IP); XDG_RUNTIME_DIR
+  ControlPath is Linux-only and the primary client is the Mac.
 - **mDNS fleet names** (mightyiam) — avahi with `nssmdns4 = true`, fleet
   knownHosts on `<host>.local` names: no DHCP-address tracking for the
   Fusion/UTM VMs.
