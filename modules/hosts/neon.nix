@@ -91,6 +91,9 @@
           # zsh is the default shell on Mac and we want to make sure that we're
           # configuring the rc correctly with nix-darwin paths.
           programs.zsh.enable = true;
+          # The user zshrc runs compinit itself; a second run in /etc/zshrc
+          # only slows shell startup.
+          programs.zsh.enableGlobalCompInit = false;
           programs.zsh.shellInit = ''
             # Nix
             if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then

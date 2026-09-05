@@ -971,6 +971,8 @@ style: check against the repo, spec, one commit each) draws from here.
   (bare `vim` resumes the stopped job).
 - **Skip double compinit** — `programs.zsh.enableGlobalCompInit = false`
   when home-manager runs its own; measurable startup win. (ambroisie)
+  → done (2026-09-05) on neon, the only host with a global compinit; the
+  user zshrc keeps its own compinit call.
 - `bindkey '^[^M' autosuggest-execute` — Alt-Enter accepts and runs the
   autosuggestion in one keystroke. (mightyiam)
 - `history.ignorePatterns = ["rm *"]` — destructive commands never enter
