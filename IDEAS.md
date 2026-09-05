@@ -672,6 +672,9 @@ style: check against the repo, spec, one commit each) draws from here.
   explicitly so the convention is enforced, not assumed.
 - **sudo-rs** (mightyiam + drupol independently) — `security.sudo.enable
   = false; security.sudo-rs.enable = true`: memory-safe sudo, drop-in.
+  → skip (2026-09-05): not needed; also not a drop-in here — the fleet's
+  sudo carries execWheelOnly (hardening.nix, relaxed on the GCE image)
+  and pam_rssh wiring that would all need re-verifying against sudo-rs.
 - User in `systemd-journal` group — full `journalctl` without sudo
   (mightyiam); journald `MaxFileSec=3day` — time-based retention beside
   the size cap (drupol).
