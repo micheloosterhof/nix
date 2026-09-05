@@ -328,13 +328,21 @@ in
     '';
 
     config = {
+      # Evaluate .envrc under bash strict mode so a broken one fails loudly
+      # instead of exporting a partial environment.
+      strict_env = true;
+      # Don't print the +FOO ~PATH diff on every load.
+      hide_env_diff = true;
+
+      # Tilde, not $HOME: direnv expands ~ in whitelist paths but does no
+      # variable expansion on the TOML (verified empirically).
       whitelist = {
         prefix = [
-          "$HOME/code/go/src/github.com/moosterhof"
-          "$HOME/code/go/src/github.com/micheloosterhof"
+          "~/code/go/src/github.com/moosterhof"
+          "~/code/go/src/github.com/micheloosterhof"
         ];
 
-        exact = [ "$HOME/.envrc" ];
+        exact = [ "~/.envrc" ];
       };
     };
   };

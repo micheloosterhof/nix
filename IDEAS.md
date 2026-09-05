@@ -1019,7 +1019,12 @@ style: check against the repo, spec, one commit each) draws from here.
   `hide_env_diff = true` (quieter loads), and `whitelist.prefix =
   [ "~/src" ]` so own checkouts skip the `direnv allow` ritual. The
   config block is unset here today; IDEAS previously had only
-  `warn_timeout`/`watch_file`.
+  `warn_timeout`/`watch_file`. → done 2026-09-05 except the `~/src`
+  whitelist (auto-executes any .envrc under it — pending a decision on
+  whether third-party clones ever land there). The premise was wrong:
+  the config block existed with a whitelist, but its `$HOME/...` entries
+  never matched — direnv does no variable expansion on the TOML (tilde
+  works; verified empirically and fixed).
 - **Completion cache keyed on binary mtime** (franckrasolo
   `home/zsh/completions.cache.zsh`) — `_cache_completion` regenerates
   `<tool> completion zsh` output only when the binary is newer than the
