@@ -483,7 +483,8 @@ style: check against the repo, spec, one commit each) draws from here.
   harvested from sebastianrasor; third repo converging on the same set.
 - **`nix.settings.keep-outputs = true`** (mightyiam) — GC keeps
   build-time deps of rooted outputs, so direnv dev shells survive
-  `nix-collect-garbage`.
+  `nix-collect-garbage`. → already set fleet-wide (with keep-derivations)
+  in `modules/nix-settings.nix` extraOptions; nothing to do.
 - **GC timer jitter** (ambroisie nix module) — `nix.gc` with
   `randomizedDelaySec = "10min"` and `persistent = true`; persistent
   matters for VMs suspended when the timer would have fired.
