@@ -487,7 +487,10 @@ style: check against the repo, spec, one commit each) draws from here.
   in `modules/nix-settings.nix` extraOptions; nothing to do.
 - **GC timer jitter** (ambroisie nix module) — `nix.gc` with
   `randomizedDelaySec = "10min"` and `persistent = true`; persistent
-  matters for VMs suspended when the timer would have fired.
+  matters for VMs suspended when the timer would have fired. → skip
+  (2026-09-05): Persistent=true is already the NixOS default (verified on
+  the generated nix-gc.timer), and jitter addresses contention that
+  independent machines don't have.
 - `nix.settings`: `http-connections = 128`, `max-substitution-jobs =
   128` (parallel substitution on fat pipes) — every setting carries a
   WHY comment, a documentation style worth imitating. (GaetanLepage)
