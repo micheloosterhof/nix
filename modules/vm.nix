@@ -29,6 +29,10 @@
       # of a ~40 GiB virtual disk spent on logs nobody reads.
       services.journald.extraConfig = "SystemMaxUse=1G";
 
+      # Compressed RAM-backed swap: a big nix build in the guest degrades
+      # instead of OOM-killing.
+      zramSwap.enable = true;
+
       # List packages installed in system profile. To search, run:
       # $ nix search wget
       # Linux system-level packages only. Cross-platform CLI tools belong in

@@ -11,7 +11,7 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 # 1. Specced and ready — Tier-1 batch (2026-08-20)
 
 The cheap wins scattered across the surveys, checked against the repo
-and turned into concrete changes. None is implemented today: `zramSwap`,
+and turned into concrete changes. None is implemented today:
 `initrd.systemd`, `useNetworkd`, `nix-output-monitor`,
 `programs.nh`, `intent-to-add` and `warn-dirty` appear
 nowhere in the repo outside this file.
@@ -51,12 +51,6 @@ stage:
 against junk: `--intent-to-add` honours `.gitignore`, which already covers
 `result`, `backup.tar.gz*` and `iso/nixos.iso`. Not the remote targets —
 `remote/copy` rsyncs the worktree and does not care. No test (Makefile).
-
-**4. zram swap** (`modules/vm.nix`). `zramSwap.enable = true`. Compressed
-RAM-backed swap so a big `nix build` in the guest degrades instead of
-OOM-killing. Take zram alone — Mic92's separate zswap module on top of it
-is a known anti-pattern. Leave the servers out for now: helium has 32 GB
-and nitrogen's workload is known. Test: eval assertion on fusion.
 
 **5. nix-output-monitor on the image targets** (`Makefile`, `home.packages`).
 Add `pkgs.nix-output-monitor` to the `fullTools` list in
@@ -240,8 +234,9 @@ registry-pinning corrections).
   `systemd.services.systemd-networkd.stopIfChanged = false` (+ resolved) so
   a `nixos-rebuild switch` over SSH doesn't cut the network under you;
   `services.getty.autologinUser` on the throwaway VM;
-  `services.dbus.implementation = "broker"`. → zram/stopIfChanged are
-  batch A4/C12; journald landed 2026-09-05; the rest stayed in section 2.
+  `services.dbus.implementation = "broker"`. → stopIfChanged is batch
+  C12; journald and zram landed 2026-09-05/06; the rest stayed in
+  section 2.
 - **`machines/utm-vm/` as a dev-VM template** (Mic92) — almost exactly our VM
   shape, worth reading whole: srvos server base + disko single-disk GPT
   (500M ESP + ext4 root, deliberately not ZFS for a throwaway guest),
