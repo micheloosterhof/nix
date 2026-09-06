@@ -1329,12 +1329,25 @@ The "Unblocked once decided" list below is now an actionable queue.
 
 ## Unblocked queue (decision made — pick and implement)
 
-- **Tailscale auto-join on first boot** (highest-leverage for fleet
-  deploy). `base` enables tailscaled but it's inert until `tailscale up`.
-  A small boot service that reads a tagged auth key from a sops secret
-  (GCE instances could alternatively use GCP Secret Manager / instance
-  metadata) and runs `tailscale up` makes every instance self-join the
-  tailnet — the turnkey "deploy many places" property.
+- **Tailscale auto-join for turnkey substrates** (reshaped 2026-09-05
+  from "auto-join on first boot"). No custom boot service: upstream
+  `services.tailscale.authKeyFile` already ships a tailscaled-autoconnect
+  oneshot that runs `tailscale up` once when the node is logged out;
+  `extraUpFlags` carries the rest. Key material is a tag-scoped OAuth
+  client secret (`tskey-client-...`, accepted by authKeyFile with
+  `--advertise-tags`), not a plain auth key — those expire within 90
+  days and would rot in sops. Scope: an opt-in `tailscale-autojoin`
+  feature module composed only into substrates deployed turnkey — the
+  GCE image first (secret from instance metadata / Secret Manager;
+  sops can't ride a template image, per-instance host keys don't exist
+  at build time), with ephemeral+preauthorized keys so cattle
+  self-clean per the 2026-08-25 role split. NOT on base or the pets:
+  their tailscaled state persists across rebuilds, so auto-join only
+  helps at reinstall while parking a join-capable secret on every host
+  (blast radius: a compromised host could mint tagged nodes).
+  Prerequisite: create the OAuth client with the right tag scope in
+  the admin console. See also the `--encrypt-state=false` imaging note
+  in the GCP section.
 - **Home-manager-level sops** (astratagem/dotfield
   `src/features/secrets/default.nix`) — a second sops-nix layer inside
   HM decrypting with the *user's* ssh key (`sops.age.sshKeyPaths` on
