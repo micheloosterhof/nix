@@ -187,7 +187,7 @@ confirming the lease survives two rebuilds.
 ## Suggested order
 
 A1–A7 in any order, one commit each — all eval-only, all verifiable with
-`make lint`. Then B8/B9/B10, each carrying its decision. Then C11, boot the
+`make lint`. Then B8/B9, each carrying its decision. Then C11, boot the
 VM, then C12, boot the VM again.
 
 ## Source bullets absorbed into this batch (kept for provenance)
@@ -229,7 +229,8 @@ registry-pinning corrections).
 - **Small nix.settings from people who build nix** (Mic92, EmergentMind):
   `warn-dirty = false`, `builders-use-substitutes = true` (remote builder
   fetches from cache directly instead of copy-via-Mac; free win for the
-  existing linux-builder). → batch A1.
+  existing linux-builder). → batch A1 (warn-dirty;
+  builders-use-substitutes landed 2026-09-05).
 - **VM/host one-liners** (Mic92, machines/, nixosModules/): `pkgs.ghostty.terminfo`
   (terminfo output only) in the VM's systemPackages so ghostty-over-SSH
   works — the lightweight version of the srvos mixins-terminfo idea in the
@@ -239,12 +240,8 @@ registry-pinning corrections).
   `systemd.services.systemd-networkd.stopIfChanged = false` (+ resolved) so
   a `nixos-rebuild switch` over SSH doesn't cut the network under you;
   `services.getty.autologinUser` on the throwaway VM;
-  `services.dbus.implementation = "broker"`. → journald/zram/stopIfChanged
-  are batch A3/A4/C12; the rest stayed in section 2.
-- **sshd-or-reboot watchdog** (Mic92 machines/bernie): `systemd.services.openssh
-  = { wantedBy = [ "boot-complete.target" ]; unitConfig.FailureAction =
-  "reboot"; }` — a headless machine whose sshd fails at boot reboots
-  instead of sitting unreachable. Cheap insurance for the VMs. → batch B10.
+  `services.dbus.implementation = "broker"`. → zram/stopIfChanged are
+  batch A4/C12; journald landed 2026-09-05; the rest stayed in section 2.
 - **`machines/utm-vm/` as a dev-VM template** (Mic92) — almost exactly our VM
   shape, worth reading whole: srvos server base + disko single-disk GPT
   (500M ESP + ext4 root, deliberately not ZFS for a throwaway guest),
@@ -481,16 +478,6 @@ style: check against the repo, spec, one commit each) draws from here.
   credited to jackson.dev) — `log-lines = 50`, `tarball-ttl = 86400`,
   plus the connect-timeout/fallback and min-free/max-free pairs already
   harvested from sebastianrasor; third repo converging on the same set.
-- **`nix.settings.keep-outputs = true`** (mightyiam) — GC keeps
-  build-time deps of rooted outputs, so direnv dev shells survive
-  `nix-collect-garbage`. → already set fleet-wide (with keep-derivations)
-  in `modules/nix-settings.nix` extraOptions; nothing to do.
-- **GC timer jitter** (ambroisie nix module) — `nix.gc` with
-  `randomizedDelaySec = "10min"` and `persistent = true`; persistent
-  matters for VMs suspended when the timer would have fired. → skip
-  (2026-09-05): Persistent=true is already the NixOS default (verified on
-  the generated nix-gc.timer), and jitter addresses contention that
-  independent machines don't have.
 - `nix.settings`: `http-connections = 128`, `max-substitution-jobs =
   128` (parallel substitution on fat pipes) — every setting carries a
   WHY comment, a documentation style worth imitating. (GaetanLepage)
@@ -670,11 +657,6 @@ style: check against the repo, spec, one commit each) draws from here.
   `nixos/modules/profiles/server.nix`) — `fonts.fontconfig.enable =
   false` on headless hosts; and declare `time.timeZone = "UTC"`
   explicitly so the convention is enforced, not assumed.
-- **sudo-rs** (mightyiam + drupol independently) — `security.sudo.enable
-  = false; security.sudo-rs.enable = true`: memory-safe sudo, drop-in.
-  → skip (2026-09-05): not needed; also not a drop-in here — the fleet's
-  sudo carries execWheelOnly (hardening.nix, relaxed on the GCE image)
-  and pam_rssh wiring that would all need re-verifying against sudo-rs.
 - User in `systemd-journal` group — full `journalctl` without sudo
   (mightyiam); journald `MaxFileSec=3day` — time-based retention beside
   the size cap (drupol).
@@ -766,17 +748,6 @@ style: check against the repo, spec, one commit each) draws from here.
   host/pubkey algorithms, etm-only MACs / aes256-gcm. OpenSSH ≥9.9
   ships mlkem. Nothing pins crypto algorithms here today; fits the
   Anduril-STIG thread for nitrogen's internet-facing sshd.
-- **ssh client hardening baseline** (jwiegley `config/ssh.nix`
-  `Host *`) — `HashKnownHosts yes`, `VerifyHostKeyDNS yes`,
-  `StrictHostKeyChecking yes`, `ForwardAgent no` as the default with
-  per-host relaxation; none of these are set in programs.ssh, and only
-  accept-new/ForwardAgent-scoping variants are filed above. → skip
-  (2026-09-05): ForwardAgent scoping is already implemented (fleet match
-  block; a `ForwardAgent no` in `"*"` would first-match-win over it and
-  break pam_rssh sudo); strict checking is covered better by the filed
-  accept-new/knownHosts/forge-pinning items; HashKnownHosts hides names
-  this public repo already lists; VerifyHostKeyDNS is a no-op — no SSHFP
-  records published (checked) and no DNSSEC-validated resolution.
 - **ssh over WebSocket on 443** (kurnevsky `modules/websocat-ssh.nix`
   + `modules/server/websocat-ssh-server.nix`) — server side: a ~15-line
   DynamicUser unit bridging `wss://host/wssh` to `127.0.0.1:22` behind
@@ -795,21 +766,6 @@ style: check against the repo, spec, one commit each) draws from here.
 - **`StreamLocalBindUnlink = "yes"` in sshd** (drupol) — server removes
   stale forwarded unix sockets, the fix for agent/gpg socket forwarding
   breaking on reconnect. Direct fit for the ssh-into-VM workflow.
-- **Tailnet-scoped ssh canonicalization** (sebastianrasor
-  `home-modules/ssh.nix`) — `CanonicalizeHostname yes` +
-  `CanonicalDomains ts.<domain>` so bare `ssh host` resolves to the
-  tailnet FQDN, and `ForwardAgent yes` is scoped to `Host *.ts.<domain>`
-  only — agent forwarding for our machines, never for random hosts. Plus
-  `ControlPath` under `$XDG_RUNTIME_DIR` (tmpfs, 0700, tmpfiles rule
-  pre-creates it) instead of `~/.ssh`, and
-  `programs.ssh.enableDefaultConfig = false` so the rendered config is
-  exactly what's written. ambroisie's companion: `includes =
-  [ "config.local" ]` (and the same in gitconfig) for unversioned
-  per-machine entries. → skip (2026-09-05): enableDefaultConfig=false and
-  the config.local include are already set; the ForwardAgent scoping is
-  already achieved by the explicit fleet match block (which canonicalization
-  can't replace — dev is off-tailnet on a plain IP); XDG_RUNTIME_DIR
-  ControlPath is Linux-only and the primary client is the Mac.
 - **mDNS fleet names** (mightyiam) — avahi with `nssmdns4 = true`, fleet
   knownHosts on `<host>.local` names: no DHCP-address tracking for the
   Fusion/UTM VMs.
@@ -818,8 +774,8 @@ style: check against the repo, spec, one commit each) draws from here.
   (accounts.nix), but `wheelNeedsPassword = false` means sudo skips PAM
   entirely, so it is inert. The real posture change is flipping that to
   true: sudo then authenticates against the forwarded agent (sufficient),
-  falling back to mich's password. Needs agent forwarding to the fleet
-  hosts first (no `ForwardAgent` in the ssh config today), and a decision
+  falling back to mich's password. Agent forwarding to the fleet hosts
+  is already configured (fleet match block in programs.ssh); a decision
   on whether the GCE image keeps NOPASSWD (OS Login admins have their own
   sudoers path). sebastianrasor goes further — `sudo.unixAuth = false`,
   agent-only; decided against for now (console lockout risk).
@@ -969,10 +925,6 @@ style: check against the repo, spec, one commit each) draws from here.
   (instead of share_history), `hist_reduce_blanks`, `hist_verify`,
   `rc_quotes`, `auto_pushd pushd_minus pushd_silent`, `auto_resume`
   (bare `vim` resumes the stopped job).
-- **Skip double compinit** — `programs.zsh.enableGlobalCompInit = false`
-  when home-manager runs its own; measurable startup win. (ambroisie)
-  → done (2026-09-05) on neon, the only host with a global compinit; the
-  user zshrc keeps its own compinit call.
 - `bindkey '^[^M' autosuggest-execute` — Alt-Enter accepts and runs the
   autosuggestion in one keystroke. (mightyiam)
 - `history.ignorePatterns = ["rm *"]` — destructive commands never enter
@@ -1014,17 +966,12 @@ style: check against the repo, spec, one commit each) draws from here.
   `direnv_layout_dir` hashes `$PWD` into
   `$XDG_CACHE_HOME/direnv/layouts/`: no `.direnv/` litter in any
   repo, and one GC-able cache.
-- **direnv config block** (clo4 + berbiche) — `programs.direnv.config`:
-  `strict_env = true` (bash strict mode while evaluating `.envrc`),
-  `hide_env_diff = true` (quieter loads), and `whitelist.prefix =
-  [ "~/src" ]` so own checkouts skip the `direnv allow` ritual. The
-  config block is unset here today; IDEAS previously had only
-  `warn_timeout`/`watch_file`. → done 2026-09-05 except the `~/src`
-  whitelist (auto-executes any .envrc under it — pending a decision on
-  whether third-party clones ever land there). The premise was wrong:
-  the config block existed with a whitelist, but its `$HOME/...` entries
-  never matched — direnv does no variable expansion on the TOML (tilde
-  works; verified empirically and fixed).
+- **direnv `~/src` whitelist** (clo4 + berbiche; the rest of their
+  config block — strict_env, hide_env_diff, the whitelist expansion
+  fix — landed 2026-09-05) — `whitelist.prefix = [ "~/src" ]` skips
+  the `direnv allow` ritual for own checkouts, but auto-executes any
+  `.envrc` under it. Pending decision: do third-party clones ever land
+  in `~/src`?
 - **Completion cache keyed on binary mtime** (franckrasolo
   `home/zsh/completions.cache.zsh`) — `_cache_completion` regenerates
   `<tool> completion zsh` output only when the binary is newer than the
@@ -1257,75 +1204,10 @@ keys/ are salt+credential-id only, safe in the public repo; recovery =
 repo + physical key + FIDO2 PIN, both keys decrypt-tested. A FIDO2 reset
 of either YubiKey permanently invalidates its credential.
 
-The "Unblocked once decided" list below is now an actionable queue.
-
-## The options considered (superseded by the decision above)
-
-- Misterio77: `sops.age.sshKeyPaths = map (k: k.path) (filter (k: k.type
-  == "ed25519") config.services.openssh.hostKeys)` — the host's existing
-  SSH key *is* the age identity; zero extra key material to provision on
-  new VMs (darwin caveat: hardcode the path, no `services.openssh` there).
-- dustinlyons: ciphertexts in a separate private repo pulled as a
-  `flake = false` input — public config repo stays secret-free; plus
-  scripted USB-stick key bootstrap for day 0.
-- EmergentMind: GitHub access token into nix.conf via `nix.extraOptions =
-  "!include ${config.sops.secrets."tokens/...".path}"` with a
-  `config ? "sops"` guard — kills rate limits without the token in the
-  store.
-- wimpysworld: nixos-anywhere `--extra-files` stages host SSH keys +
-  age keys at provision time, so identities are stable from first boot.
-- **TPM-sealed age keys for sops-nix** (sebastianrasor
-  `nixos-modules/secrets/default.nix`) — `age-plugin-tpm`: each host's
-  age identity is an `AGE-PLUGIN-TPM-…` recipient committed in the repo
-  (only that host's TPM can decrypt), installed by an activation script,
-  with `sshKeyPaths` + `generateKey` fallback for hosts without a listed
-  key. GCE instances have vTPMs; the ssh fallback covers the VMs. Kills
-  key-distribution ceremony entirely.
-- **agenix with directory-derived naming** (ambroisie
-  `modules/nixos/secrets/default.nix`) — `.age` files live next to the
-  host, a small mapper auto-registers the directory into `age.secrets`
-  (filename = secret name), guarding `owner` on whether the user exists
-  in the config. Dendritic-friendly shape if the agenix route wins.
-- **agenix as the lighter secrets option** (ryan4yin) — age keys =
-  existing ssh keys, one `secrets.nix` mapping files to recipients.
-  Fewer moving parts than sops-nix, more structure than git-crypt.
-- **agenix-rekey** (GaetanLepage) — master identity in-repo, per-host
-  rekeyed secret stores, `age.rekey.hostPubkey` inline in each host
-  entry: encrypt once to a master key, machine-rekeys per host. A
-  distinct workflow option for the standing secrets decision. Related:
-  HM-inside-NixOS gets its own agenix identity (itself an agenix secret
-  owned by the user) — clean root/user secret separation.
-- **Secret management options from the fork survey** — pick one:
-  - `cdenneen` — sops-nix wired as a home-manager module (`.sops.yaml`, age +
-    `creation_rules` path_regex, `inputs.sops-nix.homeManagerModules.sops` through
-    `mksystem`). The most complete, directly adoptable integration.
-  - `sandangel` — git-crypt (`.gitattributes`: `secret/** filter=git-crypt`).
-    Lightweight; less powerful than sops. (Removed at their HEAD, intact in history.)
-  - `smallstepman` — sops-nix + `sopsidy` sourcing each secret from Bitwarden/`rbw`
-    with a systemd oneshot to materialize rbw config at boot. Advanced.
-  - `futtetennista` — `@@key@@` placeholder templating substituted from a
-    JSON-Schema-validated `secret/config.json` (`replace_secrets.sh`). A
-    no-extra-tooling option if sops feels heavy.
-- **Runtime secrets via Bitwarden passwordCommand** (traxys) — his
-  `personal-cli/hm.nix` wraps `bw get item <uuid> | jq` in `bwPass`/`bwUser`
-  writeShellScripts and feeds them to any HM option taking a
-  `passwordCommand` (he drives CalDAV auth this way). We already install
-  bitwarden-cli and have an open "no secrets management" decision — this
-  is another option: no new tool, nothing on disk, secrets pulled at use
-  time. Limits: needs an unlocked bw session, only covers tools with
-  command hooks.
-- **Private outer flake for sensitive config** (shazow
-  `templates/nixos-device` + `mkSystemConfigurations`): the public repo
-  exposes a constructor; a private outer flake instantiates it with the
-  sensitive bits (hashed password, disk/FDE layout). A no-crypto option
-  for the standing secrets decision — directly addresses the committed
-  `hashedPassword` wart. Cost: a second repo and template drift; closest
-  cousin is dustinlyons' private-repo-as-input.
-- GCP Secret Manager (roadmap tailscale item) — cloud-side option for
-  GCE instances specifically.
-- **Recovery recipients** (sebastianrasor `.sops.yaml`) — YubiKey age
-  recipients listed alongside per-host keys, so secrets stay editable
-  if all hosts die; worth copying into any future sops setup.
+The "Unblocked once decided" list below is now an actionable queue. (The
+alternatives considered — agenix variants, TPM-sealed keys, git-crypt,
+private-repo-as-input, Bitwarden passwordCommand — were removed in the
+2026-09-06 cleanup; git history has them.)
 
 ## Unblocked queue (decision made — pick and implement)
 
@@ -2770,6 +2652,26 @@ Kept for the record so the same paths don't get re-surveyed.
   written it is a no-op. If reachability insurance is ever wanted,
   Tailscale SSH as an independent second door is the better direction
   (its own security discussion).
+- **GC timer jitter** (`nix.gc.randomizedDelaySec`/`persistent`) —
+  skipped 2026-09-05: Persistent=true is already the NixOS default
+  (verified on the generated timer); jitter addresses contention that
+  independent machines don't have.
+- **sudo-rs** — skipped 2026-09-05: not needed, and not a drop-in here —
+  the fleet's sudo carries execWheelOnly (hardening.nix, relaxed on the
+  GCE image) and pam_rssh wiring that would need re-verifying.
+- **ssh client hardening baseline** (HashKnownHosts / VerifyHostKeyDNS /
+  StrictHostKeyChecking / ForwardAgent-no in `Host *`) — skipped
+  2026-09-05: ForwardAgent scoping already exists via the fleet match
+  block (and a `ForwardAgent no` in `"*"` would first-match-win over it,
+  breaking pam_rssh sudo); strict checking is covered by the filed
+  accept-new/knownHosts/forge-pinning items; HashKnownHosts hides names
+  this public repo already lists; VerifyHostKeyDNS is a no-op with no
+  SSHFP records published and no DNSSEC-validated resolution.
+- **Tailnet-scoped ssh canonicalization + XDG ControlPath** — skipped
+  2026-09-05: the explicit fleet match block already scopes agent
+  forwarding (and covers `dev`, which is off-tailnet on a plain IP);
+  XDG_RUNTIME_DIR ControlPath is Linux-only and the primary ssh client
+  is the Mac.
 - **GaetanLepage's CI** — `nix flake check` runs only on PRs touching
   `flake.nix`/`flake.lock` (paths filter), so module changes land
   unchecked. Keep our eval-all-hosts CI.
