@@ -169,7 +169,6 @@
       "whatsapp"
       "wireshark-app"
       "yubico-authenticator"
-      "zotero"
     ];
   };
 
