@@ -118,7 +118,7 @@ in
     pkgs.yubikey-manager
 
     # Node is required for Copilot.vim
-    pkgs.nodejs_26
+    pkgs.nodejs_24
   ])
   ++ (lib.optionals isDarwin [
     # programs.gpg is Linux-only here, so provide the gnupg binary on darwin.
