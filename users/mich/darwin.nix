@@ -98,6 +98,16 @@
     };
   };
 
+  # Idle sleep timers. systemsetup applies these to every power source, and
+  # neon is almost always on mains, so these are the mains values: screen and
+  # disks sleep after 10 idle minutes, the machine itself never idle-sleeps
+  # (closing the lid still sleeps it).
+  power.sleep = {
+    display = 10;
+    harddisk = 10;
+    computer = "never";
+  };
+
   fonts.packages = [
     pkgs.atkinson-hyperlegible
     pkgs.atkinson-hyperlegible-next
