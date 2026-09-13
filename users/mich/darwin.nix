@@ -86,6 +86,11 @@
     # Siri is unused on this machine; keep the assistant off.
     CustomUserPreferences."com.apple.assistant.support"."Assistant Enabled" = false;
 
+    # Don't sync Siri knowledge (app usage, Bluetooth, intents in knowledgeC.db)
+    # with iCloud: that sync copies the phone's commute, travel and messaging
+    # history onto this Mac and this Mac's usage onto every other device.
+    CustomUserPreferences."com.apple.assistant.backedup"."Cloud Sync Enabled" = false;
+
     # No Apple personalized advertising.
     CustomUserPreferences."com.apple.AdLib".allowApplePersonalizedAdvertising = false;
 
