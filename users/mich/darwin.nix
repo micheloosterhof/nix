@@ -94,6 +94,17 @@
     # No Apple personalized advertising.
     CustomUserPreferences."com.apple.AdLib".allowApplePersonalizedAdvertising = false;
 
+    # Chrome policy. Chrome reads its own defaults domain as recommended-level
+    # policy (no MDM needed): each key sets the default but stays changeable
+    # in Chrome's settings. Only keys that support the recommended level
+    # belong here; mandatory-only policies are ignored at this level.
+    CustomUserPreferences."com.google.Chrome" = {
+      MetricsReportingEnabled = false; # usage stats to Google
+      AutofillCreditCardEnabled = false; # Bitwarden is the card store
+      PasswordManagerEnabled = false; # Bitwarden is the password store
+      NetworkPredictionOptions = 2; # no DNS prefetch/preconnect on hover
+    };
+
     # Check for, download, and install minor + security updates automatically.
     CustomUserPreferences."com.apple.SoftwareUpdate" = {
       AutomaticCheckEnabled = true;
