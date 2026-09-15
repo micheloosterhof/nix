@@ -84,16 +84,18 @@ let
           dates = "weekly";
         };
       }
-      # Run daemon builds at background/idle priority so long compiles (the
-      # Linux builder, from-source packages) never compete with interactive
-      # work. The option names differ per platform: launchd process type on
-      # darwin, CPU scheduling policy on systemd.
+      # Run daemon builds at background/idle CPU and IO priority so long
+      # compiles (the Linux builder, from-source packages) never compete with
+      # interactive work. The option names differ per platform: launchd
+      # process type on darwin, CPU/IO scheduling classes on systemd.
       // lib.optionalAttrs pkgs.stdenv.isDarwin {
         daemonProcessType = "Background";
         daemonIOLowPriority = true;
       }
       // lib.optionalAttrs pkgs.stdenv.isLinux {
         daemonCPUSchedPolicy = "idle";
+        daemonIOSchedClass = "idle";
+        daemonIOSchedPriority = 7;
       };
     };
 in
