@@ -85,7 +85,9 @@
     ]
   },
   "env": {
-    "SHELL": "/bin/bash"
+    "SHELL": "/bin/bash",
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_ERROR_REPORTING": "1"
   },
   "model": "claude-fable-5[1m]",
   "enabledPlugins": {
