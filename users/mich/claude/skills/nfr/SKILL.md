@@ -34,12 +34,20 @@ Never use JavaScript directly. All frontend code is TypeScript.
 - **Functional core, imperative shell**: Keep business logic in pure
   functions with no side effects. Push I/O, state mutation, and
   orchestration to the outer edges of the system.
-- **Dependency injection**: Accept dependencies (randomness, clock, etc) 
+- **Dependency injection**: Accept dependencies (randomness, clock, etc)
   as parameters rather than constructing them internally. Simplifies
   testing by allowing real collaborators to be replaced without
   mocks. Skip DI when it adds indirection without a testing or
   flexibility benefit (e.g., trivial helpers, scripts with no
   meaningful collaborators).
+- **Mistake-proofing (poka-yoke)**: Make wrong states impossible instead
+  of documenting them. Represent domain states as types and enums so
+  invalid combinations do not compile; parse input once at the boundary
+  into typed values instead of validating it everywhere; fail closed on
+  anything unexpected; match exhaustively; validate config at startup,
+  not on first use; make operations idempotent so a retry is safe. For
+  checks, use the strongest rung available: type system, then linter and
+  pre-commit hook, then test, then CI, then review, then docs.
 
 ## 3. Logging
 

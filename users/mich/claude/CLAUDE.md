@@ -200,7 +200,7 @@ flourishes, cute epithets, or figurative color
 ## Tools
 
 - don't use `sed`, you usually get it wrong.
-- for bulk editing you can use `ast-grep` 
+- for bulk editing you can use `ast-grep`
 
 ## Version Control
 
@@ -257,7 +257,9 @@ committing to one, then test the most discriminating hypothesis with the
 smallest possible change — one at a time, verifying after each. Compare
 against working examples in the same codebase, and read a reference
 implementation completely before claiming to follow it. Say "I don't
-understand X" rather than pretending to know.
+understand X" rather than pretending to know. Once fixed, name the device
+that would have made the bug impossible (a type, a lint, a hook, a test) and
+add it when it is cheap.
 
 Hard rules that survive any shortcut pressure:
 

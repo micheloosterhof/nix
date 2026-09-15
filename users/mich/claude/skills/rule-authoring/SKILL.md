@@ -1,6 +1,6 @@
 ---
 name: rule-authoring
-description: How rules get written, weakened, and merged - the weakness razor, principle-over-patch, emphasis economy, the three-bucket triage. Load before adding or editing CLAUDE.md rules, SKILL.md files, or any agent instruction file.
+description: How rules get written, weakened, and merged - the weakness razor, principle-over-patch, emphasis economy, the three-bucket triage and the poka-yoke ladder. Load before adding or editing CLAUDE.md rules, SKILL.md files, or any agent instruction file.
 ---
 
 # Rule authoring
@@ -43,6 +43,12 @@ description: How rules get written, weakened, and merged - the weakness razor, p
   template, or config the agent uses, and mechanical failures go in a
   check code enforces (hook, lint, eval test). Prose is the last resort,
   not the default — a rule nothing enforces is the weakest of the three.
+- The buckets are rungs of poka-yoke (mistake-proofing). From strongest to
+  weakest: elimination (the mistake cannot occur), prevention (blocked when
+  attempted), facilitation (the right way is the easiest), detection (caught
+  the moment it happens), mitigation (damage limited), instruction. Reach
+  for the strongest rung available. When a rule gets a device, delete the
+  prose it replaces so the rule count goes down.
 - Worked example: "every bugfix needs a failing test first" was too strong.
   The intent was guarding against regression from a distance (the LC_ALL
   export silently defeating LC_TIME), so the rule became: write the test when
