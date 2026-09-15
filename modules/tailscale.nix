@@ -4,6 +4,8 @@
 {
   flake.modules.nixos.base = {
     services.tailscale.enable = true;
+    # Don't ship tailscaled's logs to Tailscale's log service.
+    services.tailscale.disableUpstreamLogging = true;
 
     # Trust the tailnet: our own authenticated devices reach any service over
     # tailscale without per-port firewall holes, while the public/LAN side stays
