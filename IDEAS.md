@@ -455,6 +455,14 @@ style: check against the repo, spec, one commit each) draws from here.
 - **Auto-load overlays** — `jseppanen` / `lucamaraschi` `lib/overlays.nix`. Reads
   `overlays/` and auto-imports every `*.nix` / subdir-with-`default.nix`, so new
   overlays never need hand-listing. Confirmed not present upstream.
+- **Docs generated from the config, `--check`ed in CI** (devon-systems/hoenn
+  `scripts/generate-niri-keybindings.ts`, plus `generate-host-readmes` for
+  the `facter.json` spec tables) — a script parses the real config and
+  renders a table into the README between `<!-- BEGIN GENERATED ... -->`
+  markers; a `--check` flag re-renders and fails when the checked-in doc has
+  drifted, so CI catches the drift instead of a reader. AGENTS.md carries
+  one line: "Do not edit text between generated-section markers." Concrete
+  shape for the docs-drift test noted-but-unfiled from tjmaynes.
 
 ## Nix daemon, GC, and build plumbing
 
@@ -677,6 +685,11 @@ style: check against the repo, spec, one commit each) draws from here.
   `systemd.mounts` + `systemd.automounts` with
   `automountConfig.TimeoutIdleSec = "600"`: NAS shares mount on first
   access, unmount after idle, and a down NAS never hangs boot.
+- **Derive service enables from the filesystem table** (hoenn
+  `nix/modules/nixos/services/scrubs.nix`) — `services.btrfs.autoScrub.enable
+  = lib.any (fs: fs.fsType == "btrfs") (lib.attrValues config.fileSystems)`.
+  One line, no per-host toggle to forget on the next machine. Same trick for
+  fstrim, zfs scrub and smartd.
 
 ## Terminal: ghostty, tmux, less
 
@@ -1271,6 +1284,17 @@ private-repo-as-input, Bitwarden passwordCommand — were removed in the
   (soft include — skipped if absent). Same goal as EmergentMind's sops
   variant but with zero secrets infrastructure — gh is already
   authenticated here.
+- **Generate `.sops.yaml` from `keys/*.pub`** (hoenn `.justfile`,
+  `sops-rekey` + `sops-bootstrap`) — one recipe converts every committed ssh
+  pubkey to an age recipient with `ssh-to-age`, rewrites `.sops.yaml` (with a
+  generated-by header and YAML anchors per host), then walks `secrets/**` and
+  runs `sops updatekeys -y` on each file whose `sops filestatus` reports it
+  encrypted. Adding or removing a machine becomes "drop a `.pub` in `keys/`,
+  re-run the recipe". Companion `sops-bootstrap` derives the machine's age
+  private key from its existing `~/.ssh/id_ed25519` and installs it at
+  `~/.config/sops/age/keys.txt`, idempotently. Supersedes the narrower CnTeng
+  `update-keys` item above: same `updatekeys` call, but the recipient list is
+  generated rather than hand-maintained.
 
 ---
 
@@ -1383,6 +1407,13 @@ domain) is the one DR item that can't be solved by redeploying.
   `lib.pathExists`. A known-good generation that survives both GC and
   `configurationLimit` — nice safety rail for the VMs, portable to a `make
   pin` target.
+- **`backupPrepareCommand` as a precondition assertion** (hoenn
+  `nix/hosts/nixos/mauville/backups.nix`) — before the ROMs backup runs,
+  `set -eu; mountpoint -q /mnt/Storage; test -d <path>`. A failed assertion
+  fails the unit, so restic never snapshots an empty mountpoint and then
+  prunes the real data out of the repository on the retention pass. That is
+  the backup failure that stays silent until a restore. Cheap to add to every
+  path-based backup job; pairs with the dead-man's-switch item.
 
 ## Fleet structure (dendritic peers; structural)
 
@@ -1706,6 +1737,29 @@ domain) is the one DR item that can't be solved by redeploying.
   backup/restore/health-check sequences as versioned recipes namespaced
   `just <host> <task>`, living beside the host config. Ports to per-host
   Makefile includes; beats a wiki for "how do I poke this box" knowledge.
+- **system-manager for the non-NixOS Linux hosts** (hoenn,
+  `numtide/system-manager`) — `systemConfigs.<host>` manages `/etc` and
+  systemd units on a stock distro without converting it. Two lines carry it:
+  `system-manager.allowAnyDistro = true`, and an `mkForce` of
+  `environment.etc."environment.d/10-system-manager.conf"` putting
+  `/run/system-manager/sw/bin` ahead of `/usr/bin` on PATH. Notable detail:
+  the same host (`sootopolis`) exists twice in that flake, once as a full
+  NixOS config and once as a system-manager config, sharing feature modules
+  and the auto-upgrade module. Directly relevant to the Debian boxes here,
+  which today get nothing from the fleet config.
+- **Auto-upgrade that cannot hurt you** (hoenn
+  `nix/modules/auto-upgrade/default.nix`) — one shared attrset applied to
+  NixOS, nix-darwin and system-manager: `operation = "boot"` with
+  `allowReboot = false` and `upgrade = false`, so the timer builds and stages
+  the generation but never reboots a laptop out from under its user;
+  `persistent = true` + `randomizedDelaySec = "45min"`; and the unit gains
+  `Restart = "on-failure"`, `RestartSec = "15min"`, `StartLimitBurst = 2`,
+  `StartLimitIntervalSec = "1h"`, so a broken flake retries twice and then
+  stops instead of hammering all night. nix-darwin has no `autoUpgrade`, so
+  the darwin side is a hand-rolled `launchd.daemons` script; its one clever
+  bit is a deterministic per-host stagger — `cksum` the hostname, modulo 45
+  minutes, sleep that long — which spreads a fleet across a window with no
+  coordination and no fresh randomness on every activation.
 
 ## Caching and builders
 
@@ -1980,6 +2034,28 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   third-party Claude skills become lock-pinned and update with `nix
   flake update`. Directly relevant to the nix-managed claude config in
   users/mich/claude/.
+- **Skill evals checked in beside the skill** (hoenn
+  `nix/modules/aly/skills/nix/evals/*.json`) — one JSON file per scenario
+  with `skills`, `query`, `expected_behavior`, and the field that earns its
+  keep, `baseline_without_skill`: what the agent does with the skill absent.
+  There is no runner — you score by watching an agent — but writing the
+  baseline forces the skill to justify its own existence, which is the
+  empirical counterpart to the weakness razor in the rule-authoring skill.
+  Their own README admits the gap: deterministic unit tests for the skill's
+  helper scripts are still missing. Four scenarios for a ~120-line skill is
+  the right ratio to copy.
+- **Null results are evidence** (hoenn `nix/modules/aly/skills/why/SKILL.md`)
+  — the skill enumerates seven evidence categories, queries all of them, and
+  requires reporting the categories that came back empty alongside the ones
+  that hit, on the grounds that how a decision was recorded is itself a
+  finding. Same instinct as the prefer-weak-conclusions rule in CLAUDE.md;
+  worth a line wherever an agent here summarises a search.
+- **AGENTS.md as four operational sections** (hoenn `AGENTS.md`, ~30 lines) —
+  where files live, how to check a change, how to deploy, how to handle
+  secrets. No philosophy. The two lines that earn their place are the deploy
+  guards: "Never deploy only to test a configuration" and "Do not use a bare
+  `blzrd switch` unless you mean to target every registered node." Equivalent
+  guards for the remote `make` targets here would be cheap.
 
 ## GCE projects (self-originated)
 
@@ -2317,6 +2393,14 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   `mkHomeManagerPackages`). Converts `home.packages` into
   `packages.<system>` so individual tools can be `nix build`-ed / cached
   without a full rebuild. Helper is fiddly; idea is sound.
+- **A mesh service as a typed module plus a peer registry** (hoenn
+  `nix/modules/syncthing/{options.nix,_devices.nix,service.nix}`) — device
+  IDs live in one `_devices.nix` attrset; each shared folder is an option
+  whose submodule *defaults* carry the path, the stable folder id, the peer
+  list and the versioning policy; a host then writes only
+  `hoenn.syncthing.folders.sync.enable = true`. The shape generalises to any
+  service whose config must be identical on every peer and silently rots when
+  it is not.
 
 ## Home-module mechanics
 
@@ -2693,6 +2777,24 @@ Kept for the record so the same paths don't get re-surveyed.
 - GaetanLepage skip notes: 8 hosts (5 NixOS + 3 standalone-HM), ~224 nix
   files — though only ~35 named aspects; the "55 aspects" framing
   oversells it. No nix-darwin anywhere (his Mac is plain home-manager).
+- **Homebrew on NixOS** (hoenn `nix/modules/homebrew/default.nix`) —
+  linuxbrew plus a `system.activationScripts` step that symlinks a `buildEnv`
+  of coreutils, gcc, glibc.bin and friends into both `/bin` and `/usr/bin`,
+  plus a ~50-entry `programs.nix-ld.libraries` list. That is fighting the
+  platform to run binaries nixpkgs already has. Only defensible for a
+  specific formula that exists nowhere else, and then in a container, not as
+  writes to `/bin`.
+- **`homebrew.greedyCasks = true`** (hoenn
+  `nix/modules/darwin/homebrew/casks.nix`) — auto-updates every cask on each
+  `darwin-rebuild`, making a rebuild nondeterministic by design. Against the
+  same reasoning that settled `cleanup = "none"` here.
+- **hermes-agent** (hoenn `nix/modules/hermes/hermes.nix`) — a self-hosted
+  agent stack wired to ElevenLabs TTS, Browserbase and Firecrawl. Three cloud
+  dependencies and a sops-held key bundle for something whose appeal would be
+  running locally.
+- **`LaunchServices.LSQuarantine = false`** (hoenn
+  `nix/modules/darwin/defaults.nix`) — third sighting, declined again;
+  Gatekeeper's first-run prompt is worth the two seconds.
 
 ---
 
@@ -2859,3 +2961,25 @@ What was surveyed when; sections above carry per-item attribution.
   (implementation reference), independent dendritic adoption
   (validation). Yield confirms saturation: three of ten near zero.
   44 personal repos surveyed total; sweep closed.
+- 2026-09-15 — `devon-systems/hoenn` (alyraffauf; 6 NixOS hosts + 1
+  nix-darwin + 1 system-manager, flake-parts with `import-tree`, comin, sops,
+  disko, nixos-facter). Filed above: system-manager for the Debian hosts, the
+  three-platform auto-upgrade shape (`operation = "boot"` + StartLimit +
+  cksum-hostname stagger), `.sops.yaml` generated from `keys/*.pub`, restic
+  `backupPrepareCommand` preconditions, autoScrub derived from
+  `config.fileSystems`, docs generated from config with a `--check` CI mode,
+  skill evals with `baseline_without_skill`, the typed peer-registry module
+  shape, and the AGENTS.md deploy guards. Skips filed in §7:
+  Homebrew-on-NixOS, greedyCasks, hermes-agent, LSQuarantine (3rd).
+  Validation, not new: `import-tree` plus `deferredModule` options as the
+  entire import story (the dendritic pattern again, arrived at
+  independently); one skill directory fanned out to
+  claude-code/codex/opencode/crush from a single four-line `builtins.path`
+  filter (3rd sighting of skills-as-nix-modules, after madmaxieee and
+  drupol); nixos-facter; comin. Pre-filtered as already present: the git
+  settings block (zdiff3, histogram, colorMoved, `branch.sort`,
+  `rerere.autoupdate`, `updateRefs`, `help.autocorrect`),
+  `DSDontWrite{Network,USB}Stores`, `NH_FLAKE`, nix `min-free`/`max-free` and
+  automatic gc/optimise. Wart worth not copying: `init.defaultBranch = "main"`
+  while the repo's real branch, comin's poller and every workflow trigger are
+  `master`.
