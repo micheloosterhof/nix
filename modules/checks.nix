@@ -58,6 +58,15 @@
             pkgs.runCommand "eval-tests" { } "touch $out"
           else
             throw "eval-tests failed: ${builtins.toJSON failures}";
+
+        # merge-settings.sh keeps the authored Claude Code settings in a file
+        # Claude Code also writes to; the test pins the merge rules.
+        claude-settings-merge =
+          pkgs.runCommand "claude-settings-merge" { nativeBuildInputs = [ pkgs.jq ]; }
+            ''
+              bash ${../users/mich/claude/merge-settings-test.sh} ${../users/mich/claude/merge-settings.sh}
+              touch $out
+            '';
       };
     };
 }

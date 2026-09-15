@@ -191,6 +191,15 @@ in
   # Global agent instructions, version-controlled and synced across hosts.
   home.file.".claude/CLAUDE.md".source = ./claude/CLAUDE.md;
 
+  # Claude Code writes ~/.claude/settings.json itself (model choice,
+  # permission grants), so it cannot be a store symlink. The authored keys
+  # in claude/settings.json (attribution, env, deny rules, hooks) are merged
+  # in at activation: they win, everything else in the file is kept.
+  home.activation.claudeSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run env PATH=${lib.makeBinPath [ pkgs.jq ]}:$PATH bash ${./claude/merge-settings.sh} \
+      ${./claude/settings.json} "$HOME/.claude/settings.json"
+  '';
+
   # Skills stay a real directory (recursive) so ad-hoc skills can be
   # drafted in place before being promoted into the repo.
   home.file.".claude/skills" = {
