@@ -148,10 +148,13 @@
     onActivation.cleanup = "none";
 
     taps = [
+      "darrylmorley/whatcable"
       "hashicorp/tap"
     ];
 
     brews = [
+      # CLI only; the whatcable cask would add the menu bar app as well.
+      "darrylmorley/whatcable/whatcable-cli"
       "mas"
     ];
 
@@ -191,7 +194,6 @@
       "steam"
       "tailscale-app"
       "vlc"
-      "whatcable"
       "whatsapp"
       "wireshark-app"
       "yubico-authenticator"
