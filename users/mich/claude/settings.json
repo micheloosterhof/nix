@@ -6,7 +6,6 @@
   },
   "env": {
     "SHELL": "/bin/bash",
-    "DISABLE_TELEMETRY": "1",
     "DISABLE_ERROR_REPORTING": "1"
   },
   "permissions": {

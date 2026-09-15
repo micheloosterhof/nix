@@ -195,6 +195,11 @@ in
   # permission grants), so it cannot be a store symlink. The authored keys
   # in claude/settings.json (attribution, env, deny rules, hooks) are merged
   # in at activation: they win, everything else in the file is kept.
+  # The env block deliberately omits DISABLE_TELEMETRY (and DO_NOT_TRACK,
+  # DISABLE_GROWTHBOOK, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC): each turns
+  # off the feature-flag fetch that Remote Control eligibility depends on, so
+  # setting any of them silently removes Remote Control.
+  # See https://code.claude.com/docs/en/remote-control
   home.activation.claudeSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run env PATH=${lib.makeBinPath [ pkgs.jq ]}:$PATH bash ${./claude/merge-settings.sh} \
       ${./claude/settings.json} "$HOME/.claude/settings.json"
