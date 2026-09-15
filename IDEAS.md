@@ -1315,6 +1315,20 @@ private-repo-as-input, Bitwarden passwordCommand — were removed in the
   `~/.config/sops/age/keys.txt`, idempotently. Supersedes the narrower CnTeng
   `update-keys` item above: same `updatekeys` call, but the recipient list is
   generated rather than hand-maintained.
+- **Fail on an encrypted file nothing references** (derived from the
+  `johto/secrets/kubernetes/` wart, 2026-09-15) — johto carries a directory of
+  live, correctly-encrypted secrets for services that moved to another
+  cluster: nothing imports it, no kustomization lists it, `.sops.yaml` still
+  re-keys it on every recipient change, and so credentials that should have
+  been revoked stay current indefinitely. A rekey recipe that walks
+  `secrets/**` preserves exactly the material that most needs rotating, and
+  makes it look maintained. The guardrail belongs beside the existing
+  plaintext eval test: for each file under `secrets/`, assert some module or
+  manifest names it, and fail the check otherwise. Deleting a stale secret is
+  not enough on its own — a file that reaches this state has been decryptable
+  by every recipient for however long it sat there, so the finding is "rotate,
+  then delete". Prerequisite for adopting the generated-`.sops.yaml` recipe
+  above, not a follow-up to it.
 - **`sops.templates` with `restartUnits`, worked example** (johto
   `nix/hosts/nixos/goldenrod/garage.nix`) — the whole garage TOML config is a
   `sops.templates` entry owned by the service user at mode 0400 with the RPC
