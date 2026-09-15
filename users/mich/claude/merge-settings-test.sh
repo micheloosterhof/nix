@@ -37,11 +37,28 @@ cmp -s "$tmp/first.json" "$tmp/live.json" || fail "second run changed the file"
 bash "$merge" "$tmp/fragment.json" "$tmp/new/settings.json"
 [ "$(jq -r .env.SHELL "$tmp/new/settings.json")" = /bin/bash ] || fail "missing live file not created"
 
-# A corrupt live file fails the run and is left untouched.
+# Bad input fails the run with a clear message, leaves the live file
+# untouched, and leaves no temp file behind.
+refuses() {
+  local why=$1 fragment=$2 live=$3 before err
+  before=$(cat "$live")
+  if err=$(bash "$merge" "$fragment" "$live" 2>&1); then
+    fail "$why: accepted"
+  fi
+  [[ $err == merge-settings:* ]] || fail "$why: unclear error: $err"
+  [ "$(cat "$live")" = "$before" ] || fail "$why: live file clobbered"
+  [ -z "$(find "$(dirname "$live")" -name '.settings.*')" ] || fail "$why: temp file left behind"
+}
 echo '{not json' >"$tmp/bad.json"
-if bash "$merge" "$tmp/fragment.json" "$tmp/bad.json" 2>/dev/null; then
-  fail "corrupt live file accepted"
+refuses "corrupt live file" "$tmp/fragment.json" "$tmp/bad.json"
+echo '[]' >"$tmp/array.json"
+refuses "non-object live file" "$tmp/fragment.json" "$tmp/array.json"
+echo '{' >"$tmp/badfragment.json"
+refuses "corrupt fragment" "$tmp/badfragment.json" "$tmp/live.json"
+
+# Wrong argument count is a usage error.
+if bash "$merge" "$tmp/fragment.json" 2>/dev/null; then
+  fail "missing argument accepted"
 fi
-[ "$(cat "$tmp/bad.json")" = '{not json' ] || fail "corrupt live file clobbered"
 
 echo ok
