@@ -690,6 +690,12 @@ style: check against the repo, spec, one commit each) draws from here.
   = lib.any (fs: fs.fsType == "btrfs") (lib.attrValues config.fileSystems)`.
   One line, no per-host toggle to forget on the next machine. Same trick for
   fstrim, zfs scrub and smartd.
+- **`systemd.enableEmergencyMode = false` on headless hosts** (sinnoh
+  `nix/nixos/systemd.nix`) — on a box with no console, emergency mode is a
+  machine that hangs forever at a root-password prompt instead of continuing
+  to boot. Same module also sets `coredump.enable = false` and turns
+  `systemd.oomd` on for the root, system and user slices. Three lines,
+  straightforwardly right for the VMs and the VPS.
 
 ## Terminal: ghostty, tmux, less
 
@@ -1190,6 +1196,20 @@ style: check against the repo, spec, one commit each) draws from here.
 - **ssh exit-255 mapping** (sebastianrasor `hercules-ci.nix`) — after an
   ssh deploy, `|| exit "''${?/255/0}"`: host-unreachable (a powered-off
   machine) passes, real switch failures still fail.
+- **Render the whole GitOps tree and schema-check it in CI** (devon-systems/sinnoh
+  and johto, `scripts/check-k8s.py` + `nix/check-k8s.nix`, ~80 lines of Python)
+  — walk the Flux Kustomization graph breadth-first from `k8s/flux-system`,
+  `kustomize build` each directory, follow every
+  `kustomize.toolkit.fluxcd.io` resource's `spec.path` to the next one,
+  `helm template` the HelmReleases whose chart is a local `GitRepository`,
+  drop documents containing `sops` (CI holds no keys, and some documents
+  encrypt even `kind`), then `kubeconform -strict` the lot against a *pinned*
+  datreeio CRDs-catalog commit and a pinned Kubernetes version. Both a
+  `spec.path` and a chart path outside the repo root raise rather than
+  render. Shipped as `pkgs.writeShellApplication` with kustomize, helm and
+  kubeconform in `runtimeInputs`, so `nix run .#check-k8s` is the whole CI
+  step. The best single idea in either repo, and the shape ports to any
+  manifest tree: render everything reachable, then validate.
 
 ## GCE roadmap (self-originated)
 
@@ -1295,6 +1315,15 @@ private-repo-as-input, Bitwarden passwordCommand — were removed in the
   `~/.config/sops/age/keys.txt`, idempotently. Supersedes the narrower CnTeng
   `update-keys` item above: same `updatekeys` call, but the recipient list is
   generated rather than hand-maintained.
+- **`sops.templates` with `restartUnits`, worked example** (johto
+  `nix/hosts/nixos/goldenrod/garage.nix`) — the whole garage TOML config is a
+  `sops.templates` entry owned by the service user at mode 0400 with the RPC
+  secret interpolated through `config.sops.placeholder.<name>`, plus a second
+  template rendering an EnvironmentFile; `restartUnits = ["garage.service"]`
+  makes a secret change restart the consumer. Second sighting of
+  `sops.templates` (after eh8) and the first complete example: this is the
+  answer whenever a service wants one config file containing both settings and
+  a secret, instead of a secret path it can read.
 
 ---
 
@@ -1414,6 +1443,23 @@ domain) is the one DR item that can't be solved by redeploying.
   prunes the real data out of the repository on the retention pass. That is
   the backup failure that stays silent until a restore. Cheap to add to every
   path-based backup job; pairs with the dead-man's-switch item.
+- **Make the artifact you are about to back up** (sinnoh
+  `nix/hosts/nixos/sunnyshore/k3s.nix`) — `backupPrepareCommand =
+  "${config.services.k3s.package}/bin/k3s etcd-snapshot save"`, with `paths`
+  pointing at the snapshots dir plus `server/cred` and `server/tls`. One unit
+  takes a fresh etcd snapshot and ships it, so there is no separate timer to
+  drift out of step. The companion half is the other restic job excluding the
+  CNPG PVC (`--exclude=.../*_cnpg-system_pg-shared-1/**`): postgres is backed
+  up exactly once, by the tool that can do it consistently, not twice and
+  torn. Generalises: exclude from the filesystem backup anything that has its
+  own consistent backup.
+- **Postgres backups as a CNPG plugin to object storage** (sinnoh/johto
+  `k8s/postgres-backups/object-store.yaml`, `k8s/postgres/scheduled-backup.yaml`)
+  — the `barman-cloud` plugin as `isWALArchiver`, a `ScheduledBackup` at
+  04:00, `retentionPolicy: 30d`, destination a B2 bucket over the S3 API with
+  credentials from a sops-encrypted secret. Continuous WAL archiving plus
+  daily base backups, declared in about 40 lines of YAML. The reference shape
+  if postgres ever lands on helium.
 
 ## Fleet structure (dendritic peers; structural)
 
@@ -1760,6 +1806,16 @@ domain) is the one DR item that can't be solved by redeploying.
   bit is a deterministic per-host stagger — `cksum` the hostname, modulo 45
   minutes, sleep that long — which spreads a fleet across a window with no
   coordination and no fresh randomness on every activation.
+- **OpenTofu state in B2 over the S3 backend** (sinnoh/johto
+  `terraform/providers.tf`) — Backblaze speaks enough S3 to be a tfstate
+  backend once you turn off the AWS-only handshakes:
+  `skip_credentials_validation`, `skip_metadata_api_check`,
+  `skip_region_validation`, `skip_requesting_account_id`, `skip_s3_checksum`
+  and `use_path_style`. Cheap state hosting where the backups already live.
+  The caveat is real and their AGENTS.md states it plainly: "The B2 state
+  backend does not lock OpenTofu state. Review the plan before you apply, and
+  never run concurrent applies." Adopt the flag set and the warning together,
+  or use a locking backend.
 
 ## Caching and builders
 
@@ -1820,6 +1876,15 @@ domain) is the one DR item that can't be solved by redeploying.
   builder hostname read from `programs.ssh.settings.<alias>` so ssh
   config and buildMachines share one source. Server side: dedicated
   `nix` user + trusted-users.
+- **Lock the builder account down in `authorized_keys`** (johto
+  `nix/hosts/nixos/goldenrod/remote-builder.nix`) — the builder user's key
+  line is `from="10.254.2.2",restrict,command="${pkgs.nix}/bin/nix-store
+  --serve --write" ssh-ed25519 ...`: source-IP pinned, every forwarding and
+  PTY feature off, and the only reachable command is the store-serve
+  protocol. The client half is `nix.buildMachines` with the private key from
+  sops and `builders-use-substitutes = true`. The existing remote-builder
+  items here all stop at "dedicated user + trusted-users"; this is the line
+  that makes that user harmless if the key leaks.
 
 ## Services and self-hosting (helium)
 
@@ -1956,6 +2021,45 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   the same data directory, sftp on a non-standard port, and
   basic-auth nginx autoindex in front: a sacrificial box for handing
   files to third parties, reset on restart.
+- **Tailnet-only ingress through one Tailscale operator ProxyGroup** (johto
+  `k8s/tailscale-private-ingress/proxy-group.yaml`, `k8s/private-ingress/*.yaml`)
+  — a `ProxyClass` pins the proxy to one node with a nodePort range for static
+  endpoints, a `ProxyGroup` of `type: ingress` runs it, and then every private
+  app is a five-line Ingress with `ingressClassName: tailscale` and a
+  `tailscale.com/proxy-group` annotation. Each one becomes
+  `<name>.<tailnet>.ts.net` with a real certificate, no per-app sidecar and no
+  public DNS. The alternative shape to per-service `tailscale serve`, and the
+  reason their public ingress stays a separate, much smaller surface.
+- **A runbook written for someone half-awake** (johto `docs/tailscale-services.md`)
+  — add-a-service template, the reconcile commands with an explicit
+  `--context`, how to tell the route came up, and a fenced "if a name is
+  genuinely blocked" section whose rules are refusals: do not delete a service
+  just because the name exists; check for a `tailscale.com/owner-references`
+  annotation first; and re-derive the OAuth token in its own shell so the
+  DELETE cannot run against a stale one. That last one is the interesting
+  move — the danger is designed out of the copy-pasteable block rather than
+  warned about. Better model for per-host runbooks than srid's `mod.just`
+  where the procedure has judgement in it.
+- **One local chart, N values blocks** (johto `k8s/charts/servarr/`) — seven
+  near-identical *arr apps share a single in-repo Helm chart whose values
+  carry name, port, image, database secret, legacy-config path and optional
+  exporter; each app is a ~15-line HelmRelease. `check-k8s` renders local
+  charts, so the abstraction is still schema-validated. The answer to seven
+  copies of the same Deployment.
+- **Minimal fleet log aggregation** (sinnoh
+  `nix/hosts/nixos/canalave/grafana/loki.nix` + `nix/nixos/services/alloy.nix`)
+  — single-binary Loki with the filesystem store, `replication_factor = 1`,
+  in-memory ring, compactor retention at 30d, analytics off; every host runs
+  Alloy with a ~25-line config that ships only the journal, relabelling
+  `__journal__systemd_unit` to `unit` and stamping the hostname. About 40
+  lines each and no object storage. The cheap version of the fleet
+  observability idea noted from shikanime and barrucadu.
+- **Flux ordering as an explicit dependency graph** (sinnoh/johto
+  `k8s/flux-system/*.yaml`) — one Kustomization per component, each with
+  `dependsOn` and `wait: true`, so secrets reconcile before postgres, which
+  reconciles before the apps that hold its roles. Worth copying if any
+  GitOps-shaped deploy lands here: the ordering lives in data, not in a
+  README telling you what to apply first.
 
 ## Sandboxing and agents
 
@@ -2056,6 +2160,15 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   guards: "Never deploy only to test a configuration" and "Do not use a bare
   `blzrd switch` unless you mean to target every registered node." Equivalent
   guards for the remote `make` targets here would be cheap.
+- **Secrets into a microVM without giving the guest an identity** (johto
+  `nix/hosts/nixos/goldenrod/vms.nix` + `cherrygrove/microvm.nix`) — a oneshot
+  unit ordered `before` and `requiredBy` the `microvm@<name>.service` installs
+  the sops-decrypted files into its own `RuntimeDirectory` (mode 0750), and
+  the guest declares a read-only virtiofs share mapping `/run/<name>-secrets`
+  to `/run/host-secrets`. The guest needs no age key and no sops, the material
+  never reaches the store or a disk, and it disappears with the runtime
+  directory. Directly applicable to the sandboxed-agent microVM item above,
+  which otherwise has no answer for credentials.
 
 ## GCE projects (self-originated)
 
@@ -2295,6 +2408,28 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   "opportunistic"` plus explicit Cloudflare+Google v4/v6 servers; and
   `services.paretosecurity.enable` (automated security-posture checks;
   exists for nix-darwin too).
+- **Egress policy for a pod that must fetch arbitrary URLs** (sinnoh
+  `k8s/vaultwarden/network-policy.yaml`) — a `default-deny` NetworkPolicy for
+  the namespace, then an explicit allow: DNS to kube-dns, 5432 to the database
+  pod, and 80/443/587 to `0.0.0.0/0` minus every RFC1918/CGNAT/link-local/
+  documentation/multicast block — *and* minus the operator's own three public
+  ingress IPs, with the comment "Public ingress addresses must not bypass
+  internal isolation". That last exclusion is the part worth stealing: without
+  it, a pod allowed to reach the internet can loop back in through the public
+  edge and reach services the policy just denied it. The bogon list is
+  copy-pasteable as-is for any SSRF-prone workload (icon fetchers, webhook
+  senders, feed readers).
+- **Stub-zone DNS for overlay names** (sinnoh `k8s/tailscale-dns/coredns.yaml`
+  and johto `nix/hosts/nixos/olivine/private-dns.nix`) — in-cluster, a
+  `coredns-custom` ConfigMap forwards `<tailnet>.ts.net:53` to
+  `100.100.100.100` with a 30s cache, so pods resolve MagicDNS names; on the
+  hosts, a ~10-line CoreDNS `hosts` block serves a `johto:53` zone bound to
+  the WireGuard address, ordered `after`/`requires` the wireguard unit. Two
+  small pieces that stop overlay hostnames from being a hosts-file problem.
+- **Drop query parameters from the reverse proxy access log** (johto
+  `k8s/traefik/config.yaml`) — `--accesslog.fields.queryparameters.defaultmode=drop`
+  with JSON access logs. Tokens and reset links travel in query strings;
+  logging them turns the log store into a credential store.
 
 ## Storage, impermanence, databases
 
@@ -2307,6 +2442,15 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   transient `upgradeScript` option installing an `upgrade-pg-cluster`
   script computed from the current config (old/new bin+data dirs,
   `pg_upgrade`, prints follow-ups). Turn on, migrate, turn off.
+- **An object-storage bucket as a lazily-mounted filesystem** (johto
+  `nix/modules/b2media/default.nix`) — B2 buckets declared as `fileSystems`
+  entries with `fsType = "rclone"` and options carrying the sops-provided
+  rclone config, `x-systemd.automount` + `nofail` +
+  `x-systemd.after=network-online.target` so a bucket mounts on first access
+  and a dead network never blocks boot, and `vfs-cache-mode=full` with
+  read-ahead, buffer and cache-age tuned per media profile (audio vs video) by
+  a typed option. The rclone counterpart to the lazy NAS-mount item above; the
+  per-profile tuning is the transferable part.
 
 ## lib and module mechanics
 
@@ -2983,3 +3127,24 @@ What was surveyed when; sections above carry per-item attribution.
   automatic gc/optimise. Wart worth not copying: `init.defaultBranch = "main"`
   while the repo's real branch, comin's poller and every workflow trigger are
   `master`.
+- 2026-09-15 — `devon-systems/sinnoh` (production: 2 NixOS hosts on
+  OpenStack, k3s + Flux + CNPG + OpenTofu) and `devon-systems/johto`
+  (homelab: a storage/media server, a k3s node, one microVM guest), the two
+  companion repos to hoenn. Filed above: the `check-k8s` render-and-validate
+  CI step, the SSRF-safe egress NetworkPolicy, `k3s etcd-snapshot save` as a
+  `backupPrepareCommand` plus the exclude-what-backs-itself-up rule, CNPG +
+  barman-cloud to B2, `enableEmergencyMode = false`, OpenTofu state on B2
+  (with its no-locking caveat), the `from=`/`restrict`/`command=` builder key
+  lockdown, microVM secrets over a virtiofs `RuntimeDirectory`, the Tailscale
+  operator ProxyGroup ingress and its runbook, one-chart-N-values, minimal
+  Loki+Alloy, Flux `dependsOn` ordering, stub-zone DNS, the traefik
+  query-parameter drop, `sops.templates` with `restartUnits`, and rclone
+  buckets as automounted `fileSystems`. Second sightings, not refiled:
+  fail2ban recidive jails, SMART monitoring plus its prometheus exporter,
+  restic retention trios, nixos-facter, comin. Warts worth not copying:
+  `johto/secrets/kubernetes/` is an orphaned directory of still-live
+  encrypted secrets for services that moved to sinnoh — nothing references
+  it, `.sops.yaml` still re-keys it, and nobody rotated them, which is the
+  failure mode a `sops-rekey` that walks `secrets/**` quietly preserves; and
+  both repos deploy from `master` while their own git config sets
+  `init.defaultBranch = "main"`.
