@@ -1,7 +1,6 @@
 # nixos-config
 
 Personal NixOS and nix-darwin configurations, all driven by one flake.
-Forked from [mitchellh/nixos-config](https://github.com/mitchellh/nixos-config).
 The active user is `mich`.
 
 Hosts: `neon` (nix-darwin), `vm-aarch64-{fusion,utm,apple}`
