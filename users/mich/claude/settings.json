@@ -26,5 +26,6 @@
       "Bash(wget * | zsh)",
       "Bash(nc *)"
     ]
-  }
+  },
+  "remoteControlAtStartup": true
 }
