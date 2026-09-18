@@ -58,6 +58,11 @@
           # on every boot. Needs one-time approval in the admin console.
           services.tailscale.useRoutingFeatures = "server";
           services.tailscale.extraSetFlags = [ "--advertise-exit-node" ];
+
+          # Tor as a client only: a SOCKS proxy on 127.0.0.1:9050 for
+          # `torsocks <command>`. No relay, no onion services.
+          services.tor.enable = true;
+          services.tor.client.enable = true;
         }
       )
 
