@@ -63,6 +63,23 @@
           # `torsocks <command>`. No relay, no onion services.
           services.tor.enable = true;
           services.tor.client.enable = true;
+
+          # The same proxy on this host's tailnet address, for other tailnet
+          # devices (tailscale0 is a trusted interface, so no firewall hole).
+          # Tor exits if it cannot bind, so the unit waits until tailscaled
+          # has brought the address up. The "+" runs the wait outside tor's
+          # sandbox, which hides tailscaled's socket.
+          services.tor.settings.SOCKSPort = [
+            {
+              addr = "100.89.170.80";
+              port = 9050;
+            }
+          ];
+          systemd.services.tor = {
+            wants = [ "tailscaled.service" ];
+            after = [ "tailscaled.service" ];
+            serviceConfig.ExecStartPre = [ "+${config.services.tailscale.package}/bin/tailscale wait" ];
+          };
         }
       )
 
