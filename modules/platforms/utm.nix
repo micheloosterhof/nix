@@ -1,5 +1,5 @@
-# ABOUTME: UTM/QEMU guest platform: under GUI, the SPICE agent and software GL
-# ABOUTME: fallback (no hardware acceleration in UTM yet).
+# ABOUTME: UTM/QEMU guest platform: unsupported-system packages, and the SPICE
+# ABOUTME: agent under GUI for host/guest clipboard and display resizing.
 { ... }:
 {
   flake.modules.nixos.utm =
@@ -13,9 +13,6 @@
       (lib.mkIf config.my.gui.enable {
         # Qemu
         services.spice-vdagentd.enable = true;
-
-        # For now, we need this since hardware acceleration does not work.
-        environment.variables.LIBGL_ALWAYS_SOFTWARE = "1";
       })
     ];
 }

@@ -1,15 +1,6 @@
 { pkgs, ... }:
 
 {
-  # The user should already exist on the Mac; this lets nix-darwin know
-  # what the home directory is (https://github.com/LnL7/nix-darwin/issues/423).
-  # Note: nix-darwin only manages the login shell for users listed in
-  # users.knownUsers, so don't set `shell` here — it'd be a silent no-op.
-  # Change the login shell with chsh instead.
-  users.users.mich = {
-    home = "/Users/mich";
-  };
-
   system.primaryUser = "mich";
 
   # Caps Lock acts as Control.

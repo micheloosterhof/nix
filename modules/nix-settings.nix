@@ -22,11 +22,6 @@ let
         settings = {
           # 256 MiB — default 64 MiB fills up during big closure fetches.
           download-buffer-size = 256 * 1024 * 1024;
-          # Hard-link identical store paths to save disk as they're added.
-          # Linux-only: on macOS this has a history of store corruption
-          # (https://github.com/NixOS/nix/issues/7273); the scheduled
-          # nix.optimise.automatic below runs `nix store optimise` instead.
-          auto-optimise-store = pkgs.stdenv.isLinux;
           # Build derivations in parallel; "auto" = number of logical cores.
           max-jobs = "auto";
           # Use XDG dirs (~/.local/state/nix, ~/.config/nix) instead of the
