@@ -105,6 +105,12 @@ jj bookmark create <name> -r <commit>  # at specific commit
 # Move a bookmark to current commit
 jj bookmark set <name>
 
+# Advance the closest bookmarks to the working copy
+jj bookmark advance
+jj b a                        # short form
+jj bookmark advance -t <rev>  # advance to a specific revision
+jj bookmark advance <name>    # advance only the named bookmark
+
 # Delete a bookmark
 jj bookmark delete <name>
 
@@ -141,6 +147,27 @@ jj log -r 'conflicts()'
 
 # After resolving, the commit auto-updates
 jj status  # verify resolved
+```
+
+### Divergent Changes
+
+A change is divergent when one change ID has more than one visible commit.
+It happens when the same change is rewritten from two places - two
+terminals, or an agent session working alongside your own shell.
+
+```bash
+# Find divergent changes (also labelled "divergent" in the log)
+jj log -r 'divergent()'
+
+# A bare change ID is an error while divergent; address each side by offset
+jj show <change-id>/1
+jj show <change-id>/2
+
+# Keep one side, drop the other
+jj abandon <change-id>/2
+
+# Or fold one side's content into the other, which leaves a single commit
+jj squash --from <change-id>/2 --into <change-id>/1
 ```
 
 ### Undo and Recovery
@@ -195,10 +222,19 @@ jj squash -r <fixup-commit>
 # Or use absorb to automatically distribute changes
 jj absorb
 
+# Apply the configured formatters to every changed file in a revset
+jj fix -s <commit>     # commit and its descendants
+jj fix -s 'main..@'    # everything not yet on main
+
 # Rebase onto latest main
 jj git fetch
 jj rebase -d main
 ```
+
+`jj fix` runs the tools defined under `fix.tools` in jj config, each
+reading a file on stdin and writing the fixed content on stdout. With no
+tools configured it does nothing, so a project that formats through
+`make fmt` needs those tools declared before this step is worth running.
 
 ### Creating a Pull Request
 
@@ -255,8 +291,8 @@ jj bookmark create claude/<feature>-<session-id>  # for Claude Code sessions
 ### Before Push Checklist
 
 ```bash
-# 1. Check for conflicts
-jj log -r 'conflicts()'
+# 1. Check for conflicts and divergence
+jj log -r 'conflicts() | divergent()'
 
 # 2. Ensure clean status
 jj status
@@ -267,7 +303,10 @@ jj git fetch && jj rebase -d main
 # 4. Review changes
 jj log -r '::@ ~ ::main'
 
-# 5. Push
+# 5. Move the bookmark to the work being pushed
+jj bookmark advance <bookmark>
+
+# 6. Push
 jj git push -b <bookmark>
 ```
 
@@ -301,6 +340,7 @@ When colocated:
 | Squash into parent | `jj squash` |
 | Rebase | `jj rebase -d <dest>` |
 | Create bookmark | `jj bookmark create <name>` |
+| Advance bookmark | `jj bookmark advance` |
 | Fetch | `jj git fetch` |
 | Push | `jj git push -b <name>` |
 | Undo | `jj op undo` |
