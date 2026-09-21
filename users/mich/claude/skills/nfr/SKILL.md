@@ -32,14 +32,19 @@ Never use JavaScript directly. All frontend code is TypeScript.
 ## 2. Architecture
 
 - **Functional core, imperative shell**: Keep business logic in pure
-  functions with no side effects. Push I/O, state mutation, and
-  orchestration to the outer edges of the system.
-- **Dependency injection**: Accept dependencies (randomness, clock, etc)
-  as parameters rather than constructing them internally. Simplifies
-  testing by allowing real collaborators to be replaced without
-  mocks. Skip DI when it adds indirection without a testing or
-  flexibility benefit (e.g., trivial helpers, scripts with no
-  meaningful collaborators).
+  functions with no side effects, and push orchestration to the outer
+  edges of the system. Where purity is impractical, determinism carries
+  the same testing benefit: the same inputs always produce the same
+  outputs, which a state machine whose transitions depend only on their
+  inputs also gives you.
+- **Push non-determinism to the shell**: I/O, network, database,
+  filesystem, concurrency, unseeded randomness, and the system clock.
+  Where they turn up inside business logic, split the function around
+  them or accept them as injected parameters rather than constructing
+  them internally; injection lets tests supply real collaborators
+  instead of mocks. Skip the injection when it adds indirection without
+  a testing or flexibility benefit (e.g., trivial helpers, scripts with
+  no meaningful collaborators).
 - **Mistake-proofing (poka-yoke)**: Make wrong states impossible instead
   of documenting them. Represent domain states as types and enums so
   invalid combinations do not compile; parse input once at the boundary
