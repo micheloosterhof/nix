@@ -256,7 +256,7 @@ jj bookmark create claude/<feature>-<session-id>  # for Claude Code sessions
 
 ```bash
 # 1. Check for conflicts
-jj log -r 'conflict()'
+jj log -r 'conflicts()'
 
 # 2. Ensure clean status
 jj status
