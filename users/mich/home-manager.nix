@@ -466,6 +466,23 @@ in
       ui = {
         default-command = "log";
       };
+      # delta only understands git-format diffs, and it is a diff renderer
+      # rather than a general pager, so it is scoped to the two commands
+      # whose output is a diff. jj log and jj status keep jj's own graph
+      # rendering. delta reads its own options (side-by-side, hunk headers)
+      # from the git config written by programs.delta.
+      "--scope" = [
+        {
+          "--when".commands = [
+            "diff"
+            "show"
+          ];
+          ui = {
+            pager = "delta";
+            diff-formatter = ":git";
+          };
+        }
+      ];
     };
   };
 
