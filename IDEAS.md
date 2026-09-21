@@ -221,22 +221,13 @@ registry-pinning corrections).
   self/nixpkgs on the container tarball and VM images. → batch B8, with
   the measured closure numbers.
 - **Small nix.settings from people who build nix** (Mic92, EmergentMind):
-  `warn-dirty = false`, `builders-use-substitutes = true` (remote builder
-  fetches from cache directly instead of copy-via-Mac; free win for the
-  existing linux-builder). → batch A1 (warn-dirty;
-  builders-use-substitutes landed 2026-09-05).
-- **VM/host one-liners** (Mic92, machines/, nixosModules/): `pkgs.ghostty.terminfo`
-  (terminfo output only) in the VM's systemPackages so ghostty-over-SSH
-  works — the lightweight version of the srvos mixins-terminfo idea in the
-  ryan4yin survey; `services.journald.extraConfig = "SystemMaxUse=1G"` (cap
-  journal growth on small VM disks); `zramSwap.enable = true` (take zram
-  alone — his separate zswap module on top is a known anti-pattern);
+  `warn-dirty = false`. → batch A1.
+- **VM/host one-liners** (Mic92, machines/, nixosModules/):
   `systemd.services.systemd-networkd.stopIfChanged = false` (+ resolved) so
   a `nixos-rebuild switch` over SSH doesn't cut the network under you;
   `services.getty.autologinUser` on the throwaway VM;
   `services.dbus.implementation = "broker"`. → stopIfChanged is batch
-  C12; journald and zram landed 2026-09-05/06; the rest stayed in
-  section 2.
+  C12; the rest stayed in section 2.
 - **`machines/utm-vm/` as a dev-VM template** (Mic92) — almost exactly our VM
   shape, worth reading whole: srvos server base + disko single-disk GPT
   (500M ESP + ext4 root, deliberately not ZFS for a throwaway guest),
@@ -450,8 +441,7 @@ style: check against the repo, spec, one commit each) draws from here.
   (claude picks up broken login shells otherwise). The settings.json
   `env.SHELL = /bin/bash` covers this today, but only on darwin and only
   in the hand-synced live file; the wrapper version is nix-managed and
-  works on NixOS hosts too. (His terminal-bell Notification hook is done:
-  `preferredNotifChannel = terminal_bell`.)
+  works on NixOS hosts too.
 - **Auto-load overlays** — `jseppanen` / `lucamaraschi` `lib/overlays.nix`. Reads
   `overlays/` and auto-imports every `*.nix` / subdir-with-`default.nix`, so new
   overlays never need hand-listing. Confirmed not present upstream.
@@ -649,7 +639,6 @@ style: check against the repo, spec, one commit each) draws from here.
 - **VM/host one-liners** (Mic92, machines/, nixosModules/):
   `services.getty.autologinUser` on the throwaway VM;
   `services.dbus.implementation = "broker"`.
-  (`pkgs.ghostty.terminfo` done 2026-08-26, vm + server.)
 - **Slim the closure** (drupol) — `environment.defaultPackages =
   lib.mkForce [ ]` (drops nano/perl/rsync/strace);
   `documentation.*.enable = false` for headless (measurable eval win).
@@ -699,8 +688,8 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Terminal: ghostty, tmux, less
 
-- **bash port of zsh-done** (follow-up; zsh-done itself vendored as
-  `.zsh_done` 2026-08-26). The fleet's interactive shell is bash
+- **bash port of zsh-done** (follow-up to the vendored `.zsh_done`). The
+  fleet's interactive shell is bash
   (`users/mich/nixos.nix` sets `shell = pkgs.bash`), so the ssh-into-fleet
   case needs a bash version: vendor `rcaloras/bash-preexec` (single file,
   synthesizes preexec/precmd from the DEBUG trap + PROMPT_COMMAND; what
@@ -783,8 +772,8 @@ style: check against the repo, spec, one commit each) draws from here.
 - **mDNS fleet names** (mightyiam) — avahi with `nssmdns4 = true`, fleet
   knownHosts on `<host>.local` names: no DHCP-address tracking for the
   Fusion/UTM VMs.
-- **sudo NOPASSWD → agent-authenticated** (follow-up to pam_rssh, enabled
-  2026-08-26). pam_rssh is wired into the sudo PAM stack on vm + server
+- **sudo NOPASSWD → agent-authenticated** (follow-up to pam_rssh).
+  pam_rssh is wired into the sudo PAM stack on vm + server
   (accounts.nix), but `wheelNeedsPassword = false` means sudo skips PAM
   entirely, so it is inert. The real posture change is flipping that to
   true: sudo then authenticates against the forwarded agent (sufficient),
@@ -980,9 +969,8 @@ style: check against the repo, spec, one commit each) draws from here.
   `direnv_layout_dir` hashes `$PWD` into
   `$XDG_CACHE_HOME/direnv/layouts/`: no `.direnv/` litter in any
   repo, and one GC-able cache.
-- **direnv `~/src` whitelist** (clo4 + berbiche; the rest of their
-  config block — strict_env, hide_env_diff, the whitelist expansion
-  fix — landed 2026-09-05) — `whitelist.prefix = [ "~/src" ]` skips
+- **direnv `~/src` whitelist** (clo4 + berbiche) —
+  `whitelist.prefix = [ "~/src" ]` skips
   the `direnv allow` ritual for own checkouts, but auto-executes any
   `.envrc` under it. Pending decision: do third-party clones ever land
   in `~/src`?
@@ -1061,7 +1049,7 @@ style: check against the repo, spec, one commit each) draws from here.
 - **macOS/darwin one-liners** (vic) — `ApplePressAndHoldEnabled = false`;
   darwin tooling installed from the pinned nix-darwin input; `nix.gc`
   wrapped in `optionalAttrs config.nix.enable` so modules eval on
-  Determinate-managed Macs. (`remapCapsLockToControl` done 2026-08-26.)
+  Determinate-managed Macs.
 - **Declarative macOS symbolic hotkeys, applied live** (franckrasolo
   `darwin/macOS/keyboard.nix`; jdheyburn independently via
   `CustomUserPreferences."com.apple.symbolichotkeys"`) — write
