@@ -372,9 +372,6 @@ style: check against the repo, spec, one commit each) draws from here.
   roots can be flake inputs (import modules straight from another
   repo). Housekeeping: `.withLib` is a no-op since July 2026 and the
   repo moved to denful — check our pin.
-- **`workarounds.nix` convention** (mightyiam) — every workaround in one
-  file with upstream issue URLs, instead of hidden inside feature
-  modules. Decay stays visible.
 - **`.pkg.nix` convention** (mightyiam) — `import-tree.filterNot
   (hasSuffix ".pkg.nix")` lets callPackage files sit next to the
   feature module that overlays them, inside the dendritic tree.
