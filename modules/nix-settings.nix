@@ -27,6 +27,9 @@ let
           # Use XDG dirs (~/.local/state/nix, ~/.config/nix) instead of the
           # ~/.nix-profile / ~/.nix-defexpr dotfiles.
           use-xdg-base-directories = true;
+          # The repo is worked on dirty most of the time; the warning on every
+          # build is noise.
+          warn-dirty = false;
 
           # Remote builders substitute from the caches themselves instead of
           # receiving every dependency over ssh from the client.
