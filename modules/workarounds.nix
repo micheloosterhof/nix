@@ -86,4 +86,11 @@ in
         environment.variables.LIBGL_ALWAYS_SOFTWARE = "1";
       };
     };
+
+  # Apple's `container` runtime has no nix expression here: it is installed
+  # from Apple's signed pkg into /usr/local/bin, with update-container.sh and
+  # uninstall-container.sh next to the binary, because nixpkgs trails upstream
+  # far enough to sit behind its security fixes (2026-09-23: 0.12.3 on 26.05,
+  # 1.1.0 on unstable, 1.4.1 upstream). It moves into home.packages once
+  # nixpkgs tracks the releases.
 }

@@ -194,9 +194,8 @@
   # Outside this manifest: Apple's `container` CLI (one lightweight VM per
   # container) is installed from its signed pkg into /usr/local/bin; manage
   # it with the update-container.sh / uninstall-container.sh scripts there.
-  # No brew cask exists, and nixpkgs ships it as `container` but lags
-  # upstream (0.12.3 vs 1.0.0 pkg, 2026-06) — move it into home.packages
-  # once nixpkgs catches up.
+  # No brew cask exists; the nixpkgs lag that keeps it out of nix is in
+  # workarounds.nix.
 
   # Symlink the nix JDK into the system JavaVirtualMachines directory so
   # /usr/bin/java and Java-aware GUI apps (Maltego) discover it via
