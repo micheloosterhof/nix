@@ -11,46 +11,14 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 # 1. Specced and ready — Tier-1 batch (2026-08-20)
 
 The cheap wins scattered across the surveys, checked against the repo
-and turned into concrete changes. None is implemented today:
-`initrd.systemd`, `useNetworkd`, `nix-output-monitor`,
-`programs.nh`, `intent-to-add` and `warn-dirty` appear
-nowhere in the repo outside this file.
+and turned into concrete changes. None of what is left is implemented
+today: `initrd.systemd`, `useNetworkd`, `nix-output-monitor` and
+`programs.nh` appear nowhere in the repo outside this file.
 
 Two source bullets turned out to be wrong or more expensive than
 advertised — see nh and registry pinning. Each item below is one commit.
 
 ## Batch A — no decision to make
-
-**1. One nix.settings key** (`modules/nix-settings.nix`, in the `settings`
-block around line 40). Add:
-
-```nix
-# The repo is worked on dirty most of the time; the warning on every
-# build is noise.
-warn-dirty = false;
-```
-
-Test: one eval assertion alongside the existing
-`testSubstituterFallback` in `tests/default.nix`.
-
-**2. `git add --intent-to-add` before local builds** (`Makefile`). A
-path-flake in a git worktree only sees tracked files, so a newly written
-`modules/foo.nix` is invisible to `nix build` until it is staged — the
-"path does not exist" gotcha. Add a helper target and make the four local
-targets depend on it:
-
-```make
-# A path flake only copies git-tracked files, so a new module is invisible
-# to the build until it is at least intent-to-add staged.
-.PHONY: stage
-stage:
-	@git add --intent-to-add .
-```
-
-`rebuild`, `test`, `build`, `check` gain `stage` as a prerequisite. Safe
-against junk: `--intent-to-add` honours `.gitignore`, which already covers
-`result`, `backup.tar.gz*` and `iso/nixos.iso`. Not the remote targets —
-`remote/copy` rsyncs the worktree and does not care. No test (Makefile).
 
 **5. nix-output-monitor on the image targets** (`Makefile`, `home.packages`).
 Add `pkgs.nix-output-monitor` to the `fullTools` list in
@@ -180,9 +148,9 @@ confirming the lease survives two rebuilds.
 
 ## Suggested order
 
-A1–A7 in any order, one commit each — all eval-only, all verifiable with
-`make lint`. Then B8/B9, each carrying its decision. Then C11, boot the
-VM, then C12, boot the VM again.
+A5 and A7 in either order, one commit each — both eval-only, both
+verifiable with `make lint`. Then B8/B9, each carrying its decision.
+Then C11, boot the VM, then C12, boot the VM again.
 
 ## Source bullets absorbed into this batch (kept for provenance)
 
@@ -220,8 +188,6 @@ registry-pinning corrections).
   trees in the closure (~700 MB), so pin everything on workstations but only
   self/nixpkgs on the container tarball and VM images. → batch B8, with
   the measured closure numbers.
-- **Small nix.settings from people who build nix** (Mic92, EmergentMind):
-  `warn-dirty = false`. → batch A1.
 - **VM/host one-liners** (Mic92, machines/, nixosModules/):
   `systemd.services.systemd-networkd.stopIfChanged = false` (+ resolved) so
   a `nixos-rebuild switch` over SSH doesn't cut the network under you;
@@ -492,10 +458,8 @@ style: check against the repo, spec, one commit each) draws from here.
   known-good nixpkgs snapshot via `fetchTree`: the systematized
   version of the malob one-off pin, all regression pins in one place
   with their provenance instead of scattered workarounds.
-- **Rebuild ergonomics one-liners** (EmergentMind): `git add
-  --intent-to-add .` before every build (kills the "path does not exist"
-  flake gotcha for new files — belongs in `make switch`/`make test`);
-  `nix flake update --timeout 5` so one dead input host doesn't hang the
+- **Rebuild ergonomics one-liners** (EmergentMind): `nix flake update
+  --timeout 5` so one dead input host doesn't hang the
   bump. Plus srid's activation-hang insurance to file away:
   `systemd.services.NetworkManager-wait-online.enable = false` and
   dbus-broker `restartIfChanged = mkForce false` are the two canonical
