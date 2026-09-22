@@ -54,8 +54,8 @@ let
         };
 
         # Periodically hard-link identical store paths. On macOS this is the
-        # safe alternative to inline auto-optimise-store (see above); on Linux
-        # it complements it by catching paths added out-of-band.
+        # safe alternative to inline auto-optimise-store (workarounds.nix); on
+        # Linux it complements it by catching paths added out-of-band.
         optimise.automatic = true;
 
         # Resolve <nixpkgs> and nixpkgs#... to the flake's pinned input so no
