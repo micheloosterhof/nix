@@ -54,8 +54,17 @@ lint: ## Evaluate flake checks without building (CI builds them via check.yml)
 hooks: ## Install the git pre-commit hooks
 	pre-commit install
 
+# A path flake only copies git-tracked files, so a new module is invisible
+# to the build until it is at least intent-to-add staged. --intent-to-add
+# honours .gitignore, which already covers result, backup.tar.gz* and
+# iso/nixos.iso. Not a prerequisite of the remote/* targets: remote/copy
+# rsyncs the worktree and does not care what git tracks.
+.PHONY: stage
+stage:
+	@git add --intent-to-add .
+
 .PHONY: switch
-switch: ## Build + activate the current host (Darwin or NixOS)
+switch: stage ## Build + activate the current host (Darwin or NixOS)
 ifeq ($(UNAME), Darwin)
 	sudo darwin-rebuild switch --flake "$$(pwd)#${LOCAL_NAME}"
 else
@@ -63,7 +72,7 @@ else
 endif
 
 .PHONY: test
-test: ## Build + activate without persisting (no boot entry)
+test: stage ## Build + activate without persisting (no boot entry)
 ifeq ($(UNAME), Darwin)
 	sudo darwin-rebuild test --flake "$$(pwd)#${LOCAL_NAME}"
 else
@@ -71,7 +80,7 @@ else
 endif
 
 .PHONY: build
-build: ## Build the configuration only (no activation)
+build: stage ## Build the configuration only (no activation)
 ifeq ($(UNAME), Darwin)
 	darwin-rebuild build --flake "$$(pwd)#${LOCAL_NAME}"
 else
@@ -79,7 +88,7 @@ else
 endif
 
 .PHONY: check
-check: ## Build + run activation checks without switching
+check: stage ## Build + run activation checks without switching
 ifeq ($(UNAME), Darwin)
 	sudo darwin-rebuild check --flake "$$(pwd)#${LOCAL_NAME}"
 else
