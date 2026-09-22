@@ -139,7 +139,7 @@ does not gain the unstable source.
 
 `NH_FLAKE` is per-host (the repo is at `~/src/nix` on neon and `/nix-config`
 on a remote-rebuilt VM), so either leave `flake` unset and rely on cwd, or
-set it per host file. `make rebuild`/`make gc` keep their names and call nh
+set it per host file. `make switch`/`make gc` keep their names and call nh
 underneath. Decision: whether to hand GC scheduling to nh. Test: an eval
 assertion that exactly one of the two GC mechanisms is enabled per host.
 

@@ -48,7 +48,7 @@ package and the `installer-iso` package.
 ## Build / deploy
 
 All operations go through the `Makefile`; run `make` for the full menu.
-Day-to-day: `make rebuild` (build + activate the local host), `make test`
+Day-to-day: `make switch` (build + activate the local host), `make test`
 (activate without a boot entry), `make lint` (`nix flake check`), `make fmt`.
 Remote and provisioning workflows are in `docs/operations.md`.
 
@@ -88,7 +88,7 @@ push.
   bump. Details and the unstable-overlay cache caveat: `docs/operations.md`.
 - neon has no CI build job — only full-config evaluation (the eval-tests
   check) — so a darwin package that evaluates but fails to build surfaces
-  at `make rebuild` (`docs/build-venues.md`).
+  at `make switch` (`docs/build-venues.md`).
 - Homebrew (darwin) runs `onActivation.cleanup = "none"`, so ad-hoc `brew
   install` survives activation; the cask/brew lists in
   `users/mich/darwin.nix` are not yet exhaustive.

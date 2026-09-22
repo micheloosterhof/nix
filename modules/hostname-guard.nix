@@ -7,7 +7,7 @@
   # installer-iso) never enable it: they activate on machines they have
   # never heard of, by design.
   # Wrong-host deploys happen when NIXADDR and NIXNAME (or a defaulted
-  # NIXNAME on a local `make rebuild`) disagree.
+  # NIXNAME on a local `make switch`) disagree.
   flake.modules.nixos.base =
     { config, pkgs, ... }:
     {

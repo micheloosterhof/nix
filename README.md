@@ -24,7 +24,7 @@ sudo nix --extra-experimental-features 'nix-command flakes' run nix-darwin -- \
 After that:
 
 ```
-make rebuild        # rebuild + activate
+make switch         # build + activate
 make test           # build + activate without persisting a boot entry
 ```
 
@@ -42,7 +42,7 @@ open ~/Virtual\ Machines.localized/dev.vmwarevm
 ```
 
 First boot autologins to `mich` in i3, accepts your ed25519 key for SSH,
-sets hostname `dev`. For ongoing updates from inside the VM: `make rebuild`.
+sets hostname `dev`. For ongoing updates from inside the VM: `make switch`.
 
 ### Servers
 

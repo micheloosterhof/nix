@@ -13,7 +13,7 @@ UNAME := $(shell uname)
 # remote/* targets (any ssh-reachable host: the VMs, helium, nitrogen).
 NIXNAME ?= vm-aarch64-fusion
 
-# LOCAL_NAME identifies the config for the LOCAL host's rebuild/test targets.
+# LOCAL_NAME identifies the config for the LOCAL host's switch/test targets.
 # On Darwin we always rebuild neon regardless of what NIXNAME is set to for
 # the remote host workflow.
 ifeq ($(UNAME), Darwin)
@@ -54,8 +54,8 @@ lint: ## Evaluate flake checks without building (CI builds them via check.yml)
 hooks: ## Install the git pre-commit hooks
 	pre-commit install
 
-.PHONY: rebuild
-rebuild: ## Build + activate the current host (Darwin or NixOS)
+.PHONY: switch
+switch: ## Build + activate the current host (Darwin or NixOS)
 ifeq ($(UNAME), Darwin)
 	sudo darwin-rebuild switch --flake "$$(pwd)#${LOCAL_NAME}"
 else
@@ -216,15 +216,15 @@ remote/copy: remote/check-addr ## rsync this repo into the remote host at /nix-c
 
 # run the nixos-rebuild switch command. This does NOT copy files so you
 # have to run remote/copy before.
-.PHONY: remote/rebuild
-remote/rebuild: remote/check-addr ## Run nixos-rebuild switch on the remote host (remote/copy first)
+.PHONY: remote/switch
+remote/switch: remote/check-addr ## Run nixos-rebuild switch on the remote host (remote/copy first)
 	ssh $(SSH_OPTIONS) -p$(NIXPORT) $(NIXUSER)@$(NIXADDR) " \
                 sudo NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 nixos-rebuild switch --flake \"/nix-config#${NIXNAME}\" \
 	"
 
 # Activate without a boot entry: if the new config kills the network, a
 # provider-console reboot lands back on the old system. Run this before
-# remote/rebuild on hosts where a bad switch means a trip to the console.
+# remote/switch on hosts where a bad switch means a trip to the console.
 .PHONY: remote/test
 remote/test: remote/check-addr ## Run nixos-rebuild test on the remote host (no boot entry; remote/copy first)
 	ssh $(SSH_OPTIONS) -p$(NIXPORT) $(NIXUSER)@$(NIXADDR) " \

@@ -79,7 +79,7 @@ This matters because it is what a build job adds *on top of* eval that has
 to justify the venue gymnastics. `nix flake check` does not evaluate
 `darwinConfigurations` (not a standard flake output), and the eval tests
 historically forced only specific slices of neon — so eval breakage in the
-mac config could reach `make rebuild` undetected. The
+mac config could reach `make switch` undetected. The
 `testDarwinToplevelEvaluates` eval test closes that gap by forcing
 `mac.system.build.toplevel.drvPath` on the Linux runner `check.yml` already
 uses.
@@ -103,7 +103,7 @@ darwin *build* happens in CI at all. Three options:
 job, the cross-venue handoff, the `CACHIX_TOKEN` exposure in CI, and the
 failure modes option 2 showed — while *increasing* eval coverage.
 The residual risk is a darwin package that evaluates but fails to build,
-which surfaces at `make rebuild` with a generation to roll back to.
+which surfaces at `make switch` with a generation to roll back to.
 
 Two things reduce that residual risk further. `modules/diff.nix` already
 prints `nix store diff-closures` at every activation, so the neon closure
@@ -149,7 +149,7 @@ structural coupling. The bump PR keeps its per-host what-changes view.
 
 CI builds nine closures on every push and discards all of them; every
 machine then rebuilds the same paths. Closing that would turn
-`make remote/rebuild` on nitrogen from a compile into a download, and is
+`make remote/switch` on nitrogen from a compile into a download, and is
 independent of the neon question.
 
 The obstacle is storage: `operations.md` records the cachix free tier at
@@ -204,8 +204,8 @@ image releases become routine.
 
 ## Updating an existing machine
 
-- **Local host** — `make rebuild`. Must always work; this is the invariant.
-- **Remote host** — `make remote/copy` then `make remote/rebuild`, which
+- **Local host** — `make switch`. Must always work; this is the invariant.
+- **Remote host** — `make remote/copy` then `make remote/switch`, which
   builds *on the target*. One improvement per venue:
   - *CI:* the target substitutes from the cache instead of building.
   - *Local:* `nixos-rebuild --target-host` builds elsewhere and copies the

@@ -6,7 +6,7 @@ Build, deploy, and maintenance. Everything goes through the `Makefile`; run
 
 ## Local rebuild
 
-`make rebuild` builds and activates the local host; `make test` activates
+`make switch` builds and activates the local host; `make test` activates
 without persisting a boot entry; `make build` only builds; `make check` runs
 the activation checks without switching.
 
@@ -33,7 +33,7 @@ nitrogen — despite the prefix. They are parameterized by environment variables
 |---|---|
 | `make remote/copy` | rsync this repo into the remote host at `/nix-config` (`--delete`: stale files would be auto-imported by import-tree and break evaluation) |
 | `make remote/test` | `nixos-rebuild test` on the remote host — no boot entry, so a config that kills the network is survivable by a console reboot |
-| `make remote/rebuild` | `nixos-rebuild switch` on the remote host (`remote/copy` first) |
+| `make remote/switch` | `nixos-rebuild switch` on the remote host (`remote/copy` first) |
 | `make remote/secrets` | rsync `~/.gnupg` and `~/.ssh` to the remote host |
 
 ## Provisioning a new host
@@ -58,7 +58,7 @@ nixpkgs' `vmware-image.nix` module) and drops it into
 `modules/hosts/dev.vmx` in as the `.vmx` template only if one isn't already
 there (manual Fusion-side edits survive). First boot comes up configured:
 i3 autologin as `mich`, ed25519 key authorized, hostname `dev`. Ongoing
-updates inside the VM go through `make rebuild`.
+updates inside the VM go through `make switch`.
 
 `make vm/image` builds the VMDK alone and prints its `/nix/store` path.
 
