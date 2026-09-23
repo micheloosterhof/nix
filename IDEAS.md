@@ -2271,6 +2271,23 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   kind of detail that argues for copying their pinning rather than
   re-deriving it. Adoptable on its own, without the container-reconciling
   half of the module that we do not want.
+
+  Tried on neon 2026-09-23: the image builds an `aarch64-linux`
+  derivation over nix's remote-store protocol, so the mechanism works.
+  Three things stand in the way of using it as-is. Its SSH private key is
+  committed to the public repo, and `--publish 31022:22` binds every
+  interface, not localhost as the README claims -- root on the builder was
+  reachable from both the LAN address and the tailnet address in the test.
+  `--publish 127.0.0.1:31022:22` fixes that (verified: connections from
+  the LAN address are then refused), and a locally generated key would fix
+  the rest. Their default port 31022 is already taken on neon by something
+  bound to `*` that lsof will not name without sudo. And `/nix/store` in
+  the container is not a volume, so the builder re-fetches its 1.3GB of
+  store on every start. Note also that their `buildMachines` entry
+  advertises only `big-parallel`, where neon's linux-builder advertises
+  `nixos-test` as well so NixOS VM tests are accepted; the image carries no
+  qemu. So this is an addition for `x86_64-linux`, which we cannot build
+  locally at all today, rather than a replacement for the aarch64 VM.
 - **nix2container instead of a tarball in the store** — the same module
   loads nix-built images with nix2container: only a small JSON manifest
   lands in the Nix store and the layers stream from existing store paths at
