@@ -312,3 +312,21 @@ gce/upload: ## Upload + register the GCE image (set GCE_BUCKET, GCE_PROJECT)
 			--key-exchange-key-file="$$IMG/cert.der" \
 			--signature-database-file="$$IMG/cert.der" \
 			--source-uri "gs://$(GCE_BUCKET)/$$(basename "$$TARBALL")"
+
+# Build the NixOS container image as an OCI archive and print its /nix/store
+# path. aarch64 by default because Apple's `container` is Apple silicon only;
+# podman on an x86_64 host wants the other arch. The rootfs tarball that
+# docker and podman import is `container-server` in the same package set.
+CONTAINER_ARCH ?= aarch64-linux
+.PHONY: container/image
+container/image: ## Build the container OCI archive; prints /nix/store path (CONTAINER_ARCH=aarch64-linux|x86_64-linux)
+	@nix build --no-link --print-out-paths ".#packages.$(CONTAINER_ARCH).container-server-oci"
+
+# Load the built archive into Apple's container runtime. `image load` replaces
+# an existing tag, so a rebuild needs no cleanup first. Run it with
+# `container run --cap-add SYS_ADMIN container-server:latest`: SYS_ADMIN is
+# what lets the NixOS activation script mount /run.
+.PHONY: container/load
+container/load: ## Build the OCI archive and load it into Apple's `container`
+	@IMG=$$($(MAKE) --no-print-directory container/image) && \
+		container image load -i "$$IMG"
