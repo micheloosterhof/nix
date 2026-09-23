@@ -2193,29 +2193,35 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 
 ## Other decisions
 
-- **apple/container as a runtime target — watch item** (research pass
-  2026-09-03; references: apple/container v1.0.0 2026-06-09,
-  halfwhey/nix-apple-container) — Apple's native container CLI runs
-  one lightweight VM per container (Containerization.framework), OCI
-  only, Apple silicon only, macOS 26 the effective floor (degraded
-  before; container-to-container networking needs 26). Implications
-  here: the `container-server` rootfs tarball won't import (no
-  `docker import` equivalent — an "apple" variant must emit an OCI
-  archive via dockerTools/nix2container instead); nix-built OCI
-  images cross-built on the linux-builder load fine;
-  halfwhey/nix-apple-container is the nix-darwin integration to copy
+- **apple/container — in use, not yet declarative** (verified on neon
+  2026-09-23, apple/container 1.4.1 on macOS 27.0) — Apple's native
+  container CLI runs one lightweight VM per container
+  (Containerization.framework), OCI only, Apple silicon only, macOS 26
+  the effective floor. It is installed from Apple's signed pkg (see
+  workarounds.nix for why not from nixpkgs) and works: egress, DNS,
+  published ports, host-to-container and container-to-container traffic
+  all pass with tailscale running, so the "VPN/tunnel interfaces break
+  vmnet port forwarding" warning does not reproduce here. Images built
+  by nix need one conversion step: dockerTools emits a Docker archive
+  and `container image load` wants an OCI layout, so the
+  `container-server-oci` package pipes it through skopeo. Two upstream
+  bugs to watch rather than fix: #1881/#1882 (container subnet routing
+  breaks when a competing default route appears and does not self-heal
+  — neon already carries en0 + utun4) and #2275 (on macOS 27.0 the
+  apiserver never finishes startup if `com.apple.pfd` is unresponsive,
+  hanging every command). The open decision is declarative management.
+  halfwhey/nix-apple-container is still the integration to copy
   (containers as launchd agents, nix2container layers streamed from
-  store paths, optional Linux builder containers as a
-  linux-builder-VM alternative). Gotchas to test first: VPN/tunnel
-  interfaces break port forwarding (tailscale runs on neon), and the
-  runtime needs the primary user logged in. Not adoptable until neon
-  is on macOS 26; orbstack/colima remain the practical alternatives
-  meanwhile. First operator sighted (BrianHicks
-  `dotfiles/container/default.nix`): pairs it with `socktainer`, a
-  Docker-socket API shim so docker-CLI tooling works against
-  apple/container, and a committed preset script (`container system
-  property set build.rosetta true`, cpu/memory budgets) as the config
-  surface the CLI lacks.
+  store paths, optional Linux builder containers as a linux-builder-VM
+  alternative), but it is tagged v0.0.6 from April with main tracking
+  1.4.1, its launchd bootstrap bug (#8) and the fix for it (#9) both
+  open, and the module deletes containers it does not declare — which
+  fights the ad-hoc images and tuned `system property` values on neon.
+  For docker-CLI compatibility the reference remains BrianHicks
+  `dotfiles/container/default.nix`: `socktainer` as a Docker-socket API
+  shim plus a committed preset script (`container system property set
+  build.rosetta true`, cpu/memory budgets) as the config surface the
+  CLI lacks.
 - **nix-homebrew** (dustinlyons, wimpysworld) — `zhaofengli/nix-homebrew`
   installs Homebrew itself declaratively and can pin the core/cask taps
   in flake.lock (`mutableTaps = false`) — the cask layer becomes
