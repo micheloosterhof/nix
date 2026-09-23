@@ -1,10 +1,13 @@
-# ABOUTME: NixOS as a container root-filesystem tarball: one OCI artifact for
-# ABOUTME: docker/podman/k8s/apple, built from the same profile axis as the hosts.
+# ABOUTME: NixOS as a container image: a root-filesystem tarball and an OCI
+# ABOUTME: archive, built from the same profile axis as the hosts.
 #
-# The output is config.system.build.tarball from upstream's docker-container
-# profile: import it with `docker import result/tarball/*.tar.xz <name>` (or
-# `podman import`), then run/orchestrate with `/init` as the command. A baked
-# entrypoint OCI wrapper on top is a possible follow-up.
+# Two outputs from one system. container-server is
+# config.system.build.tarball from upstream's docker-container profile:
+# import it with `docker import result/tarball/*.tar.xz <name>` (or `podman
+# import`), then run/orchestrate with `/init` as the command.
+# container-server-oci is an OCI-layout archive with `/init` already baked in
+# as the command, for runtimes that load images rather than import root
+# filesystems: `container image load -i result` then `container run`.
 #
 # container-server is deliberately a bare base: no user account, no ssh, no
 # services. Workloads and user config get layered on next.
@@ -28,9 +31,9 @@
 
   perSystem =
     { system, ... }:
-    inputs.nixpkgs.lib.optionalAttrs (inputs.nixpkgs.lib.hasSuffix "linux" system) {
-      packages.container-server =
-        (inputs.nixpkgs.lib.nixosSystem {
+    inputs.nixpkgs.lib.optionalAttrs (inputs.nixpkgs.lib.hasSuffix "linux" system) (
+      let
+        containerSystem = inputs.nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
             # Upstream's container base: boot.isContainer, minimal profile, /init
@@ -40,6 +43,40 @@
             { my.profile = "server"; }
             { config._module.args = { inherit inputs; }; }
           ];
-        }).config.system.build.tarball;
-    };
+        };
+        inherit (containerSystem) pkgs;
+        inherit (containerSystem.config.system.build) toplevel;
+
+        # dockerTools emits a Docker archive; the OCI archive below is the
+        # conversion of it, so this one is not a package of its own.
+        dockerArchive = pkgs.dockerTools.buildLayeredImage {
+          name = "container-server";
+          tag = "latest";
+          contents = [ toplevel ];
+          config.Cmd = [ "${toplevel}/init" ];
+          # The system closure brings /etc in as a store symlink, but the
+          # runtime writes resolv.conf there before handing over to /init,
+          # and NixOS activation builds the real /etc at boot anyway. Swap it
+          # for a directory, along with the mount points a container needs --
+          # the same preparation upstream's tarball does.
+          extraCommands = ''
+            rm etc
+            mkdir -p proc sys dev etc
+          '';
+        };
+      in
+      {
+        packages.container-server = containerSystem.config.system.build.tarball;
+
+        packages.container-server-oci =
+          pkgs.runCommand "container-server-oci" { nativeBuildInputs = [ pkgs.skopeo ]; }
+            ''
+              # skopeo puts its scratch space in /var/tmp, which the build
+              # sandbox does not have, so point it at the build directory.
+              skopeo --insecure-policy --tmpdir "$NIX_BUILD_TOP" \
+                copy docker-archive:${dockerArchive} \
+                oci-archive:$out:container-server:latest
+            '';
+      }
+    );
 }

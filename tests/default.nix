@@ -497,10 +497,15 @@ lib.runTests {
     expected = (unstable "x86_64-linux").golink.version;
   };
 
-  # The OCI-image output family: the container package evaluates to a
-  # buildable derivation.
+  # The OCI-image output family: the container packages evaluate to buildable
+  # derivations. The -oci variant is the archive Apple's `container` loads;
+  # the plain one is the rootfs tarball docker and podman import.
   testContainerImageIsDrv = {
     expr = lib.isDerivation self.packages.aarch64-linux.container-server;
+    expected = true;
+  };
+  testContainerImageOciIsDrv = {
+    expr = lib.isDerivation self.packages.aarch64-linux.container-server-oci;
     expected = true;
   };
 

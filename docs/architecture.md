@@ -124,12 +124,15 @@ are unrelated to the fleet.)
    Virtualization.framework "container machine", workstation but headless by
    platform), helium and nitrogen (servers), neon (darwin).
 
-2. **Container images** — `packages.<linux-system>.container-server`
-   (`modules/container.nix`): NixOS as a root-filesystem tarball on top of
-   nixpkgs' upstream `profiles/docker-container.nix`. One OCI artifact;
-   docker, podman, k8s and Apple's pure `container` are four *runtimes* for
-   it, not four targets. Consume with
-   `docker import result/tarball/*.tar.xz <name>` and run `/init`.
+2. **Container images** — `packages.<linux-system>.container-server` and
+   `container-server-oci` (`modules/container.nix`): NixOS on top of
+   nixpkgs' upstream `profiles/docker-container.nix`, in the two shapes
+   runtimes ask for. One system, two artifacts: a root-filesystem tarball
+   for the runtimes that import one (`docker import
+   result/tarball/*.tar.xz <name>`, then run `/init`), and an OCI-layout
+   archive with `/init` baked in as the command for the runtimes that load
+   an image (`container image load -i result`). docker, podman, k8s and
+   Apple's `container` are runtimes for these, not separate targets.
    Deliberately a bare base (no user, ssh or services yet) — workloads get
    layered on next. Starts at `stateVersion = "26.05"` (new artifact family,
    no 2020-era state to preserve).
@@ -167,8 +170,15 @@ fusion/utm equivalent (identical package sets; only merge order differs).
 - **apple-vm** has never been booted; the virtio module set and `hvc0`
   console are a first cut (marked in `modules/platforms/apple-vm.nix`).
 - **container-server** builds to a correct rootfs (verified: `/init`,
-  `activate`, nix store) but running systemd as PID 1 under each runtime is
-  untested.
+  `activate`, nix store). Running systemd as PID 1 is verified only under
+  Apple's `container` (1.4.1, from the `-oci` archive): it needs
+  `--cap-add CAP_SYS_ADMIN`, or the activation script cannot mount `/proc`,
+  `/dev` and `/run`, and it then boots `degraded` — `firewall.service`
+  (netfilter is the host runtime's, so iptables gets NOPERMISSION),
+  `resolvconf.service` (no ACL support on the root filesystem, and the
+  runtime writes `/etc/resolv.conf` itself) and `nix-channel-init.service`
+  (the channel path the docker-container profile registers is outside the
+  image closure) all fail. docker, podman and k8s are still untested.
 - **gce-image (aarch64)** builds in CI but has never been launched on an
   arm instance. The x86_64 image is launch-verified on a Shielded + SEV
   Confidential VM (Secure Boot enabled with the enrolled custom cert,
@@ -180,7 +190,6 @@ fusion/utm equivalent (identical package sets; only merge order differs).
 - Expanding `container-server` beyond the bare base (users, ssh, services).
 - A `my.gui.compositor` choice — declared only when sway is wired
   cross-platform; Fusion keeps its working sway boot specialisation.
-- A baked-entrypoint OCI wrapper (`dockerTools`) for turnkey `docker load`.
 - An `appliance` profile, when it has a concrete definition.
 - Colocating home-manager feature halves with their system halves (the
   dendritic payoff), progressively as files are touched.
