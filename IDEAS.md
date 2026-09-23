@@ -2216,7 +2216,12 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   alternative), but it is tagged v0.0.6 from April with main tracking
   1.4.1, its launchd bootstrap bug (#8) and the fix for it (#9) both
   open, and the module deletes containers it does not declare — which
-  fights the ad-hoc images and tuned `system property` values on neon.
+  fights the ad-hoc images on neon. Nothing else there is at stake:
+  `container system property ls` on neon returns pure defaults, and
+  neither `~/.config/container/config.toml` nor
+  `/usr/local/etc/container/config.toml` exists, so the runtime's whole
+  config surface is unclaimed and a nix-written TOML file could take it
+  without displacing anything.
   For docker-CLI compatibility the reference remains BrianHicks
   `dotfiles/container/default.nix`: `socktainer` as a Docker-socket API
   shim plus a committed preset script (`container system property set
