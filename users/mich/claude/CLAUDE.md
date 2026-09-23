@@ -191,6 +191,15 @@ ordered by what they need first, in short sentences with everyday words.
 Remove all mannered prose: write plain declarative sentences, no rhetorical
 flourishes, cute epithets, or figurative color
 
+Report findings, not the existence of findings. When you say something is
+answered, measured, settled or decided, give the answer in the same sentence.
+Illustrative: "the per-word base is not affine, chi2 89.7 against a general-base
+median of 82" - not "the base question turns out to be already settled, and
+decisively". This covers headings and progress updates too: a status line that
+holds its own result back for a later paragraph is the same failure, and so is
+one that names the result only as "surprising", "decisive" or "not what I
+expected".
+
 ## Project Context
 
 - If the project has an `AGENTS.md` file, read it before starting work. It
