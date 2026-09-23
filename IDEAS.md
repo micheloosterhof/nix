@@ -2276,22 +2276,23 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   an internal network has no egress at all, so an isolated builder cannot
   reach substituters and every input has to be pushed from the host, which
   is what `builders-use-substitutes = false` already does.
-- **the runtime's kernel has no tmpfs xattrs, so every setuid wrapper
-  breaks** (found on neon 2026-09-23) — the Kata kernel apple/container
-  boots (`vmlinux-6.18.35-197-debug`, kata 3.32.0) is built with
-  `CONFIG_TMPFS_XATTR` and `CONFIG_TMPFS_POSIX_ACL` unset, while ext4 has
-  both `CONFIG_EXT4_FS_SECURITY` and `CONFIG_EXT4_FS_POSIX_ACL`. NixOS
-  keeps its setuid wrappers on a tmpfs at /run/wrappers, and each wrapper
-  reads its own file capabilities through /proc/self/exe at startup, so
-  all of them abort: `sudo`, `su`, `mount`, `passwd`, `chsh`, `newgidmap`,
-  `newuidmap`, `fusermount`, `sg` and `sudoedit` all fail with "cannot get
-  capabilities for /proc/self/exe: Not supported". `setcap` confirms it
-  directly -- refused on /run/wrappers, accepted on the ext4 root. The
-  same gap is why resolvconf.service failed its setfacl on /run/resolvconf.
-  It costs nothing while the container runs everything as root, but any
-  workload that drops privileges or needs a setuid helper is blocked. The
-  way out is `container run --kernel <vmlinux>` with those options set,
-  and halfwhey already packages kata kernels as nix derivations to copy.
+- **`container system kernel` is not updated by a runtime upgrade** (hit
+  on neon 2026-09-23) — installing apple/container 1.4.1 over 1.0.0 left
+  `default.kernel-arm64` pointing at `vmlinux-6.12.28-153`, downloaded in
+  August 2025, even though `system property ls` advertised the kata 3.32.0
+  kernel. That old kernel is built with `CONFIG_TMPFS_XATTR` and
+  `CONFIG_TMPFS_POSIX_ACL` unset, so tmpfs holds neither file capabilities
+  nor ACLs. NixOS keeps its setuid wrappers on a tmpfs at /run/wrappers and
+  each one reads its own capabilities through /proc/self/exe at startup, so
+  every wrapper aborted -- `sudo`, `su`, `mount`, `passwd`, `chsh`,
+  `newgidmap`, `newuidmap`, `fusermount`, `sg`, `sudoedit` -- with "cannot
+  get capabilities for /proc/self/exe: Not supported", and resolvconf's
+  setfacl on /run/resolvconf failed the same way. `container system kernel
+  set --recommended` installs 6.18.35, which has both options set: `setcap`
+  on /run/wrappers then succeeds and `sudo` works. The old kernel stays on
+  disk, so the change reverts with `--binary`. Same shape as the stale
+  helper processes after an upgrade: the installer replaces binaries and
+  leaves downloaded state alone, so check both after every update.
 - **halfwhey nix-builder as a build venue** (`ghcr.io/halfwhey/nix-builder`,
   tags `<builder-version>-nix<nix-version>`, currently `v2-nix2.35.2`,
   multi-arch amd64/arm64, MIT) — the `linux-builder` half of
