@@ -330,3 +330,19 @@ container/image: ## Build the container OCI archive; prints /nix/store path (CON
 container/load: ## Build the OCI archive and load it into Apple's `container`
 	@IMG=$$($(MAKE) --no-print-directory container/image) && \
 		container image load -i "$$IMG"
+
+# Boot the image as a container. SYS_ADMIN is what lets the NixOS activation
+# script mount /run; without it the system comes up degraded. Replaces any
+# container of the same name, so a rebuild-and-run cycle needs no cleanup.
+CONTAINER_NAME ?= nixos
+.PHONY: container/run
+container/run: container/load ## Build, load and boot the container (CONTAINER_NAME=nixos)
+	container rm -f "$(CONTAINER_NAME)" >/dev/null 2>&1 || true
+	container run -d --name "$(CONTAINER_NAME)" --cap-add SYS_ADMIN container-server:latest
+
+# Open a shell inside the running container. The image has no /bin/sh until
+# the activation script creates one, and a non-login shell gets no PATH, so
+# this is the system bash as a login shell.
+.PHONY: container/shell
+container/shell: ## Shell into the running container (CONTAINER_NAME=nixos)
+	@container exec -it "$(CONTAINER_NAME)" /run/current-system/sw/bin/bash -l
