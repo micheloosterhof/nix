@@ -65,9 +65,11 @@
         inherit (containerSystem) pkgs;
         inherit (containerSystem.config.system.build) toplevel;
 
-        # dockerTools emits a Docker archive; the OCI archive below is the
-        # conversion of it, so this one is not a package of its own.
-        dockerArchive = pkgs.dockerTools.buildLayeredImage {
+        # dockerTools has no OCI-layout output, so the image is produced as a
+        # Docker archive and converted below. Streaming it keeps that
+        # intermediate out of the store: only the OCI archive is written
+        # there, rather than two copies of a ~300MB image per build.
+        streamDockerArchive = pkgs.dockerTools.streamLayeredImage {
           name = "container-server";
           tag = "latest";
           contents = [ toplevel ];
@@ -89,10 +91,12 @@
         packages.container-server-oci =
           pkgs.runCommand "container-server-oci" { nativeBuildInputs = [ pkgs.skopeo ]; }
             ''
+              ${streamDockerArchive} > image.tar
+
               # skopeo puts its scratch space in /var/tmp, which the build
               # sandbox does not have, so point it at the build directory.
               skopeo --insecure-policy --tmpdir "$NIX_BUILD_TOP" \
-                copy docker-archive:${dockerArchive} \
+                copy docker-archive:image.tar \
                 oci-archive:$out:container-server:latest
             '';
       }
