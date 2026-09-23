@@ -19,6 +19,7 @@ let
   mac = self.darwinConfigurations.neon.config;
 
   gce = (self.lib.gceSystem "x86_64-linux").config;
+  container = (self.lib.containerSystem "aarch64-linux").config;
 
   homePackageNames = cfg: map (p: p.pname or p.name) cfg.home-manager.users.mich.home.packages;
 
@@ -507,6 +508,23 @@ lib.runTests {
   testContainerImageOciIsDrv = {
     expr = lib.isDerivation self.packages.aarch64-linux.container-server-oci;
     expected = true;
+  };
+
+  # The host runtime owns the network and /etc/resolv.conf, and the channel
+  # the docker-container profile registers is outside the image, so all three
+  # units fail in a container. The server profile turns the first two on, so
+  # these guard the container aggregate's override of it.
+  testContainerFirewallOff = {
+    expr = container.networking.firewall.enable;
+    expected = false;
+  };
+  testContainerResolvconfOff = {
+    expr = container.networking.resolvconf.enable;
+    expected = false;
+  };
+  testContainerChannelInitOff = {
+    expr = container.systemd.services.nix-channel-init.enable;
+    expected = false;
   };
 
   # The GCE image output family: a headless server image builds on both the

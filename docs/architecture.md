@@ -171,14 +171,16 @@ fusion/utm equivalent (identical package sets; only merge order differs).
   console are a first cut (marked in `modules/platforms/apple-vm.nix`).
 - **container-server** builds to a correct rootfs (verified: `/init`,
   `activate`, nix store). Running systemd as PID 1 is verified only under
-  Apple's `container` (1.4.1, from the `-oci` archive): it needs
-  `--cap-add CAP_SYS_ADMIN`, or the activation script cannot mount `/proc`,
-  `/dev` and `/run`, and it then boots `degraded` — `firewall.service`
-  (netfilter is the host runtime's, so iptables gets NOPERMISSION),
-  `resolvconf.service` (no ACL support on the root filesystem, and the
-  runtime writes `/etc/resolv.conf` itself) and `nix-channel-init.service`
-  (the channel path the docker-container profile registers is outside the
-  image closure) all fail. docker, podman and k8s are still untested.
+  Apple's `container` (1.4.1, from the `-oci` archive), where
+  `container run --cap-add SYS_ADMIN` reaches `running` with no failed
+  units. SYS_ADMIN is what the activation script needs to mount `/run`;
+  without it the container still boots if `/run` and `/run/wrappers` are
+  passed as `--tmpfs`, but `nscd.service` fails because its unit asks to
+  keep that capability, and under `--cap-drop ALL`
+  `systemd-journalctl.socket` fails as well. docker, podman and k8s are
+  still untested, as are container machines, which reject the image at
+  Apple's injected `/sbin.machine/init` (it assumes an FHS layout NixOS
+  does not provide until activation, which a machine boot never reaches).
 - **gce-image (aarch64)** builds in CI but has never been launched on an
   arm instance. The x86_64 image is launch-verified on a Shielded + SEV
   Confidential VM (Secure Boot enabled with the enrolled custom cert,

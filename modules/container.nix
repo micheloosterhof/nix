@@ -23,27 +23,45 @@
       # A container is headless by definition, whatever the profile default says.
       my.gui.enable = lib.mkForce false;
 
+      # The host runtime owns the container's network, so netfilter is not
+      # this system's to program: iptables gets NOPERMISSION.
+      networking.firewall.enable = lib.mkForce false;
+
+      # The runtime writes /etc/resolv.conf itself, and resolvconf cannot set
+      # ACLs on its state directory here.
+      networking.resolvconf.enable = false;
+
+      # The channel the docker-container profile registers lives outside the
+      # image closure, so registering it at boot cannot succeed.
+      systemd.services.nix-channel-init.enable = false;
+
       # The release this artifact family first shipped with. New containers have
       # no pre-existing state, so they start at the current release rather than
       # inheriting the VMs' 2020-era install date.
       system.stateVersion = "26.05";
     };
 
+  # Exposed as flake lib so the eval tests can assert on the composed image
+  # config (it is not a nixosConfiguration).
+  flake.lib.containerSystem =
+    system:
+    inputs.nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = [
+        # Upstream's container base: boot.isContainer, minimal profile, /init
+        # symlink handling and system.build.tarball.
+        "${inputs.nixpkgs}/nixos/modules/profiles/docker-container.nix"
+        config.flake.modules.nixos.container
+        { my.profile = "server"; }
+        { config._module.args = { inherit inputs; }; }
+      ];
+    };
+
   perSystem =
     { system, ... }:
     inputs.nixpkgs.lib.optionalAttrs (inputs.nixpkgs.lib.hasSuffix "linux" system) (
       let
-        containerSystem = inputs.nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            # Upstream's container base: boot.isContainer, minimal profile, /init
-            # symlink handling and system.build.tarball.
-            "${inputs.nixpkgs}/nixos/modules/profiles/docker-container.nix"
-            config.flake.modules.nixos.container
-            { my.profile = "server"; }
-            { config._module.args = { inherit inputs; }; }
-          ];
-        };
+        containerSystem = config.flake.lib.containerSystem system;
         inherit (containerSystem) pkgs;
         inherit (containerSystem.config.system.build) toplevel;
 
