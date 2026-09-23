@@ -2259,6 +2259,23 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   coreutils on the image's PATH — an FHS layer the container target does
   not need, and worth doing only if a NixOS container machine is wanted
   alongside the NixOS VMs we already build.
+- **a container is not on the tailnet, but it reaches the whole tailnet**
+  (measured on neon 2026-09-23) — a container gets its own address on a
+  NAT'd vmnet segment (192.168.64.0/24, gateway .1 on the host) and is not
+  a tailscale node: it has no tailnet identity and peers cannot address it.
+  Egress, though, transits the host's routing table, so from a plain
+  `alpine` container both tailnet peers answered ICMP — helium at 5ms, the
+  remote `go` node at 175ms. Anything running in any container therefore
+  reaches every tailnet peer with neon's routes, and inbound a published
+  port binds every interface including utun4 unless the publish spec names
+  `127.0.0.1`. `container network create --internal` does isolate: on 1.4.1
+  ICMP and TCP to both a tailnet peer and a public address were all
+  blocked, which contradicts upstream #2062 (arbitrary outbound TCP leaks
+  from hostOnly networks) — that issue blames a test that only passed
+  because DNS failed, and this check used raw addresses. The catch is that
+  an internal network has no egress at all, so an isolated builder cannot
+  reach substituters and every input has to be pushed from the host, which
+  is what `builders-use-substitutes = false` already does.
 - **halfwhey nix-builder as a build venue** (`ghcr.io/halfwhey/nix-builder`,
   tags `<builder-version>-nix<nix-version>`, currently `v2-nix2.35.2`,
   multi-arch amd64/arm64, MIT) — the `linux-builder` half of
