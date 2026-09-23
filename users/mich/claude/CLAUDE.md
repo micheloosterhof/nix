@@ -166,10 +166,6 @@ describes the thing's actual purpose.
 
 ## Issue tracking
 
-- You MUST use the task tracking tools (TaskCreate / TaskUpdate / TaskList) to
-  keep track of any non-trivial work
-- You MUST NEVER discard tasks from your task list without Michel's explicit
-  approval
 - Checkpoint after each significant step: be able to state what's done, what's
   verified, and what's left. If you lose track of the state, STOP and restate
   before continuing.
