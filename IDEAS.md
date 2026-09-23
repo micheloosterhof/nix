@@ -2222,6 +2222,51 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   shim plus a committed preset script (`container system property set
   build.rosetta true`, cpu/memory budgets) as the config surface the
   CLI lacks.
+- **containers and container machines need different permissions**
+  (measured on neon 2026-09-23 with the `container-server-oci` image) — a
+  container is a container; a container machine is a VM with a persistent
+  disk (2.4G for this image), and the two have separate permission
+  surfaces. For containers, no added capability is needed: the runtime
+  already mounts /proc, /sys, /dev, /dev/pts, /dev/shm and cgroup2, so the
+  only thing NixOS's `specialfs` activation snippet still wants is /run,
+  and `--tmpfs /run --tmpfs /run/wrappers` replaces `--cap-add
+  CAP_SYS_ADMIN`. The two modes trade one failed unit for another rather
+  than fixing anything: with CAP_SYS_ADMIN, firewall.service fails
+  (netfilter belongs to the host runtime) and nscd runs; without it, nscd
+  fails (its unit wants to keep CAP_SYS_ADMIN) and firewall never starts.
+  resolvconf.service and nix-channel-init.service fail either way, so the
+  system reaches `degraded`, not `running`. Machines take no `--cap-add` at
+  all — the knobs are cpus, memory, kernel, home-mount and virtualization —
+  and they do not boot this image. Apple injects `/sbin.machine/init` at
+  creation: a /bin/sh script that sources /etc/os-release under `set -e`
+  and ends in `exec /sbin/init`, none of which NixOS creates before its
+  activation script, which that boot never reaches. Linking /bin/sh,
+  /sbin/init and /etc/os-release into the image walks the failure from
+  exec-ENOENT to exit 1 to exit 127; the next blocker is `chown`, which the
+  script runs unconditionally because `[ -S ${SSH_AUTH_SOCK} ]` is true
+  when the variable is unset. Machine support therefore means putting
+  coreutils on the image's PATH — an FHS layer the container target does
+  not need, and worth doing only if a NixOS container machine is wanted
+  alongside the NixOS VMs we already build.
+- **halfwhey nix-builder as a build venue** (`ghcr.io/halfwhey/nix-builder`,
+  tags `<builder-version>-nix<nix-version>`, currently `v2-nix2.35.2`,
+  multi-arch amd64/arm64, MIT) — the `linux-builder` half of
+  nix-apple-container runs that image as a container to build
+  `aarch64-linux` and `x86_64-linux` derivations on macOS. That is an
+  alternative to both halves of our current arrangement: neon's qemu
+  linux-builder VM for aarch64 and shipping x86_64 work to helium. Its
+  x86_64 builder pins the Kata `3.24.0` kernel through `container run
+  --kernel` to dodge Rosetta regressions with newer kernels, which is the
+  kind of detail that argues for copying their pinning rather than
+  re-deriving it. Adoptable on its own, without the container-reconciling
+  half of the module that we do not want.
+- **nix2container instead of a tarball in the store** — the same module
+  loads nix-built images with nix2container: only a small JSON manifest
+  lands in the Nix store and the layers stream from existing store paths at
+  activation. Our `container-server-oci` is a 322M store path built by
+  dockerTools and converted with skopeo, and every rebuild writes another
+  one. Worth switching if the image starts being rebuilt often; the cost is
+  one more flake input.
 - **nix-homebrew** (dustinlyons, wimpysworld) — `zhaofengli/nix-homebrew`
   installs Homebrew itself declaratively and can pin the core/cask taps
   in flake.lock (`mutableTaps = false`) — the cask layer becomes
