@@ -1,6 +1,8 @@
 # Weekly flake.lock bump as a reviewable PR, with the input rev changes in
-# the PR body. check/build runs are dispatched onto the branch explicitly
-# because pushes made with GITHUB_TOKEN do not trigger on-push workflows.
+# the PR body. The branch is pushed and the PR opened with NIX_FLAKE_UPDATE,
+# a PAT: pushes made with GITHUB_TOKEN fire no events, so check and build
+# would never run, and runs started by hand with `gh workflow run` are tied
+# to a ref rather than a PR, leaving required checks "Expected" forever.
 #
 # One branch holds the bump, rebuilt from main and force-pushed each run, so
 # an unmerged PR is refreshed in place instead of being joined by a second PR
@@ -13,25 +15,26 @@ on:
     - cron: "0 2 * * 1"
   workflow_dispatch:
 
+# Everything that writes uses the PAT; GITHUB_TOKEN only reads.
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 
 jobs:
   bump:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.NIX_FLAKE_UPDATE }}
 
       # The token avoids GitHub API rate limits when fetching flake inputs.
       - uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: bump lock, open PR, dispatch CI
+      - name: bump lock, open PR
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.NIX_FLAKE_UPDATE }}
         run: |
           set -euo pipefail
           cp flake.lock "$RUNNER_TEMP/flake.lock.old"
@@ -80,5 +83,3 @@ jobs:
           else
             gh pr create --title "chore(flake): weekly input bump" --body-file pr-body.md
           fi
-          gh workflow run check.yml --ref "$branch"
-          gh workflow run build.yml --ref "$branch"
