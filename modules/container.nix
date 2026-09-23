@@ -27,8 +27,10 @@
       # this system's to program: iptables gets NOPERMISSION.
       networking.firewall.enable = false;
 
-      # The runtime writes /etc/resolv.conf itself, and resolvconf cannot set
-      # ACLs on its state directory here.
+      # The runtime writes /etc/resolv.conf itself, and resolvconf's setfacl
+      # on its state directory under /run fails anyway: the Kata kernel the
+      # runtime boots has CONFIG_TMPFS_POSIX_ACL unset, so tmpfs carries no
+      # ACLs.
       networking.resolvconf.enable = false;
 
       # The channel the docker-container profile registers lives outside the
