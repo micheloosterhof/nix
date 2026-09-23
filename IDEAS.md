@@ -2226,16 +2226,22 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   (measured on neon 2026-09-23 with the `container-server-oci` image) — a
   container is a container; a container machine is a VM with a persistent
   disk (2.4G for this image), and the two have separate permission
-  surfaces. For containers, no added capability is needed: the runtime
-  already mounts /proc, /sys, /dev, /dev/pts, /dev/shm and cgroup2, so the
-  only thing NixOS's `specialfs` activation snippet still wants is /run,
-  and `--tmpfs /run --tmpfs /run/wrappers` replaces `--cap-add
-  CAP_SYS_ADMIN`. The two modes trade one failed unit for another rather
-  than fixing anything: with CAP_SYS_ADMIN, firewall.service fails
-  (netfilter belongs to the host runtime) and nscd runs; without it, nscd
-  fails (its unit wants to keep CAP_SYS_ADMIN) and firewall never starts.
-  resolvconf.service and nix-channel-init.service fail either way, so the
-  system reaches `degraded`, not `running`. Machines take no `--cap-add` at
+  surfaces. For containers the question is which of the default set to
+  drop, not what to add: `container run` already grants fourteen
+  capabilities (AUDIT_WRITE, CHOWN, DAC_OVERRIDE, FOWNER, FSETID, KILL,
+  MKNOD, NET_BIND_SERVICE, NET_RAW, SETFCAP, SETGID, SETPCAP, SETUID,
+  SYS_CHROOT) and `--cap-drop ALL` removes them. The runtime also mounts
+  /proc, /sys, /dev, /dev/pts, /dev/shm and cgroup2 already, so the only
+  thing NixOS's `specialfs` activation snippet still wants is /run.
+  Measured against this image: `--cap-add SYS_ADMIN` reaches `running`
+  with nothing failed, SYS_ADMIN being what lets activation mount /run;
+  the default set plus `--tmpfs /run --tmpfs /run/wrappers` also boots,
+  but nscd fails because its unit asks to keep SYS_ADMIN; `--cap-drop ALL`
+  with those same tmpfs mounts still gets systemd to PID 1 and loses
+  systemd-journalctl.socket as well, which is what makes `systemctl`
+  queries answer "Transport endpoint is not connected". So the floor is
+  zero capabilities, paid for with nscd and journal access. Machines take
+  no `--cap-add` at
   all — the knobs are cpus, memory, kernel, home-mount and virtualization —
   and they do not boot this image. Apple injects `/sbin.machine/init` at
   creation: a /bin/sh script that sources /etc/os-release under `set -e`
