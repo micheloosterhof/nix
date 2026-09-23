@@ -25,7 +25,7 @@
 
       # The host runtime owns the container's network, so netfilter is not
       # this system's to program: iptables gets NOPERMISSION.
-      networking.firewall.enable = lib.mkForce false;
+      networking.firewall.enable = false;
 
       # The runtime writes /etc/resolv.conf itself, and resolvconf cannot set
       # ACLs on its state directory here.
