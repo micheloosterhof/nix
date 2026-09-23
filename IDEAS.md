@@ -2274,10 +2274,11 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
 - **nix2container instead of a tarball in the store** — the same module
   loads nix-built images with nix2container: only a small JSON manifest
   lands in the Nix store and the layers stream from existing store paths at
-  activation. Our `container-server-oci` is a 322M store path built by
-  dockerTools and converted with skopeo, and every rebuild writes another
-  one. Worth switching if the image starts being rebuilt often; the cost is
-  one more flake input.
+  activation. Our `container-server-oci` is built by dockerTools and
+  converted with skopeo, which streams the Docker archive so only the OCI
+  archive reaches the store -- still a ~310MB path per rebuild, where
+  nix2container would write a manifest. Worth switching if the image starts
+  being rebuilt often; the cost is one more flake input.
 - **nix-homebrew** (dustinlyons, wimpysworld) — `zhaofengli/nix-homebrew`
   installs Homebrew itself declaratively and can pin the core/cask taps
   in flake.lock (`mutableTaps = false`) — the cask layer becomes

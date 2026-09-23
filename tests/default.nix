@@ -512,8 +512,9 @@ lib.runTests {
 
   # The host runtime owns the network and /etc/resolv.conf, and the channel
   # the docker-container profile registers is outside the image, so all three
-  # units fail in a container. The server profile turns the first two on, so
-  # these guard the container aggregate's override of it.
+  # units fail in a container. Each is on by default where it comes from --
+  # nixpkgs for the first two, the docker-container profile for the third --
+  # so these guard the container aggregate's override of that default.
   testContainerFirewallOff = {
     expr = container.networking.firewall.enable;
     expected = false;
