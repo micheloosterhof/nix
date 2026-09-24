@@ -15,8 +15,6 @@ let
 
         extraOptions = ''
           experimental-features = nix-command flakes
-          keep-outputs = true
-          keep-derivations = true
         '';
 
         settings = {
@@ -96,9 +94,30 @@ let
         daemonIOSchedPriority = 7;
       };
     };
+
+  # Retain the build-time closure of everything installed, so a nix-shell or a
+  # rebuild re-enters offline instead of re-fetching compilers and sources.
+  # Worth its disk on a machine that builds; a machine whose role is to run
+  # services pays the disk and uses none of it, and since every host rebuilds
+  # itself in place (`nixos-rebuild switch` on the box, not a closure copy),
+  # those retained build inputs accumulate per generation and the scheduled
+  # `--delete-older-than` cannot reclaim them while the .drvs stay reachable.
+  keepBuildClosure = {
+    nix.settings = {
+      keep-outputs = true;
+      keep-derivations = true;
+    };
+  };
 in
 {
   flake.modules.nixos.base = shared;
   flake.modules.nixos.container = shared;
-  flake.modules.darwin.base = shared;
+
+  # Workstations only: the VM guests are worked in and the Mac is worked on.
+  # Not on nixos.server (helium, nitrogen, the GCE image) or nixos.container.
+  flake.modules.nixos.vm = keepBuildClosure;
+  flake.modules.darwin.base.imports = [
+    shared
+    keepBuildClosure
+  ];
 }

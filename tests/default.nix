@@ -424,6 +424,28 @@ lib.runTests {
     expected = "golink";
   };
 
+  # modules/nix-settings.nix: keep-outputs/keep-derivations retain every
+  # generation's build-time closure, which only a machine that builds for a
+  # human benefits from. Every host rebuilds itself in place, so moving these
+  # back onto the shared base would quietly grow the servers' stores past what
+  # the scheduled GC can reclaim — nitrogen has 2 GB of RAM and a small disk.
+  testKeepBuildClosureByRole = {
+    expr = {
+      workstationVm = fusion.nix.settings.keep-outputs or false;
+      mac = mac.nix.settings.keep-outputs or false;
+      petServer = helium.nix.settings.keep-outputs or false;
+      exposedServer = nitrogen.nix.settings.keep-derivations or false;
+      appliance = gce.nix.settings.keep-outputs or false;
+    };
+    expected = {
+      workstationVm = true;
+      mac = true;
+      petServer = false;
+      exposedServer = false;
+      appliance = false;
+    };
+  };
+
   # helium sits behind NAT on the trusted home LAN: no bogon filtering (a
   # distant change composing bogons into the server aggregate would drop the
   # RFC1918 home LAN).
