@@ -30,10 +30,6 @@
           # software; only unsigned/ad-hoc binaries that listen will prompt.
           networking.applicationFirewall.enable = true;
 
-          # Don't answer probes (ICMP echo, closed-port TCP) at all, so the
-          # machine doesn't announce itself on networks it doesn't own.
-          networking.applicationFirewall.enableStealthMode = true;
-
           # Match the nixbld gid used by the upstream nixos.org installer (30000).
           # nix-darwin's default is 350, which would trip its gid-mismatch assertion.
           ids.gids.nixbld = 30000;

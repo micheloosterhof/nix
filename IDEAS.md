@@ -1003,12 +1003,10 @@ style: check against the repo, spec, one commit each) draws from here.
   needs an Accessibility grant for the agent, and `pmset displaysleepnow` only
   sleeps the display, so the lock still waits out the grace period.
 
-- **Firewall + loginwindow hardening** (malob `darwin/general.nix` +
-  `darwin/defaults.nix`; tjmaynes agrees on the loginwindow pair) —
-  `networking.applicationFirewall.enableStealthMode = true` (drop
-  ICMP/probe responses; one line on top of the firewall enabled for
-  the ERNW audit), `system.defaults.loginwindow.GuestEnabled = false`,
-  `loginwindow.DisableConsoleAccess = true`.
+- **loginwindow hardening** (malob `darwin/defaults.nix`; tjmaynes agrees) —
+  `system.defaults.loginwindow.GuestEnabled = false`,
+  `loginwindow.DisableConsoleAccess = true`. (The stealth-mode third of this
+  entry was tried and reverted — see section 7.)
 - **prefmanager** (malob's own tool, flake input) — watches macOS
   `defaults` domains live so the key behind any GUI toggle can be
   discovered; the tool for the remaining audit leftovers (AirPlay
@@ -2952,6 +2950,16 @@ full lists live in the per-repo review record.
 # 7. Decided against, superseded, or explicitly skipped
 
 Kept for the record so the same paths don't get re-surveyed.
+
+- **Application-firewall stealth mode** (`networking.applicationFirewall
+  .enableStealthMode`) — tried on neon 2026-09-24 and reverted the same day.
+  It suppresses ICMP echo replies and closed-port probe responses on *every*
+  interface, `tailscale0` included, so `ping neon` from another tailnet node
+  stops answering. Tailscale's own reachability does not depend on ICMP, so
+  the tailnet keeps working — the loss is the diagnostic habit, and that was
+  judged to cost more than refusing probes on untrusted networks buys. The
+  application firewall itself stays on. Revisit only if stealth can be scoped
+  to the physical interfaces; socketfilterfw has no per-interface switch.
 
 - **den** (`denful/den`) — full aspect framework (aspects as functions
   of host/user context, `includes`, quirks, forward piping,
