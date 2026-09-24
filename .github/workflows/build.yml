@@ -102,24 +102,42 @@ jobs:
             "/repos/$GH_REPO/dependency-graph/snapshots" \
             --input snapshot.json
 
+      # vulnix parses the whole NVD archive set into a local database, which is
+      # hundreds of megabytes to fetch and minutes to build. One cache per
+      # month, with restore-keys so a new month starts from the previous one's
+      # database and only fetches the delta.
+      - name: NVD cache key
+        id: nvd
+        if: matrix.host == 'nitrogen' && github.ref == 'refs/heads/main'
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        if: matrix.host == 'nitrogen' && github.ref == 'refs/heads/main'
+        with:
+          path: ~/.cache/vulnix
+          key: vulnix-nvd-${{ steps.nvd.outputs.month }}
+          restore-keys: vulnix-nvd-
+
       # CVE scan of the closure we just built, against NVD's own feeds. The
       # dependency-graph submission above covers what GitHub's advisory
       # database can map from nix package names; vulnix matches name+version
       # across the whole runtime closure, which is the half that misses.
-      # Non-blocking on purpose: vulnix exits 2 on any match and the match
-      # list is noisy (no vendor backport data), so this reports and never
-      # fails the build. Read it in the step summary; if a finding is
-      # accepted, record it in a whitelist file and pass -w.
+      # Reports and never fails: vulnix exits 2 whenever it matches anything,
+      # and with no vendor backport data it matches on most runs, so the exit
+      # status is swallowed rather than left to redden the step every time.
+      # Read it in the step summary; if a finding is accepted, record it in a
+      # whitelist file and pass -w.
       - name: scan closure for known CVEs
         if: matrix.host == 'nitrogen' && github.ref == 'refs/heads/main'
-        continue-on-error: true
         run: |
           set -uo pipefail
           path=$(nix build --no-link --print-out-paths ".#${{ matrix.attr }}")
+          nix run --inputs-from . nixpkgs#vulnix -- --closure "$path" > vulnix.txt 2>&1 || true
           {
             echo "### CVE scan (vulnix, closure of ${{ matrix.host }})"
+            echo "$(wc -l < vulnix.txt) lines of output; first 200 below."
             echo '```'
-            nix run --inputs-from . nixpkgs#vulnix -- --closure "$path" 2>&1 | tail -200
+            head -200 vulnix.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
