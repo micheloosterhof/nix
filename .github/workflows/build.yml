@@ -102,6 +102,27 @@ jobs:
             "/repos/$GH_REPO/dependency-graph/snapshots" \
             --input snapshot.json
 
+      # CVE scan of the closure we just built, against NVD's own feeds. The
+      # dependency-graph submission above covers what GitHub's advisory
+      # database can map from nix package names; vulnix matches name+version
+      # across the whole runtime closure, which is the half that misses.
+      # Non-blocking on purpose: vulnix exits 2 on any match and the match
+      # list is noisy (no vendor backport data), so this reports and never
+      # fails the build. Read it in the step summary; if a finding is
+      # accepted, record it in a whitelist file and pass -w.
+      - name: scan closure for known CVEs
+        if: matrix.host == 'nitrogen' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          path=$(nix build --no-link --print-out-paths ".#${{ matrix.attr }}")
+          {
+            echo "### CVE scan (vulnix, closure of ${{ matrix.host }})"
+            echo '```'
+            nix run --inputs-from . nixpkgs#vulnix -- --closure "$path" 2>&1 | tail -200
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # gce-image outputs are compressed artifacts whose closures carry no
       # references, so a diff says nothing — skip them.
       - name: diff closure against main
