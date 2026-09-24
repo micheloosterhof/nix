@@ -2,9 +2,10 @@
 # ABOUTME: for GCE, plus the packages.<system>.gce-image build (x86_64 + aarch64).
 #
 # Generic and reusable: hostname and IP come from GCE metadata/DHCP at boot,
-# so one image deploys to many instances. The internet-facing posture (bogons,
-# tighter rules) is layered per-deployment, not baked — an instance without an
-# external IP needs none of it, and the host firewall stays on either way.
+# so one image deploys to many instances. The image keeps the default
+# my.exposure = "lan", so the position-dependent rules (bogon source-drops) stay
+# off until a deployment declares otherwise — an instance without an external IP
+# needs none of them, and the host firewall stays on either way.
 { config, inputs, ... }:
 {
   flake.modules.nixos.gce =

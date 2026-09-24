@@ -19,7 +19,8 @@ type `deferredModule`). Multiple files defining the same name merge — e.g.
 `overlays.nix`, `nix-settings.nix`, `home.nix`, `profile.nix` and `gui.nix`
 all contribute to `flake.modules.nixos.base`. A feature that spans classes
 assigns the same value to several aggregates (see `nix-settings.nix`,
-contributing to `nixos.base`, `nixos.container` and `darwin.base`).
+contributing to `nixos.base`, `nixos.container` and `darwin.base`, plus a
+workstation-only piece on `nixos.vm`).
 
 Hosts are composed in `modules/hosts/<name>.nix`, one file per system:
 
@@ -82,8 +83,8 @@ my.exposure = "lan" | "internet";            # default: lan
   instead of composing a module. `lan` is the conservative default, which is
   what the image targets keep — they bake no posture, and an internet-facing
   deployment sets the option with its other per-deployment config. Zero-trust
-  rule: exposure is *not* a
-  security tier — hardening, key-only ssh and sudo restrictions are
+  rule: exposure is *not* a security tier — hardening, key-only ssh and sudo
+  restrictions are
   unconditional on every machine; exposure only gates controls whose
   *correctness* depends on network position (bogon source-drops are wrong,
   not merely unneeded, where legitimate traffic has RFC1918 sources).
@@ -116,9 +117,10 @@ Cross-cutting interactions resolve themselves:
 
 - `gui.nix` and platform GUI glue (Fusion's clipboard, the sway boot option;
   UTM's SPICE agent) self-gate on `my.gui.enable`.
-- home-manager reads the same signal via `osConfig.my.gui.enable or false`
-  (`or false` covers darwin, where `my.*` isn't declared) to gate i3, rofi,
-  chromium, the pointer cursor and Ghostty-on-Linux.
+- home-manager reads the same signal via `osConfig.my.gui.enable` — no
+  fallback, because `my.*` is declared on every class including darwin, where
+  the base forces it off — to gate i3, rofi, chromium, the pointer cursor and
+  Ghostty-on-Linux.
 
 ## Output families
 
@@ -154,8 +156,9 @@ are unrelated to the fleet.)
    `flake.modules.nixos.gce` aggregate (the upstream google-compute-config
    module + systemd-repart image assembly + a signed-UKI Secure Boot chain +
    eth0 DHCP + host firewall + gcloud) doubles as a platform a per-host
-   cloud config could compose later. The internet-facing posture (bogons,
-   tighter rules) is layered per-deployment, not baked.
+   cloud config could compose later. The image keeps the default
+   `my.exposure = "lan"`, so an internet-facing deployment declares its own
+   posture rather than inheriting a baked one.
 
 4. **Installer ISO** — `packages.<linux-system>.installer-iso`
    (`modules/installer-iso.nix`): a minimal installer image with the `keys/`
