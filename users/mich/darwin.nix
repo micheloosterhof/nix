@@ -178,7 +178,6 @@
       "obs"
       "plex"
       "plex-media-server"
-      "secretive"
       "signal"
       "slack"
       "spotify"
