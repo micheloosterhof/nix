@@ -87,6 +87,15 @@ in
       };
     };
 
+  # The screen lock is not declared here because nix-darwin cannot set it on
+  # macOS 27. `system.defaults.screensaver.askForPassword` and
+  # `askForPasswordDelay` write `com.apple.screensaver` keys the OS no longer
+  # reads — measured on neon 2026-09-24: neither key exists in the domain, yet
+  # `sysadminctl -screenLock status` reports a 300s delay set elsewhere. The
+  # working interface, `sysadminctl -screenLock <seconds> -password <pw>`,
+  # demands the account password, so nothing here can drive it either. Treat
+  # both options as deprecated; revisit when nix-darwin tracks the OS.
+
   # Apple's `container` runtime has no nix expression here: it is installed
   # from Apple's signed pkg into /usr/local/bin, with update-container.sh and
   # uninstall-container.sh next to the binary, because nixpkgs trails upstream

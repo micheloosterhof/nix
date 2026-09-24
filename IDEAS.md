@@ -967,6 +967,42 @@ style: check against the repo, spec, one commit each) draws from here.
   darwin or a `.desktop` file on Linux, so nix-defined commands are
   Spotlight/launcher-visible. Complements mac-app-util, which only
   handles existing bundles.
+- **Location-aware screen lock** (self-originated 2026-09-24; Michel wants a
+  relaxed lock at home and a strict one away). The mechanism is settled by
+  measurement, the choices are not.
+
+  What is ruled out: varying the *delay* by location.
+  `sysadminctl -screenLock <seconds> -password <pw>` requires the account
+  password, so no background agent can flip it without storing the password,
+  and nix-darwin's `system.defaults.screensaver.askForPassword` /
+  `askForPasswordDelay` write keys macOS 27 ignores (see the note in
+  `modules/workarounds.nix`). `CGSession -suspend`, the classic lock command,
+  no longer exists on 27.
+
+  What works: keep one grace period and **lock on the transition**. Leaving
+  the home network is the moment the laptop goes in the bag, and triggering a
+  lock needs no authentication. A nix-darwin `launchd.user.agents` unit woken
+  by `KeepAlive.NetworkState` or a `scutil -w State:/Network/Global/IPv4`
+  loop, comparing the current network against "home" — about 30 lines.
+
+  Decision 1, home detection (weakest to strongest): SSID — trivially
+  spoofed, anyone can name an AP the same thing; **default-gateway MAC** —
+  spoofable but requires knowing it, keep the value in sops rather than this
+  public repo, instant, and its failure mode is a needless lock, which is the
+  safe direction; a **fleet host's SSH host-key fingerprint** via
+  `ssh-keyscan` on the LAN address — unspoofable without that host's private
+  key (host keys are already the sops age identities), but costs seconds and
+  needs the host up. Leaning gateway MAC here, keeping the host-key check for
+  the day something more valuable than a lock delay is relaxed by location.
+
+  Decision 2, the lock call: `hammerspoon` is *not* in nixpkgs (checked
+  aarch64-darwin; `sleepwatcher` is), so it would come from `homebrew.casks`
+  with the Lua config as a `home.file` — still declarative, and
+  `hs.caffeinate.lockScreen()` locks immediately and leaves somewhere to hang
+  further location rules. Without it, `osascript` sending Cmd-Ctrl-Q works but
+  needs an Accessibility grant for the agent, and `pmset displaysleepnow` only
+  sleeps the display, so the lock still waits out the grace period.
+
 - **Firewall + loginwindow hardening** (malob `darwin/general.nix` +
   `darwin/defaults.nix`; tjmaynes agrees on the loginwindow pair) —
   `networking.applicationFirewall.enableStealthMode = true` (drop
