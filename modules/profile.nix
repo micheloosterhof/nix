@@ -1,5 +1,9 @@
-# ABOUTME: Declares the host-shape options (my.profile, my.gui.enable, my.tools.full)
-# ABOUTME: and turns the profile into capability defaults: workstation GUI on, server off.
+# ABOUTME: Declares the host-shape options (my.profile, my.gui.enable, my.exposure,
+# ABOUTME: my.tools.full) and turns the profile into capability defaults.
+#
+# Declared identically on every class, darwin included, so one signal answers
+# "what is this host" everywhere and no consumer needs a platform test or an
+# `or` fallback to cope with the option being absent.
 { ... }:
 let
   shared =
@@ -62,4 +66,18 @@ in
 {
   flake.modules.nixos.base = shared;
   flake.modules.nixos.container = shared;
+
+  flake.modules.darwin.base.imports = [
+    shared
+    (
+      { lib, ... }:
+      {
+        # my.gui.enable means "this host has a graphical session we manage",
+        # which macOS never does — Aqua is not ours to configure. mkForce, so
+        # profile = "workstation" cannot default it back on, the same way
+        # platforms/apple-vm.nix forces it off on a headless Linux guest.
+        my.gui.enable = lib.mkForce false;
+      }
+    )
+  ];
 }

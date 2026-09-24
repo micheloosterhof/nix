@@ -12,16 +12,15 @@ let
   isDarwin = pkgs.stdenv.isDarwin;
   isLinux = pkgs.stdenv.isLinux;
 
-  # A graphical session exists only on a Linux host whose system config turns
-  # the GUI capability on. `or false` keeps this safe on darwin where the
-  # my.gui option isn't defined.
-  gui = isLinux && (osConfig.my.gui.enable or false);
+  # A graphical session we manage: Linux hosts whose system config turns the
+  # GUI capability on. The darwin base forces it off (macOS's own GUI isn't
+  # configured here), so no platform test is needed.
+  gui = osConfig.my.gui.enable;
 
   # Appliance images get the lean CLI set only; every host worked on
   # directly — workstations and headless pet servers alike — carries the
-  # full toolkit. `or true` keeps this safe on darwin where the my.tools
-  # option isn't defined.
-  fullTools = !isLinux || (osConfig.my.tools.full or true);
+  # full toolkit.
+  fullTools = osConfig.my.tools.full;
 in
 {
   imports = [ inputs.nix-index-database.homeModules.nix-index ];

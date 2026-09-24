@@ -15,6 +15,11 @@
           # Set in Sept 2024 as part of the macOS Sequoia release.
           system.stateVersion = 5;
 
+          # The laptop this repo is worked on. my.gui.enable stays off (the
+          # darwin base forces it: macOS's own GUI isn't managed here), so the
+          # profile's effect is the full interactive toolkit in home-manager.
+          my.profile = "workstation";
+
           # The machine's name, enforced by nix-darwin and checked by the
           # hostname guard (modules/hostname-guard.nix).
           networking.hostName = "neon";

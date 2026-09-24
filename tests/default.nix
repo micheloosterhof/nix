@@ -142,6 +142,25 @@ lib.runTests {
     ) fusion.home-manager.users.mich.home.packages;
     expected = true;
   };
+  # The Mac answers the same question the VMs do: my.* is declared on every
+  # class, so home-manager reads one signal with no platform test. The Mac is a
+  # workstation and carries the full toolkit, while my.gui.enable stays off —
+  # the darwin base mkForces it, because macOS's own GUI isn't managed here and
+  # profile = "workstation" would otherwise mkDefault it on.
+  testDarwinProfileWiring = {
+    expr = {
+      profile = mac.my.profile;
+      gui = mac.my.gui.enable;
+      fullToolkit = lib.any (
+        p: (p.pname or p.name) == "ffmpeg-headless"
+      ) mac.home-manager.users.mich.home.packages;
+    };
+    expected = {
+      profile = "workstation";
+      gui = false;
+      fullToolkit = true;
+    };
+  };
 
   # The GCE image boots a single signed UKI from the removable EFI path;
   # no bootloader is installed and the image is assembled with repart.
