@@ -24,6 +24,26 @@ let
           '';
         };
 
+        exposure = lib.mkOption {
+          type = lib.types.enum [
+            "lan"
+            "internet"
+          ];
+          default = "lan";
+          description = ''
+            Where the host faces. Gates only those controls whose *correctness*
+            depends on network position — not a security tier: hardening,
+            key-only ssh and sudo restrictions are unconditional everywhere.
+            Bogon source-drops are the case in point: wrong, not merely
+            unneeded, where legitimate traffic has RFC1918 sources.
+
+            "lan" is the conservative default, so a host that never says where
+            it faces gets no position-dependent rule. The image targets keep it:
+            they bake no posture, and a deployment that faces the internet sets
+            this beside its other per-deployment config.
+          '';
+        };
+
         tools.full = lib.mkOption {
           type = lib.types.bool;
           default = true;

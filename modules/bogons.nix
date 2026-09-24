@@ -5,11 +5,21 @@
 # interval set per family, dropped early by a dedicated input chain, and
 # refreshed by a systemd timer via an atomic `nft -f` transaction — so a failed
 # download leaves the working set in place (never breaks the firewall).
+#
+# Self-gating on the exposure axis (modules/profile.nix): a bogon list contains
+# RFC1918 and CGNAT space, so dropping those sources is correct only where
+# legitimate traffic never carries them. Hosts declare `my.exposure`; they do
+# not compose this module by hand.
 { ... }:
 {
-  flake.modules.nixos.bogons =
-    { pkgs, ... }:
+  flake.modules.nixos.base =
     {
+      config,
+      lib,
+      pkgs,
+      ...
+    }:
+    lib.mkIf (config.my.exposure == "internet") {
       networking.nftables.enable = true;
 
       networking.nftables.tables.bogons = {

@@ -7,7 +7,6 @@
     modules = [
       config.flake.modules.nixos.base
       config.flake.modules.nixos.server
-      config.flake.modules.nixos.bogons
       config.flake.modules.nixos.golink
 
       inputs.disko.nixosModules.disko
@@ -18,6 +17,8 @@
         { config, ... }:
         {
           my.profile = "server";
+          # Internet-facing: gates the bogon source-drops (modules/bogons.nix).
+          my.exposure = "internet";
           networking.hostName = "nitrogen";
           my.hostnameGuard = true;
           # Kernel-style names make the single virtio NIC always eth0; predictable

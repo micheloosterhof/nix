@@ -69,10 +69,20 @@ my.gui.enable = bool;                        # workstation: on, server: off
   an identity overlay is a singleton (GCE metadata names an instance at
   boot), and an image stamped from a singleton carries its identity into
   every clone (the fusion VMDK boots pre-named `dev`).
-- **Exposure (where it faces)** — substrate implies a default (a NATted VM
-  is not internet-facing; a TransIP KVM is), but position-dependent controls
-  are currently composed by hand: nitrogen composes `bogons`; the GCE image
-  deliberately bakes no posture. Zero-trust rule: exposure is *not* a
+- **Exposure (where it faces)** — a NixOS option declared beside the role
+  options in `modules/profile.nix`:
+
+```nix
+my.exposure = "lan" | "internet";            # default: lan
+```
+
+  Position-dependent controls self-gate on it the way the GUI glue gates on
+  `my.gui.enable`: `bogons.nix` contributes to the base aggregate under
+  `mkIf (my.exposure == "internet")`, so nitrogen declares where it faces
+  instead of composing a module. `lan` is the conservative default, which is
+  what the image targets keep — they bake no posture, and an internet-facing
+  deployment sets the option with its other per-deployment config. Zero-trust
+  rule: exposure is *not* a
   security tier — hardening, key-only ssh and sudo restrictions are
   unconditional on every machine; exposure only gates controls whose
   *correctness* depends on network position (bogon source-drops are wrong,
