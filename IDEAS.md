@@ -30,35 +30,6 @@ The `*-rebuild` targets are a separate question — piping them needs
 `--log-format internal-json -v |& nom --json`, and if nh (item 9) lands it
 already prints an nom-style tree, so leave those alone. No test.
 
-**7. gitconfig defaults** (`users/mich/home-manager.nix`, `programs.git.settings`).
-The surveys list two sets; after subtracting what is already configured and
-what fights an existing decision, this is what is left:
-
-```nix
-rebase.autosquash = true;      # `commit --fixup` lands without --autosquash
-rebase.updateRefs = true;      # stacked branches follow a rebase
-diff.algorithm = "histogram";
-branch.sort = "-committerdate";
-core.untrackedCache = true;    # default is "keep"; true actually enables it
-fetch.writeCommitGraph = true; # default false; core.commitGraph is already on
-commit.verbose = true;         # diff in the commit-message editor
-help.autocorrect = 10;
-am.threeWay = true;
-```
-
-plus aliases `fpush = "push --force-with-lease"`, `uncommit = "reset --soft
-HEAD^"`, and `checkout-pr` (fetch `pull/$N/head`).
-
-Deliberately excluded: `core.commitGraph` (has defaulted to true since git
-2.24 — adding it is a no-op); the `gh auth git-credential` helper (fights the
-existing split of osxkeychain on darwin / SSH url-rewrite on Linux, and
-`programs.gh.gitCredentialHelper.enable = false` is a deliberate setting);
-`gpg.format = "ssh"` (a real decision against the configured GPG key
-523D5DC389D273BC, not a Tier-1 one-liner); `[include] ~/.gitconfig.local`
-(the config is the source of truth here, and HM already writes the file).
-Conditional per-directory identity is worth having the day work and personal
-repos share a machine — not yet. No test.
-
 ## Batch B — one decision each
 
 **8. Pin every flake input into the registry** (`modules/nix-settings.nix`).
@@ -148,9 +119,9 @@ confirming the lease survives two rebuilds.
 
 ## Suggested order
 
-A5 and A7 in either order, one commit each — both eval-only, both
-verifiable with `make lint`. Then B8/B9, each carrying its decision.
-Then C11, boot the VM, then C12, boot the VM again.
+A5 is one commit, eval-only, verifiable with `make lint`. Then B8/B9,
+each carrying its decision. Then C11, boot the VM, then C12, boot the
+VM again.
 
 ## Source bullets absorbed into this batch (kept for provenance)
 
@@ -164,7 +135,8 @@ registry-pinning corrections).
   `diff.algorithm = histogram`, `branch.sort = "-committerdate"`,
   `core.untrackedCache`, `fetch.writeCommitGraph` + `core.commitGraph`
   (faster status/log in big repos), alias `fpush = push --force-with-lease`.
-  → batch A7.
+  → batch A7, landed 2026-09-26 (ef37348); see §7 for the two settings
+  dropped on the way in.
 - **nix-output-monitor for builds** — traxys patches nixos-rebuild to call
   `nom build` (`minimal/nom-rebuild.patch`); the 90% version with zero
   maintenance is adding `nix-output-monitor` to `home.packages` and piping
@@ -2950,6 +2922,23 @@ full lists live in the per-repo review record.
 # 7. Decided against, superseded, or explicitly skipped
 
 Kept for the record so the same paths don't get re-surveyed.
+
+- **`help.autocorrect` and a `checkout-pr` alias** — the two parts of batch
+  A7 left out when the rest of the git defaults landed 2026-09-26 (ef37348).
+  `autocorrect = 10` runs the command git guessed after a one-second pause,
+  so a typo executes something never typed; `"prompt"` asks first, but the
+  typo is rare enough that neither earns the risk. `checkout-pr` (fetch
+  `pull/$N/head`) duplicates `gh pr checkout`, which is already aliased to
+  `gh co` and handles fork PRs correctly. A7 also never included, from the
+  surveys' own lists: `core.commitGraph` (defaulted to true since git 2.24,
+  so adding it is a no-op); the `gh auth git-credential` helper (fights the
+  osxkeychain-on-darwin / SSH-url-rewrite-on-Linux split, and
+  `programs.gh.gitCredentialHelper.enable = false` is deliberate);
+  `gpg.format = "ssh"` (a real decision against the configured GPG key
+  523D5DC389D273BC, not a one-liner); `[include] ~/.gitconfig.local` (the
+  nix config is the source of truth and home-manager writes the file).
+  Conditional per-directory identity is worth having the day work and
+  personal repos share a machine — not yet.
 
 - **Application-firewall stealth mode** (`networking.applicationFirewall
   .enableStealthMode`) — tried on neon 2026-09-24 and reverted the same day.
