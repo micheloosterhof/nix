@@ -10,45 +10,10 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 
 # 1. Specced and ready — Tier-1 batch (2026-08-20)
 
-The cheap wins scattered across the surveys, checked against the repo
-and turned into concrete changes. None of what is left is implemented
-today: `initrd.systemd` and `useNetworkd` appear nowhere in the repo
-outside this file.
-
-Each item below is one commit.
-
-## Batch C — needs a VM boot test, not just an eval
-
-**12. networkd with a mac-based DHCP identifier** (`modules/vm.nix`,
-replacing `networking.useDHCP = true` at line 26):
-
-```nix
-networking.useNetworkd = true;
-systemd.network.networks."10-uplink" = {
-  matchConfig.Type = "ether";           # no interface names: Fusion/UTM/VZ
-  networkConfig.DHCP = "yes";
-  dhcpV4Config.ClientIdentifier = "mac"; # stable lease across rebuilds
-};
-```
-
-`matchConfig.Type = "ether"` (Mic92's utm-vm) is stronger than phaer's
-`en* eth*` name glob and drops the "hypervisor NICs get unpredictable
-enpXsY names" problem the current comment describes. The mac-based client
-identifier is the payoff: the VM keeps its NAT lease, which is what the
-hardcoded `dev` → `192.168.85.146` entry in `programs.ssh` depends on today.
-Pair it with `systemd.services.systemd-networkd.stopIfChanged = false` (and
-the same for resolved) so a `nixos-rebuild switch` over ssh does not cut the
-network mid-switch. Interacts with `modules/dns.nix` (resolved + DoT), which
-networkd integrates with cleanly. Also unlocks `modules/ntp.nix` (added
-2026-08-26): timesyncd only receives DHCP-offered NTP servers through
-networkd's `UseNTP`, so under scripted DHCP its empty `servers` list means
-the fallback pool answers everywhere — the "NTP from DHCP when offered"
-half starts working here. Verify by booting fusion and utm and
-confirming the lease survives two rebuilds.
-
-## Suggested order
-
-C12, verified by booting fusion and utm.
+Empty: specced 2026-08-20, closed out 2026-09-26 — three items landed,
+three were declined or already in effect. The provenance bullets below
+say which, and §7 holds the declines; the surveys' own bullets stay here
+because they record where each idea came from.
 
 ## Source bullets absorbed into this batch (kept for provenance)
 
@@ -92,15 +57,18 @@ registry-pinning corrections).
   `systemd.services.systemd-networkd.stopIfChanged = false` (+ resolved) so
   a `nixos-rebuild switch` over SSH doesn't cut the network under you;
   `services.getty.autologinUser` on the throwaway VM;
-  `services.dbus.implementation = "broker"`. → stopIfChanged is batch
-  C12; the rest stayed in section 2.
+  `services.dbus.implementation = "broker"`. → stopIfChanged landed with
+  C12 (ef68963), for networkd and resolved both; the rest stayed in
+  section 2.
 - **`machines/utm-vm/` as a dev-VM template** (Mic92) — almost exactly our VM
   shape, worth reading whole: srvos server base + disko single-disk GPT
   (500M ESP + ext4 root, deliberately not ZFS for a throwaway guest),
   networkd DHCP matched on `matchConfig.Type = "ether"` (portable across
   VMware/UTM/VZ — no interface names; stronger than the name-glob variant
   in the fork survey's networkd item), `nix.settings.max-jobs = mkDefault
-  4`, per-VM authorized keys. → batch C12 takes the networkd part.
+  4`, per-VM authorized keys. → C12 took the networkd part (ef68963),
+  pairing his `Type = "ether"` with nixpkgs' `Kind = "!*"` so podman veths
+  don't match.
 - From `phaer/nixos-vm-on-macos` `modules/nixos/base.nix`: a different VM
   architecture (headless, ephemeral, Apple Virtualization.framework with
   the host store shared over virtiofs), but two boot/networking settings
@@ -115,7 +83,11 @@ registry-pinning corrections).
     `networking.useDHCP`, and the mac-based DHCP identifier gives predictable VM IP
     leases — directly addressing the `vm-shared.nix` comments about Fusion's
     unpredictable `enpXsY` NIC names and flaky NAT DHCP. The stronger of the
-    two. → batch C12 (with Mic92's stronger `Type = "ether"` match).
+    two. → was batch C12, landed 2026-09-26 (ef68963), with Mic92's
+    stronger `Type = "ether"` match; the fusion guest kept its
+    192.168.85.146 lease across two reboots and booted 6.5s faster in
+    userspace with the scripted network gone. The utm and apple guests run
+    the same module but were not booted.
 
 ---
 
