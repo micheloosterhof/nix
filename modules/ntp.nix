@@ -9,8 +9,9 @@ let
         # No static servers on top of network-provided ones (the nixpkgs
         # default pins the pool as primary, doubling sources on networks
         # whose DHCP offers NTP). DHCP-offered servers only reach timesyncd
-        # through networkd's UseNTP; on hosts still running scripted DHCP
-        # the fallback pool answers everywhere.
+        # through networkd's UseNTP, which the VMs enable (vm.nix); the
+        # servers run scripted per-interface DHCP, so the fallback pool
+        # answers there.
         servers = [ ];
         fallbackServers = config.networking.timeServers;
       };

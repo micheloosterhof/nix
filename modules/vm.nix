@@ -21,9 +21,37 @@
       # Set your time zone.
       time.timeZone = "Asia/Singapore";
 
-      # Global DHCP: pick up any interface that appears. Hypervisor NICs get
-      # unpredictable enpXsY names, so we don't hardcode one.
-      networking.useDHCP = true;
+      # networkd owns the uplink. The match is on link type and kind, not
+      # name: every hypervisor names its NIC differently (Fusion, UTM and
+      # Apple's VZ all produce their own enpXsY/ethN), while "ether with no
+      # kind" is any physical interface and no veth or bridge. The MAC-based
+      # DHCP client identifier is what keeps the NAT lease stable across
+      # rebuilds — the ssh `dev` alias points at that address.
+      networking.useNetworkd = true;
+      networking.useDHCP = false;
+      systemd.network.networks."10-uplink" = {
+        matchConfig = {
+          Type = "ether";
+          Kind = "!*";
+        };
+        networkConfig = {
+          DHCP = "yes";
+          # What the generated default network would have set.
+          IPv6PrivacyExtensions = "kernel";
+        };
+        dhcpV4Config = {
+          ClientIdentifier = "mac";
+          # dns.nix resolves over strict DNS-over-TLS, which fails closed on a
+          # plain-53 server, so the lease's resolvers must not reach resolved.
+          # UseNTP stays on: timesyncd carries no static servers and takes the
+          # ones DHCP offers.
+          UseDNS = false;
+        };
+      };
+
+      # A switch arriving over ssh must not stop the network it came in on.
+      systemd.services.systemd-networkd.stopIfChanged = false;
+      systemd.services.systemd-resolved.stopIfChanged = false;
 
       # Cap journal growth: the default cap is 10% of the filesystem, a lot
       # of a ~40 GiB virtual disk spent on logs nobody reads.

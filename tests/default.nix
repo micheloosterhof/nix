@@ -696,4 +696,15 @@ lib.runTests {
     expr = fusion.boot.initrd.systemd.enable && apple.boot.initrd.systemd.enable;
     expected = true;
   };
+
+  # dns.nix resolves over strict DNS-over-TLS, which fails closed rather than
+  # fall back to plaintext, so the uplink must not pass the DHCP lease's
+  # plain-53 resolvers to resolved. The two settings live in different modules
+  # (dns.nix and vm.nix), so state the pairing rather than either half.
+  testVmDhcpDnsStaysOutOfStrictDot = {
+    expr =
+      fusion.services.resolved.settings.Resolve.DNSOverTLS == "true"
+      -> fusion.systemd.network.networks."10-uplink".dhcpV4Config.UseDNS == false;
+    expected = true;
+  };
 }
