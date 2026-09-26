@@ -15,39 +15,7 @@ and turned into concrete changes. None of what is left is implemented
 today: `initrd.systemd` and `useNetworkd` appear nowhere in the repo
 outside this file.
 
-One source bullet turned out to be more expensive than advertised — see
-registry pinning. Each item below is one commit.
-
-## Batch B — one decision
-
-**8. Pin every flake input into the registry** (`modules/nix-settings.nix`).
-The claimed cost is "~700 MB of source trees in the closure". Measured on
-the current lock:
-
-| input | source closure |
-| --- | --- |
-| nixpkgs | 196 MiB (already pinned) |
-| nixpkgs-unstable | 201 MiB |
-| home-manager | 6 MiB |
-| the other eight | under 1 MiB each |
-
-So the real tradeoff is nixpkgs-unstable and nothing else: pinning the nine
-small inputs costs about 7 MiB. Proposal — pin everything except
-nixpkgs-unstable everywhere, and reconsider unstable separately:
-
-```nix
-registry = lib.mapAttrs (_: flake: { inherit flake; }) (
-  lib.filterAttrs (n: v: n != "nixpkgs-unstable" && lib.isType "flake" v) inputs
-);
-```
-
-with `nixPath` derived the same way. `flake-registry = ""` (blank the global
-registry so nothing silently resolves to an unpinned upstream) is the second
-half and can ride along. Decision: whether to accept 201 MiB on the lean
-artifacts (`my.tools.full = false` — the GCE image — and the container
-tarball) for `nix run nixpkgs-unstable#…` to work offline. Test: an eval
-assertion that the registry has an entry per input and that the GCE closure
-does not gain the unstable source.
+Each item below is one commit.
 
 ## Batch C — needs a VM boot test, not just an eval
 
@@ -86,8 +54,7 @@ confirming the lease survives two rebuilds.
 
 ## Suggested order
 
-B8 first, carrying its decision. Then C11, boot the VM, then C12, boot
-the VM again.
+C11, boot the VM, then C12, boot the VM again.
 
 ## Source bullets absorbed into this batch (kept for provenance)
 
@@ -123,8 +90,10 @@ registry-pinning corrections).
   locked rev — deterministic, offline-capable, no surprise second nixpkgs
   download. wimpysworld's caveat to keep: pinning inputs embeds their source
   trees in the closure (~700 MB), so pin everything on workstations but only
-  self/nixpkgs on the container tarball and VM images. → batch B8, with
-  the measured closure numbers.
+  self/nixpkgs on the container tarball and VM images. → was batch B8,
+  landed 2026-09-26 (1f12d7e); measured at 9.3 MiB for the nine small inputs
+  on every host and 205 MiB for nixpkgs-unstable, which neon alone carries.
+  The `flake-registry = ""` half was not taken — see §2.
 - **VM/host one-liners** (Mic92, machines/, nixosModules/):
   `systemd.services.systemd-networkd.stopIfChanged = false` (+ resolved) so
   a `nixos-rebuild switch` over SSH doesn't cut the network under you;
@@ -355,6 +324,15 @@ style: check against the repo, spec, one commit each) draws from here.
   shape for the docs-drift test noted-but-unfiled from tjmaynes.
 
 ## Nix daemon, GC, and build plumbing
+
+- **Blank the global registry** (`nix.settings.flake-registry = ""`) — the
+  half of the registry pinning (1f12d7e) left undecided. Every input is now
+  pinned, so blanking the global registry costs nothing for them; what
+  changes is the indirect case: a short name that is not in the local
+  registry (`nix run some-alias#pkg`) stops resolving instead of being
+  looked up in upstream's registry. Full refs (`nix run github:o/r#pkg`)
+  are unaffected, so the cost is small — but it is the difference between
+  a server refusing an unpinned name and quietly fetching one.
 
 - **Graceful-degrade substituter settings** (sebastianrasor `nix.nix`):
   `connect-timeout = 5` + `fallback = true` so an unreachable binary cache
