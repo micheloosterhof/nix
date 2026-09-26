@@ -12,13 +12,13 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 
 The cheap wins scattered across the surveys, checked against the repo
 and turned into concrete changes. None of what is left is implemented
-today: `initrd.systemd`, `useNetworkd` and `programs.nh` appear nowhere
-in the repo outside this file.
+today: `initrd.systemd` and `useNetworkd` appear nowhere in the repo
+outside this file.
 
-Two source bullets turned out to be wrong or more expensive than
-advertised — see nh and registry pinning. Each item below is one commit.
+One source bullet turned out to be more expensive than advertised — see
+registry pinning. Each item below is one commit.
 
-## Batch B — one decision each
+## Batch B — one decision
 
 **8. Pin every flake input into the registry** (`modules/nix-settings.nix`).
 The claimed cost is "~700 MB of source trees in the closure". Measured on
@@ -48,27 +48,6 @@ artifacts (`my.tools.full = false` — the GCE image — and the container
 tarball) for `nix run nixpkgs-unstable#…` to work offline. Test: an eval
 assertion that the registry has an entry per input and that the GCE closure
 does not gain the unstable source.
-
-**9. nh as the rebuild/GC frontend.** Two corrections to the survey bullet:
-
-- **`programs.nh` does not exist in nix-darwin.** Checked the pinned
-  `nix-darwin-26.05` source: no `modules/programs/nh.nix`, no `programs.nh`
-  anywhere. It is a NixOS module and a home-manager module. So on neon nh
-  arrives via home-manager (which does support it, with `darwinFlake` and a
-  launchd clean agent); on the NixOS hosts it is the system module.
-- **`nh clean` and `nix.gc.automatic` are mutually exclusive.** The NixOS
-  module warns when both are on, home-manager likewise. `modules/nix-settings.nix`
-  sets `gc.automatic = true` on every host, so adopting `nh clean` means
-  deleting that block and moving the policy to
-  `programs.nh.clean.extraArgs = "--keep 5 --keep-since 20d"`. That is the
-  actual win — keep-count *and* keep-age, which `nix.gc.options` cannot
-  express — but it is a swap, not an addition.
-
-`NH_FLAKE` is per-host (the repo is at `~/src/nix` on neon and `/nix-config`
-on a remote-rebuilt VM), so either leave `flake` unset and rely on cwd, or
-set it per host file. `make switch`/`make gc` keep their names and call nh
-underneath. Decision: whether to hand GC scheduling to nh. Test: an eval
-assertion that exactly one of the two GC mechanisms is enabled per host.
 
 ## Batch C — needs a VM boot test, not just an eval
 
@@ -107,8 +86,8 @@ confirming the lease survives two rebuilds.
 
 ## Suggested order
 
-B8/B9 first, each carrying its decision. Then C11, boot the VM, then
-C12, boot the VM again.
+B8 first, carrying its decision. Then C11, boot the VM, then C12, boot
+the VM again.
 
 ## Source bullets absorbed into this batch (kept for provenance)
 
@@ -134,9 +113,8 @@ registry-pinning corrections).
   nix-darwin: `nh os|darwin|home switch` wraps rebuilds with nom-style build
   trees and an nvd closure diff; `nh clean all --keep 5 --keep-since 20d`
   expresses keep-count *and* keep-age, which `nix.gc.options` can't. Slots
-  behind `make switch`/`make gc` without changing the interface. → batch
-  B9, with two corrections (no nix-darwin module; mutually exclusive with
-  `nix.gc.automatic`).
+  behind `make switch`/`make gc` without changing the interface. → was
+  batch B9, declined; see §7.
 - **Pin every flake input into the registry, and blank the global one**
   (Misterio77, EmergentMind, srid, wimpysworld — four configs). We pin only
   `nixpkgs`. `nix.registry = lib.mapAttrs (_: flake: { inherit flake; })
@@ -2909,6 +2887,25 @@ full lists live in the per-repo review record.
 # 7. Decided against, superseded, or explicitly skipped
 
 Kept for the record so the same paths don't get re-surveyed.
+
+- **nh as the rebuild/GC frontend** — declined 2026-09-26, after the two
+  survey claims were checked and found wrong. `programs.nh` does not exist
+  in nix-darwin (pinned `nix-darwin-26.05` has no `modules/programs/nh.nix`);
+  it is a NixOS module and a home-manager one, so neon would run the HM
+  module and the Linux hosts the system module — two mechanisms for one
+  policy. And `nh clean` is mutually exclusive with `nix.gc.automatic`
+  (both modules warn), so adopting it means deleting the gc block in
+  `modules/nix-settings.nix` and moving the policy into
+  `programs.nh.clean.extraArgs`: a swap, not an addition. Of what is left,
+  the closure diff is already covered by `modules/diff.nix` on both classes,
+  and the build tree is nom, which was declined the same day — nixpkgs' `nh`
+  is `nh-unwrapped` wrapped with `nix-output-monitor` on PATH. The only
+  unmatched capability is `--keep 5 --keep-since 20d`: keep-count *and*
+  keep-age, which `nix-collect-garbage` cannot express, so the current
+  weekly `--delete-older-than 30d` can leave a long-quiet host with no
+  rollback target. Not worth rewriting the GC path on every host for; the
+  boot-generation pinning item in §4 protects the generation that matters
+  instead of the last five arbitrary ones.
 
 - **nix-output-monitor** (`nom build` on the image targets) — declined
   2026-09-26. It buys a live build tree on `vm/image` and `gce/image`:
