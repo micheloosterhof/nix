@@ -9,6 +9,15 @@ let
       lib,
       ...
     }:
+    let
+      # The inputs the registry can resolve. `self` is left out (a host works
+      # from its checkout, not from a store copy of the config) and so is
+      # nixpkgs-unstable: pinning it puts 201 MiB of source in the system
+      # closure, which only neon wants (hosts/neon.nix pins it there).
+      pinnedInputs = lib.filterAttrs (
+        name: input: name != "self" && name != "nixpkgs-unstable" && lib.isType "flake" input
+      ) inputs;
+    in
     {
       nix = {
         package = pkgs.nixVersions.latest;
@@ -56,10 +65,10 @@ let
         # Linux it complements it by catching paths added out-of-band.
         optimise.automatic = true;
 
-        # Resolve <nixpkgs> and nixpkgs#... to the flake's pinned input so no
-        # channels are needed and every host builds against the same nixpkgs.
-        registry.nixpkgs.flake = inputs.nixpkgs;
-        nixPath = [ "nixpkgs=flake:nixpkgs" ];
+        # Resolve <name> and name#... to the flake's locked inputs so no
+        # channels are needed and every host builds against the same sources.
+        registry = lib.mapAttrs (_: flake: { inherit flake; }) pinnedInputs;
+        nixPath = lib.mapAttrsToList (name: _: "${name}=flake:${name}") pinnedInputs;
         channel.enable = false;
 
         # Collect garbage weekly, keeping the last 30 days of generations.

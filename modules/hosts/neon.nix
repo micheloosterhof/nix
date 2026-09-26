@@ -50,6 +50,12 @@
           nix = {
             enable = true;
 
+            # The one machine where `nix run nixpkgs-unstable#…` gets typed.
+            # nix-settings.nix pins every input but this one, whose source
+            # would otherwise be 201 MiB of closure weight on every host.
+            registry.nixpkgs-unstable.flake = inputs.nixpkgs-unstable;
+            nixPath = [ "nixpkgs-unstable=flake:nixpkgs-unstable" ];
+
             # Enable the Linux builder so we can run Linux builds on our Mac.
             # This can be debugged by running `sudo ssh linux-builder`.
             #

@@ -659,4 +659,33 @@ lib.runTests {
     expr = lib.hasInfix "booted-system" fusion.system.activationScripts.needsReboot.text;
     expected = true;
   };
+
+  # modules/nix-settings.nix pins every flake input into the registry, so
+  # `nix run <input>#…` resolves to the locked rev instead of upstream.
+  # nixpkgs-unstable is the exception — pinning it puts 201 MiB of source in
+  # the system closure — and hosts/neon.nix adds it back for the one machine
+  # where that command gets typed.
+  testRegistryPinsInputs = {
+    expr = lib.all (name: nitrogen.nix.registry ? ${name}) [
+      "nixpkgs"
+      "home-manager"
+      "disko"
+      "sops-nix"
+    ];
+    expected = true;
+  };
+  testRegistryOmitsUnstableOffNeon = {
+    expr = nitrogen.nix.registry ? nixpkgs-unstable || gce.nix.registry ? nixpkgs-unstable;
+    expected = false;
+  };
+  testRegistryPinsUnstableOnNeon = {
+    expr = mac.nix.registry ? nixpkgs-unstable;
+    expected = true;
+  };
+  # nixPath is a separate list-merge path from the registry attrset, so it
+  # can drift out of step with it.
+  testNixPathUnstableOnNeon = {
+    expr = builtins.elem "nixpkgs-unstable=flake:nixpkgs-unstable" mac.nix.nixPath;
+    expected = true;
+  };
 }
