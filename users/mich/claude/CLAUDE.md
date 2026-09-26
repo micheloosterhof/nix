@@ -196,12 +196,6 @@ holds its own result back for a later paragraph is the same failure, and so is
 one that names the result only as "surprising", "decisive" or "not what I
 expected".
 
-## Project Context
-
-- If the project has an `AGENTS.md` file, read it before starting work. It
-  contains project-specific conventions, architecture, and build/test
-  instructions.
-
 ## Tools
 
 - don't use `sed`, you usually get it wrong.
