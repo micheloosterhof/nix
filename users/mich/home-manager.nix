@@ -393,10 +393,22 @@ in
         lg = "log -p --pretty=fuller --abbrev-commit";
         lgg = "log --pretty=fuller --abbrev-commit --stat";
         up = "pull --rebase";
+        fpush = "push --force-with-lease";
+        uncommit = "reset --soft HEAD^";
       };
       branch.autosetuprebase = "always";
+      # Newest branches first in `git branch`.
+      branch.sort = "-committerdate";
       color.ui = true;
       core.askPass = ""; # needs to be empty to use terminal for ask pass
+      # Cache the untracked-file scan; the default "keep" leaves it off.
+      core.untrackedCache = true;
+      # Show the diff being committed in the commit-message editor.
+      commit.verbose = true;
+      # Histogram reads better than the myers default on moved blocks.
+      diff.algorithm = "histogram";
+      # Fall back to a three-way merge when a patch does not apply cleanly.
+      am.threeWay = true;
       # macOS: tokens live in the Keychain. Linux: GitHub goes over SSH
       # (url rewrite), so no helper is needed and no token touches disk.
       credential.helper = lib.mkIf isDarwin "osxkeychain";
@@ -407,6 +419,12 @@ in
       init.defaultBranch = "main";
       # Drop remote-tracking refs for branches deleted upstream on fetch.
       fetch.prune = true;
+      # Keep the commit graph current on fetch; core.commitGraph reads it.
+      fetch.writeCommitGraph = true;
+      # `commit --fixup` lands on the next rebase without --autosquash.
+      rebase.autosquash = true;
+      # Branches stacked on the rebased one follow it instead of dangling.
+      rebase.updateRefs = true;
       # Remember conflict resolutions and replay them (pays off with the
       # rebase-heavy workflow: autosetuprebase + pull.rebase).
       rerere.enabled = true;
