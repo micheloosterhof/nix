@@ -19,12 +19,6 @@ Each item below is one commit.
 
 ## Batch C — needs a VM boot test, not just an eval
 
-**11. systemd initrd** (`modules/vm.nix`): `boot.initrd.systemd.enable = true`.
-Drop-in on paper — no LUKS, no custom initrd scripts in the repo — but it
-replaces the whole early boot path, so it gets verified by booting the
-fusion VM, not by `nix flake check`. Do it before item 12; if both land at
-once and the VM does not come back, there are two suspects.
-
 **12. networkd with a mac-based DHCP identifier** (`modules/vm.nix`,
 replacing `networking.useDHCP = true` at line 26):
 
@@ -54,7 +48,7 @@ confirming the lease survives two rebuilds.
 
 ## Suggested order
 
-C11, boot the VM, then C12, boot the VM again.
+C12, verified by booting fusion and utm.
 
 ## Source bullets absorbed into this batch (kept for provenance)
 
@@ -113,9 +107,8 @@ registry-pinning corrections).
   are hypervisor-agnostic and improve our VMware/Parallels/UTM dev VM.
   The headline features (Rosetta, virtiofs store) are bound to their
   Virtualization.framework stack and don't port to ours.
-  - **systemd initrd** — `boot.initrd.systemd.enable = true`. We're on the old
-    scripted initrd; the systemd one is faster and more customizable.
-    Drop-in. → batch C11.
+  - **systemd initrd** — `boot.initrd.systemd.enable = true`. → was batch
+    C11, already in effect; see §7.
   - **systemd-networkd + mac DHCP identifier** — `networking.useNetworkd = true`
     with a `10-uplink` network matching `en* eth*` and
     `dhcpV4Config.ClientIdentifier = "mac"`. Replaces our scripted
@@ -2865,6 +2858,15 @@ full lists live in the per-repo review record.
 # 7. Decided against, superseded, or explicitly skipped
 
 Kept for the record so the same paths don't get re-surveyed.
+
+- **systemd initrd** (`boot.initrd.systemd.enable`) — nothing to do: the
+  option has defaulted to true since nixpkgs 26.05
+  (`nixos/modules/system/boot/systemd/initrd.nix`), and the fusion guest's
+  journal shows `initrd-switch-root.service` starting, so the VMs have been
+  booting this way already. The survey's "we're on the old scripted initrd"
+  was true when written and went stale with the release bump. Since the value
+  now arrives from upstream rather than from this repo, `testVmSystemdInitrd`
+  pins it.
 
 - **nh as the rebuild/GC frontend** — declined 2026-09-26, after the two
   survey claims were checked and found wrong. `programs.nh` does not exist

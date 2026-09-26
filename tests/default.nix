@@ -688,4 +688,12 @@ lib.runTests {
     expr = builtins.elem "nixpkgs-unstable=flake:nixpkgs-unstable" mac.nix.nixPath;
     expected = true;
   };
+
+  # The VMs rely on nixpkgs' default of systemd in the initrd (verified in
+  # the fusion guest: initrd-switch-root.service runs at boot), rather than
+  # setting it. The value therefore moves only upstream, so pin it here.
+  testVmSystemdInitrd = {
+    expr = fusion.boot.initrd.systemd.enable && apple.boot.initrd.systemd.enable;
+    expected = true;
+  };
 }
