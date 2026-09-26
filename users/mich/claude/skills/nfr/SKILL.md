@@ -206,7 +206,6 @@ SPDX-License-Identifier: <license expression>
 | `README.md` | Project overview, quick start, architecture |
 | `SECURITY.md` | Vulnerability reporting, scope, contact |
 | `AGENTS.md` | AI agent instructions (project conventions, build, test) |
-| `CLAUDE.md` | Points to `@AGENTS.md` (thin wrapper) |
 | `CONTRIBUTING.md` | PR guidelines, code style, testing expectations |
 | `LICENSE` | Full license text |
 | `CHANGELOG.md` | Release notes (if not using GitHub releases) |
@@ -263,10 +262,11 @@ SPDX-License-Identifier: <license expression>
 
 Software should be equally usable by humans and AI agents:
 
-- **`AGENTS.md`**: Primary file for AI agent instructions. Contains project
+- **`AGENTS.md`**: The file for AI agent instructions. Contains project
   structure, conventions, build/test commands, and architecture decisions.
-- **`CLAUDE.md`**: Thin wrapper that references `@AGENTS.md`. Keep
-  Claude-specific overrides minimal.
+  Agents read it directly, so a project carries no per-tool file whose only
+  content points at it. A tool-specific file earns its place when it holds
+  instructions that would be wrong for the other tools.
 - **Makefile**: Single entry point that both humans and agents can use
 - **Clear error messages**: Agents need parseable output to self-correct
 - **No interactive flows** required for build/test/deploy
