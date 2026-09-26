@@ -12,23 +12,11 @@ keeps the explicit don't-adopt verdicts and the surveys' own skip notes.
 
 The cheap wins scattered across the surveys, checked against the repo
 and turned into concrete changes. None of what is left is implemented
-today: `initrd.systemd`, `useNetworkd`, `nix-output-monitor` and
-`programs.nh` appear nowhere in the repo outside this file.
+today: `initrd.systemd`, `useNetworkd` and `programs.nh` appear nowhere
+in the repo outside this file.
 
 Two source bullets turned out to be wrong or more expensive than
 advertised — see nh and registry pinning. Each item below is one commit.
-
-## Batch A — no decision to make
-
-**5. nix-output-monitor on the image targets** (`Makefile`, `home.packages`).
-Add `pkgs.nix-output-monitor` to the `fullTools` list in
-`users/mich/home-manager.nix`, then swap `nix build` → `nom build` in
-`vm/image` (line 222) and `gce/image` (line 247). Verified: `nom build
---no-link --print-out-paths` puts only the store path on stdout, so the
-`$(...)` capture in `vm/launch` and `gce/upload` keeps working unchanged.
-The `*-rebuild` targets are a separate question — piping them needs
-`--log-format internal-json -v |& nom --json`, and if nh (item 9) lands it
-already prints an nom-style tree, so leave those alone. No test.
 
 ## Batch B — one decision each
 
@@ -119,9 +107,8 @@ confirming the lease survives two rebuilds.
 
 ## Suggested order
 
-A5 is one commit, eval-only, verifiable with `make lint`. Then B8/B9,
-each carrying its decision. Then C11, boot the VM, then C12, boot the
-VM again.
+B8/B9 first, each carrying its decision. Then C11, boot the VM, then
+C12, boot the VM again.
 
 ## Source bullets absorbed into this batch (kept for provenance)
 
@@ -141,7 +128,7 @@ registry-pinning corrections).
   `nom build` (`minimal/nom-rebuild.patch`); the 90% version with zero
   maintenance is adding `nix-output-monitor` to `home.packages` and piping
   in the Makefile (`... |& nom`, or `nom build` where targets run
-  `nix build`, e.g. `vm/image`, `wsl`). → batch A5.
+  `nix build`, e.g. `vm/image`, `wsl`). → was batch A5, declined; see §7.
 - **nh as the rebuild/GC frontend** (Misterio77, EmergentMind, wimpysworld —
   three configs independently). `programs.nh` exists on both NixOS and
   nix-darwin: `nh os|darwin|home switch` wraps rebuilds with nom-style build
@@ -2922,6 +2909,15 @@ full lists live in the per-repo review record.
 # 7. Decided against, superseded, or explicitly skipped
 
 Kept for the record so the same paths don't get re-surveyed.
+
+- **nix-output-monitor** (`nom build` on the image targets) — declined
+  2026-09-26. It buys a live build tree on `vm/image` and `gce/image`:
+  which derivations are building versus substituting, per-derivation
+  timers, each builder's log kept separate, and the failing derivation
+  named on error. That is a comfort win on cold builds only — warm builds
+  substitute and show nothing new — and it costs a package in the closure
+  of every `tools.full` host. B9's nh pitch cites nom-style build trees;
+  nh brings its own, so that item is unaffected.
 
 - **`help.autocorrect` and a `checkout-pr` alias** — the two parts of batch
   A7 left out when the rest of the git defaults landed 2026-09-26 (ef37348).
