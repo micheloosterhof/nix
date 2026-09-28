@@ -51,8 +51,9 @@ registry-pinning corrections).
   trees in the closure (~700 MB), so pin everything on workstations but only
   self/nixpkgs on the container tarball and VM images. → was batch B8,
   landed 2026-09-26 (1f12d7e); measured at 9.3 MiB for the nine small inputs
-  on every host and 205 MiB for nixpkgs-unstable, which neon alone carries.
-  The `flake-registry = ""` half was not taken — see §2.
+  on every host. nixpkgs-unstable was pinned on neon the same day and dropped
+  again on 2026-09-29 (e7da5f0) — see §7. The `flake-registry = ""` half was
+  not taken — see §2.
 - **VM/host one-liners** (Mic92, machines/, nixosModules/):
   `systemd.services.systemd-networkd.stopIfChanged = false` (+ resolved) so
   a `nixos-rebuild switch` over SSH doesn't cut the network under you;
@@ -2830,6 +2831,21 @@ full lists live in the per-repo review record.
 # 7. Decided against, superseded, or explicitly skipped
 
 Kept for the record so the same paths don't get re-surveyed.
+
+- **Pinning nixpkgs-unstable into the registry** — pinned on neon with the
+  rest of the inputs 2026-09-26, dropped 2026-09-29 (e7da5f0) once the
+  cost and the benefit were both measured properly. The cost is not
+  bandwidth: `modules/overlays.nix` imports nixpkgs-unstable at eval time
+  on every host, so its ~205 MiB source is fetched whether or not it is
+  pinned. What pinning adds is retention — the tree is held alive by each
+  system generation that references it, and with the lock bumping weekly
+  against a 30-day gc window that is roughly 4-5 revs, ~1 GB resident on
+  neon. The benefit was smaller than assumed: `,` (comma) resolves against
+  the `nixpkgs` entry, not this one, and a pinned source tree does not make
+  an uninstalled package runnable offline — its binaries still come from
+  the cache. That left one beneficiary, a hand-typed
+  `nix run nixpkgs-unstable#…`, which AGENTS.md's package-placement rule
+  does not call for anyway. `testRegistryOmitsUnstable` keeps it out.
 
 - **systemd initrd** (`boot.initrd.systemd.enable`) — nothing to do: the
   option has defaulted to true since nixpkgs 26.05
