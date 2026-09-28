@@ -181,6 +181,14 @@ remote/check-addr:
 	@test "$(NIXADDR)" != "unset" || { \
 		echo "error: NIXADDR is not set; pass NIXADDR=<host>"; exit 1; }
 
+# Targets that build and activate a config refuse the NIXNAME default, so
+# a forgotten NIXNAME can't build (or switch to) vm-aarch64-fusion on
+# another host.
+.PHONY: remote/check-name
+remote/check-name:
+	@test "$(origin NIXNAME)" != "file" || { \
+		echo "error: NIXNAME is not set; pass NIXNAME=<host>"; exit 1; }
+
 # Provision a fresh NixOS install onto any ssh-reachable Linux (an ISO-booted
 # VM, or a running distro that nixos-anywhere kexecs into the installer).
 # Partitions per the disko spec in the host file, installs the flake config and
@@ -226,7 +234,7 @@ remote/copy: remote/check-addr ## rsync this repo into the remote host at /nix-c
 # run the nixos-rebuild switch command. This does NOT copy files so you
 # have to run remote/copy before.
 .PHONY: remote/switch
-remote/switch: remote/check-addr ## Run nixos-rebuild switch on the remote host (remote/copy first)
+remote/switch: remote/check-addr remote/check-name ## Run nixos-rebuild switch on the remote host (remote/copy first)
 	ssh $(SSH_OPTIONS) -p$(NIXPORT) $(NIXUSER)@$(NIXADDR) " \
                 sudo NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 nixos-rebuild switch --flake \"/nix-config#${NIXNAME}\" \
 	"
@@ -235,7 +243,7 @@ remote/switch: remote/check-addr ## Run nixos-rebuild switch on the remote host 
 # provider-console reboot lands back on the old system. Run this before
 # remote/switch on hosts where a bad switch means a trip to the console.
 .PHONY: remote/test
-remote/test: remote/check-addr ## Run nixos-rebuild test on the remote host (no boot entry; remote/copy first)
+remote/test: remote/check-addr remote/check-name ## Run nixos-rebuild test on the remote host (no boot entry; remote/copy first)
 	ssh $(SSH_OPTIONS) -p$(NIXPORT) $(NIXUSER)@$(NIXADDR) " \
                 sudo NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1 nixos-rebuild test --flake \"/nix-config#${NIXNAME}\" \
 	"
