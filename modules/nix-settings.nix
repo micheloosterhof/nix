@@ -10,10 +10,14 @@ let
       ...
     }:
     let
-      # The inputs the registry can resolve. `self` is left out (a host works
-      # from its checkout, not from a store copy of the config) and so is
-      # nixpkgs-unstable: pinning it puts 201 MiB of source in the system
-      # closure, which only neon wants (hosts/neon.nix pins it there).
+      # The inputs the registry can resolve. `self` is left out — a host works
+      # from its checkout, not from a store copy of the config — and so is
+      # nixpkgs-unstable: overlays.nix imports it at eval time anyway, so
+      # pinning downloads nothing new, it only holds another 205 MiB source
+      # tree alive per generation. Nothing resolves that name by hand
+      # (comma runs against the `nixpkgs` entry below), and a pinned tree
+      # would not make an uninstalled package runnable offline regardless:
+      # its binaries still come from the cache.
       pinnedInputs = lib.filterAttrs (
         name: input: name != "self" && name != "nixpkgs-unstable" && lib.isType "flake" input
       ) inputs;

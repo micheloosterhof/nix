@@ -662,9 +662,8 @@ lib.runTests {
 
   # modules/nix-settings.nix pins every flake input into the registry, so
   # `nix run <input>#…` resolves to the locked rev instead of upstream.
-  # nixpkgs-unstable is the exception — pinning it puts 201 MiB of source in
-  # the system closure — and hosts/neon.nix adds it back for the one machine
-  # where that command gets typed.
+  # nixpkgs-unstable is the exception on every host: its 205 MiB source would
+  # be held alive per generation to serve a name nothing resolves by hand.
   testRegistryPinsInputs = {
     expr = lib.all (name: nitrogen.nix.registry ? ${name}) [
       "nixpkgs"
@@ -674,19 +673,12 @@ lib.runTests {
     ];
     expected = true;
   };
-  testRegistryOmitsUnstableOffNeon = {
-    expr = nitrogen.nix.registry ? nixpkgs-unstable || gce.nix.registry ? nixpkgs-unstable;
+  testRegistryOmitsUnstable = {
+    expr =
+      nitrogen.nix.registry ? nixpkgs-unstable
+      || gce.nix.registry ? nixpkgs-unstable
+      || mac.nix.registry ? nixpkgs-unstable;
     expected = false;
-  };
-  testRegistryPinsUnstableOnNeon = {
-    expr = mac.nix.registry ? nixpkgs-unstable;
-    expected = true;
-  };
-  # nixPath is a separate list-merge path from the registry attrset, so it
-  # can drift out of step with it.
-  testNixPathUnstableOnNeon = {
-    expr = builtins.elem "nixpkgs-unstable=flake:nixpkgs-unstable" mac.nix.nixPath;
-    expected = true;
   };
 
   # The VMs rely on nixpkgs' default of systemd in the initrd (verified in
