@@ -112,6 +112,7 @@ linux)
 ;;
 darwin)
   export HOMEBREW_NO_INSECURE_REDIRECT=1
+  export HOMEBREW_NO_ANALYTICS=1
   export LSCOLORS=gxfxbEaEBxxEhEhBaDaCaD
   export BASH_SILENCE_DEPRECATION_WARNING=1
   # Secure Enclave provider for sk-type SSH keys (ssh-add/ssh-keygen)

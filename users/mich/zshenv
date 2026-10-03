@@ -72,6 +72,7 @@ linux)
 ;;
 darwin)
   export HOMEBREW_NO_INSECURE_REDIRECT=1
+  export HOMEBREW_NO_ANALYTICS=1
   export LSCOLORS=gxfxbEaEBxxEhEhBaDaCaD
   export BASH_SILENCE_DEPRECATION_WARNING=1
   # Secure Enclave provider for sk-type SSH keys (ssh-add/ssh-keygen)
@@ -96,7 +97,7 @@ NIXPROFILES=( /nix/var/nix/profiles/default/etc/profile.d/nix.sh
               /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh )
 
 for profile in $NIXPROFILES; do
-    if [ -e $profile ]; then 
+    if [ -e $profile ]; then
         source $profile
     fi
 done
