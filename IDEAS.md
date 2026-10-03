@@ -408,6 +408,21 @@ style: check against the repo, spec, one commit each) draws from here.
 
 ## Servers and VMs
 
+- **systemd-boot boot counting on the VMs — do with the NixOS 26.11
+  upgrade** (isabelroses `modules/nixos/boot/loader.nix`, 2026-10-03):
+  `boot.loader.systemd-boot.bootCounting.enable = true` turns on systemd's
+  [Automatic Boot Assessment](https://systemd.io/AUTOMATIC_BOOT_ASSESSMENT/):
+  each new entry gets a try counter (`tries`, default 3), and
+  `systemd-bless-boot.service` clears it once `boot-complete.target` is
+  reached; an entry that runs out of tries is skipped in favour of the
+  previous generation. Not in nixos-26.05 — it lands in 26.11 (rl-2611),
+  and the same change renames ESP entries to `nixos-<content-hash>.conf`
+  (migrated on the next `switch`/`boot`). Backporting the unstable
+  systemd-boot module was judged not worth it: it changes the entry
+  installer on all three VMs, and with `configurationLimit = 2` there is
+  little to fall back on. nitrogen boots GRUB/BIOS and gets nothing from
+  it. Also the missing half of the rejected sshd-or-reboot watchdog (§7).
+
 - **Perlless activation** (parked 2026-08-29 during the closure-size
   sweep): the last ~30 MiB of perl on a server is NixOS's own activation
   scripts (setup-etc.pl, update-users-groups.pl). Removing them means
