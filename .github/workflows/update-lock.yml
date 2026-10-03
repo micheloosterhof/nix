@@ -8,6 +8,11 @@
 # an unmerged PR is refreshed in place instead of being joined by a second PR
 # that touches the same lines. The branch belongs to this workflow: anything
 # committed onto it by hand is overwritten on the next run.
+#
+# The PR is set to auto-merge (squash): GitHub merges it once the required
+# checks (flake-check, closures) pass, and leaves it open if either fails.
+# neon is only evaluated in CI, so a darwin package that evaluates but fails
+# to build surfaces at the next `make switch` (docs/build-venues.md).
 name: update-lock
 
 on:
@@ -76,10 +81,11 @@ jobs:
               echo "| $name | \`${orev:0:11}\` $odate | \`${nrev:0:11}\` $ndate | [$count commits](https://github.com/$owner/$repo/compare/$orev...$nrev) |"
             done
             echo
-            echo "Review the changes above before merging; a lock bump is a real version bump."
+            echo "Merges automatically once flake-check and closures pass."
           } > pr-body.md
           if [ -n "$pr" ]; then
             gh pr edit "$pr" --body-file pr-body.md
           else
             gh pr create --title "chore(flake): weekly input bump" --body-file pr-body.md
           fi
+          gh pr merge "$branch" --auto --squash

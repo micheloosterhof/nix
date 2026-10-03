@@ -163,7 +163,8 @@ machine provably builds. neon is deliberately not in the build matrix: its
 full config is evaluated by the eval-tests check, and the reasoning for
 eval-only coverage is in [build-venues.md](build-venues.md).
 `.github/workflows/update-lock.yml` opens a weekly flake.lock bump PR with
-the input changes in the body and dispatches check/build onto the branch.
+the input changes in the body and sets it to auto-merge: GitHub squash-merges
+it once flake-check and closures pass, and leaves it open if either fails.
 The bump always lives on `flake-lock/weekly`, rebuilt from main and
 force-pushed, so an unmerged PR is refreshed in place rather than competing
 with a second one; don't commit anything onto that branch by hand.
