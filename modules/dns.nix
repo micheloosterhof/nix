@@ -18,6 +18,9 @@ let
         DNSOverTLS = "true";
         # No built-in plaintext Cloudflare/Google fallback.
         FallbackDNS = [ ];
+        # No LLMNR: any host on the local segment can answer these multicast
+        # name queries, which makes spoofing them a credential-capture trick.
+        LLMNR = "false";
       };
     };
     networking.nameservers = [
