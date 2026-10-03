@@ -1605,6 +1605,17 @@ domain) is the one DR item that can't be solved by redeploying.
   Linux VM into a NixOS installer (`nixos-images` kexec tarball), and
   `disko --mode mount` from a rescue system to remount the committed
   layout — the practical "reinstall a broken VM" story once disko lands.
+- **Installer ISO that joins the tailnet by QR code** (colemickens
+  `images/installer/configuration-base.nix`) — the ISO runs tailscaled
+  with `extraDaemonFlags = [ "--state=mem:" ]` (nothing persisted, a
+  fresh ephemeral node per boot), autologins on tty1/ttyS0, and the
+  login shell runs `sudo tailscale login --qr` when the internet is
+  reachable. Scan the QR on the console and the box is ssh-reachable
+  over the tailnet with no LAN access, port forward, or public sshd.
+  Our installer-iso assumes direct reachability, which is the TransIP
+  pain (sticky installer boot, ISP-filtered ports). A tagged
+  pre-approved auth key would skip the scan, but would put a credential
+  in the ISO.
 - **Rescue ISO as a fleet host** (vic `hosts/bombadil.nix`) — personal
   installer ISO built like any other host: `installation-cd-base.nix` +
   persistent home on a labeled partition + `mkImageMediaOverride` to
@@ -3016,6 +3027,17 @@ Kept for the record so the same paths don't get re-surveyed.
 # 8. Survey log
 
 What was surveyed when; sections above carry per-item attribution.
+
+- 2026-10-03 — `isabelroses/dotfiles` and `colemickens/nixcfg`.
+  isabelroses: adopted the same day (tty/debugfs/kexec kernel
+  hardening, sshd ClientAlive + PerSourceMaxStartups, min-free on
+  servers, LLMNR off, three darwin defaults, HOMEBREW_NO_ANALYTICS).
+  `homebrew.caskArgs.require_sha` rejected: five of our casks
+  (chromium, google-chrome, google-drive, spotify, steam) ship no
+  checksum and would fail to install. colemickens: the tailscale QR
+  installer filed above. Not taken: run0 without a password,
+  `LSQuarantine = false`, lockdown/sig_enforce, a 400-day gpg-agent
+  cache, Determinate Nix, Lix.
 
 - 2026-08-31 — `zentralwerk/network` (C3D2 Dresden building network:
   2 NixOS servers, 82 LXC router containers, 20 switches, 77 OpenWrt
