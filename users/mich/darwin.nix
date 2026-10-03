@@ -14,6 +14,9 @@
     NSGlobalDomain = {
       NSAutomaticQuoteSubstitutionEnabled = false;
       NSAutomaticDashSubstitutionEnabled = false;
+      # No auto-capitalization, and no period on double space.
+      NSAutomaticCapitalizationEnabled = false;
+      NSAutomaticPeriodSubstitutionEnabled = false;
       # Save new documents to local disk, not iCloud, by default.
       NSDocumentSaveNewDocumentsToCloud = false;
       # Force 24-hour clock display regardless of region.
@@ -70,6 +73,9 @@
       DSDontWriteNetworkStores = true;
       DSDontWriteUSBStores = true;
     };
+
+    # Don't open Photos when a phone or camera is plugged in.
+    CustomUserPreferences."com.apple.ImageCapture".disableHotPlug = true;
 
     # Quit the printer app automatically once print jobs finish.
     CustomUserPreferences."com.apple.print.PrintingPrefs"."Quit When Finished" = true;
