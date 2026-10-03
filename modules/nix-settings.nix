@@ -121,10 +121,21 @@ let
       keep-derivations = true;
     };
   };
+
+  # Servers have small disks and nobody watching them: when free space drops
+  # below 2 GiB during a build or download, the daemon collects garbage until
+  # 8 GiB are free, instead of failing with ENOSPC until the weekly gc.
+  gcOnLowDisk = {
+    nix.settings = {
+      min-free = 2 * 1024 * 1024 * 1024;
+      max-free = 8 * 1024 * 1024 * 1024;
+    };
+  };
 in
 {
   flake.modules.nixos.base = shared;
   flake.modules.nixos.container = shared;
+  flake.modules.nixos.server = gcOnLowDisk;
 
   # Workstations only: the VM guests are worked in and the Mac is worked on.
   # Not on nixos.server (helium, nitrogen, the GCE image) or nixos.container.
