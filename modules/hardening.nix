@@ -113,6 +113,17 @@ let
         KbdInteractiveAuthentication = false;
         AllowUsers = [ "mich" ];
 
+        # Probe the client after 10 idle minutes and drop the session if the
+        # probe goes unanswered (STIG V-268142/143). A live idle client
+        # answers and stays connected.
+        ClientAliveInterval = 600;
+        ClientAliveCountMax = 1;
+
+        # One unauthenticated connection at a time per source address (/32
+        # IPv4, /128 IPv6), against the DHEat key-exchange DoS
+        # (CVE-2002-20001). Authenticated sessions don't count toward it.
+        PerSourceMaxStartups = 1;
+        PerSourceNetBlockSize = "32:128";
       };
 
       # Only wheel-group users may sudo, even if a sudoers entry says otherwise.
