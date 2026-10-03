@@ -91,11 +91,12 @@
         {
           imports = [ (modulesPath + "/profiles/qemu-guest.nix") ];
 
-          # Serial console so the provider's console/VNC works.
-          boot.kernelParams = [
-            "console=ttyS0,115200"
-            "console=tty1"
-          ];
+          # Kernel console on the VGA tty, which is what the provider's VNC
+          # console shows. No console=ttyS0: the VPS has no UART
+          # (/sys/class/tty/ttyS0/type is 0), and systemd starts a serial
+          # getty for every console= entry, so agetty would fail with
+          # "/dev/ttyS0: not a tty" and restart every 10 seconds forever.
+          boot.kernelParams = [ "console=tty1" ];
 
           # Legacy BIOS boot: grub embeds into the disk's BIOS-boot partition.
           # disko wires grub.devices from the EF02 partition, so we only enable it.
