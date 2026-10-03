@@ -41,6 +41,14 @@ let
         # Disallow perf profiling without CAP_SYS_ADMIN.
         "kernel.perf_event_paranoid" = 3;
 
+        # Only CAP_SYS_MODULE may autoload TTY line disciplines, so an
+        # unprivileged user can't pull in a rarely-used, vulnerable one.
+        "dev.tty.ldisc_autoload" = 0;
+
+        # Disable the TIOCSTI ioctl, which injects keystrokes into another
+        # process's terminal input queue (a known privilege-escalation path).
+        "dev.tty.legacy_tiocsti" = 0;
+
         # Network hardening. Ignore ICMP redirects (MITM route injection) and
         # don't send them (we're not a router); log packets with impossible
         # source addresses. Reverse-path filtering is deliberately left to the
@@ -75,6 +83,9 @@ let
         # Keep SysRq disabled (matches the sysctl above).
         "sysrq_always_enabled=0"
 
+        # debugfs exposes kernel internals; nothing on these hosts uses it.
+        "debugfs=off"
+
         # Don't let the kernel blank the framebuffer out from under plymouth.
         "fbcon=nodefer"
 
@@ -90,11 +101,18 @@ let
         #     — redundant; set it per-filesystem if wanted.
       ];
 
+      # Block replacing the running kernel: sets kernel.kexec_load_disabled
+      # (both kexec syscalls) and disables hibernation. Consequence: nixos-anywhere
+      # can't kexec a running NixOS host into its installer; reprovision from an
+      # ISO or the provider's rescue system instead.
+      security.protectKernelImage = true;
+
       # sshd is key-only already (vm.nix); also forbid keyboard-interactive auth
       # and restrict login to the one real user.
       services.openssh.settings = {
         KbdInteractiveAuthentication = false;
         AllowUsers = [ "mich" ];
+
       };
 
       # Only wheel-group users may sudo, even if a sudoers entry says otherwise.
@@ -169,5 +187,12 @@ let
 in
 {
   flake.modules.nixos.vm = hardening;
-  flake.modules.nixos.server = hardening;
+  flake.modules.nixos.server = {
+    imports = [ hardening ];
+
+    # ptrace only with CAP_SYS_PTRACE: an unprivileged process can't attach to
+    # or trace even its own children. The VMs keep the kernel default (1,
+    # parent-to-child only) so gdb, strace and delve still work as mich.
+    boot.kernel.sysctl."kernel.yama.ptrace_scope" = 2;
+  };
 }
