@@ -24,6 +24,11 @@
       # of the filesystem. mkDefault so a host can keep more (nitrogen does).
       services.journald.extraConfig = lib.mkDefault "SystemMaxUse=1G";
 
+      # Nothing on a headless server renders text outside the console, so
+      # skip fontconfig's /etc/fonts and its cache. No font packages are
+      # installed here either (fonts.packages is empty by default).
+      fonts.fontconfig.enable = false;
+
       environment.systemPackages = with pkgs; [
         # Minimal: full git drags a perl environment (send-email, gitweb)
         # onto every server; mich's own git comes from home.packages.
