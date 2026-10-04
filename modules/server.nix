@@ -33,6 +33,10 @@
       # setuid fusermount/fusermount3 wrappers.
       programs.fuse.enable = false;
 
+      # /tmp lives on the root disk (no tmpfs: RAM is scarce on these boxes),
+      # so empty it at boot instead of letting files outlive reboots.
+      boot.tmp.cleanOnBoot = true;
+
       environment.systemPackages = with pkgs; [
         # Minimal: full git drags a perl environment (send-email, gitweb)
         # onto every server; mich's own git comes from home.packages.
