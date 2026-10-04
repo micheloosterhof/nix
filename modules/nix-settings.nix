@@ -131,10 +131,26 @@ let
       max-free = 8 * 1024 * 1024 * 1024;
     };
   };
+
+  # Only root and admins may connect to the nix daemon (the default is "*",
+  # every local account, service users included). NixOS only: on darwin mich
+  # is in admin, not wheel.
+  adminOnlyDaemon = {
+    nix.settings.allowed-users = [
+      "root"
+      "@wheel"
+    ];
+  };
 in
 {
-  flake.modules.nixos.base = shared;
-  flake.modules.nixos.container = shared;
+  flake.modules.nixos.base.imports = [
+    shared
+    adminOnlyDaemon
+  ];
+  flake.modules.nixos.container.imports = [
+    shared
+    adminOnlyDaemon
+  ];
   flake.modules.nixos.server = gcOnLowDisk;
 
   # Workstations only: the VM guests are worked in and the Mac is worked on.
