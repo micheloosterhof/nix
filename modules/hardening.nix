@@ -74,8 +74,12 @@ let
         # Reduce a heap attack's exposure to a single cache; don't merge slabs.
         "slab_nomerge"
 
-        # Buddy-allocator free poisoning.
-        "page_poison=1"
+        # Zero memory when it is freed, so freed pages and heap objects can't
+        # leak old contents; zero-on-allocate is already the kernel default
+        # (CONFIG_INIT_ON_ALLOC_DEFAULT_ON). Not page_poison=1: page
+        # poisoning takes precedence over both and turns heap initialization
+        # off ("mem auto-init: ... heap alloc:off, heap free:off" in dmesg).
+        "init_on_free=1"
 
         # Shuffle the free lists — less predictable page allocation.
         "page_alloc.shuffle=1"
