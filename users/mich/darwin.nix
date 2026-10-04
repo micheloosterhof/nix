@@ -176,6 +176,7 @@
       "ghostty"
       "google-chrome"
       "google-drive"
+      "hammerspoon"
       "hashicorp-vagrant"
       "knockknock"
       "logitech-camera-settings"
