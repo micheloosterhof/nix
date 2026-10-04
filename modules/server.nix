@@ -29,6 +29,10 @@
       # installed here either (fonts.packages is empty by default).
       fonts.fontconfig.enable = false;
 
+      # Nothing here mounts FUSE as a user (podman runs as root), so drop the
+      # setuid fusermount/fusermount3 wrappers.
+      programs.fuse.enable = false;
+
       environment.systemPackages = with pkgs; [
         # Minimal: full git drags a perl environment (send-email, gitweb)
         # onto every server; mich's own git comes from home.packages.
