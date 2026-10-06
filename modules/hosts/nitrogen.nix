@@ -42,11 +42,11 @@
           sops.secrets.canary = { };
 
           # Console-login password from sops rather than the committed hash in
-          # users/mich/nixos.nix (hashedPasswordFile wins under
-          # mutableUsers = false). neededForUsers decrypts it before user
-          # creation runs.
+          # users/mich/nixos.nix, which is cleared so only one password source
+          # is set. neededForUsers decrypts it before user creation runs.
           sops.secrets."mich/hashedPassword".neededForUsers = true;
           users.users.mich.hashedPasswordFile = config.sops.secrets."mich/hashedPassword".path;
+          users.users.mich.hashedPassword = inputs.nixpkgs.lib.mkForce null;
 
           # Non-standard ssh port (openFirewall follows it, so 22 closes).
           # 3333, not 4444: the home ISP silently drops outbound TCP to 4444
