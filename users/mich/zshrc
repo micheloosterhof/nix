@@ -177,6 +177,23 @@ type kubectl >/dev/null 2>&1 && source <(kubectl completion zsh)
 # load direnv
 type direnv >/dev/null 2>&1 && eval "$(direnv hook zsh)"
 
+# Map a string to one of the background tints below, in REPLY. Dark tints
+# keep the default foreground readable; none is red, which marks an
+# unknown ssh host. djb2 in shell arithmetic, so per-prompt callers fork
+# no processes.
+typeset -ga _tint_palette=(
+  '#16233a' '#1b3021' '#3a2016' '#2e1b3a'
+  '#163a36' '#3a3316' '#3a1626' '#20263a'
+  '#2a3a16' '#16303a' '#3a2a16' '#26163a'
+  '#163a24' '#1c2e3a' '#33163a' '#3a2e24'
+)
+tint-color () {
+  local -i h=5381
+  local c
+  for c in ${(s::)1}; do (( h = (h * 33 + #c) & 0x7fffffff )); done
+  REPLY=${_tint_palette[h % $#_tint_palette + 1]}
+}
+
 # Tint the terminal background per direnv project (OSC 11) so each tab
 # shows at a glance which environment it has loaded; OSC 111 restores the
 # default when the env unloads. Registered after the direnv hook so it
@@ -192,23 +209,57 @@ direnv-tab-tint () {
     fi
     return
   fi
-  # Dark tints keep the default foreground readable.
-  local -a palette=(
-    '#16233a' '#1b3021' '#3a2016' '#2e1b3a'
-    '#163a36' '#3a3316' '#3a1626' '#20263a'
-  )
-  # djb2 over the path, in shell arithmetic so the per-prompt hook
-  # forks no processes.
-  local -i h=5381
-  local c
-  for c in ${(s::)dir}; do (( h = (h * 33 + #c) & 0x7fffffff )); done
-  local color=${palette[h % $#palette + 1]}
+  tint-color $dir
+  local color=$REPLY
   if [[ $color != $_tab_tint_applied ]]; then
     print -n "\e]11;$color\e\\"
     _tab_tint_applied=$color
   fi
 }
 add-zsh-hook precmd direnv-tab-tint
+
+# Tint the background while ssh runs, keyed on the target's host key in
+# known_hosts: a machine keeps its color under any alias, and a reinstall
+# (new key) gets a new one. A host not yet in known_hosts shows red.
+# Sets REPLY to the tint, or empty when ssh cannot resolve the arguments.
+typeset -g _ssh_unknown_tint='#4a1010'
+ssh-host-tint () {
+  local -a cfg files lines
+  local host port f key
+  REPLY=''
+  cfg=("${(@f)$(command ssh -G "$@" 2>/dev/null)}")
+  host=${${(M)cfg:#hostname *}#hostname }
+  port=${${(M)cfg:#port *}#port }
+  [[ -n $host ]] || return
+  [[ $port == 22 ]] || host="[$host]:$port"
+  files=(${=${${(M)cfg:#userknownhostsfile *}#* }} ${=${${(M)cfg:#globalknownhostsfile *}#* }})
+  for f in $files; do
+    [[ -r $f ]] && lines+=("${(@f)$(ssh-keygen -F $host -f $f 2>/dev/null)}")
+  done
+  # ed25519 first (what ssh records by default), then any key line.
+  key=${${(M)lines:#* ssh-ed25519 *}[1]}
+  [[ -n $key ]] || key=${${(M)lines:#[^\#]*}[1]}
+  key=${${=key}[3]}
+  if [[ -n $key ]]; then
+    tint-color $key
+  else
+    REPLY=$_ssh_unknown_tint
+  fi
+}
+
+# Only when stdout is the terminal, so piped output carries no escapes.
+# Afterwards OSC 111 restores the default, and clearing _tab_tint_applied
+# lets the next prompt re-apply the direnv tint.
+ssh () {
+  [[ -t 1 ]] || { command ssh "$@"; return }
+  ssh-host-tint "$@"
+  [[ -n $REPLY ]] && print -n "\e]11;$REPLY\e\\"
+  command ssh "$@"
+  local rc=$?
+  print -n '\e]111\e\\'
+  _tab_tint_applied=''
+  return $rc
+}
 
 # load fzf
 # back fzf with ripgrep so file search respects .gitignore, when available
