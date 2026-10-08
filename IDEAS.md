@@ -2448,6 +2448,19 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   `k8s/traefik/config.yaml`) — `--accesslog.fields.queryparameters.defaultmode=drop`
   with JSON access logs. Tokens and reset links travel in query strings;
   logging them turns the log store into a credential store.
+- **Provisioning network devices from Nix: Cisco desk phones**
+  (anna-oake `hosts/lxc-phones/`, module `services.cisco` in
+  [oake/nix-things](https://github.com/oake/nix-things/tree/main/modules/common/cisco))
+  — Cisco 7975G SIP phones configured entirely from Nix: a ~1,900-line
+  options file models the phone's config XML (buttons, softkeys, BLF
+  speed dials, dial plan, expansion modules); firmware, wallpapers
+  (imagemagick to 320x216) and ringtones are store paths; one file per
+  phone under `phones/`, merged with a shared `common.nix`. Configs hold
+  `$SIP_PWD_*`-style placeholders that a small Python TFTP/HTTP server
+  fills from an agenix env file at serve time, so passwords never enter
+  the store; an nftables set limits the ports to the phones' declared
+  IPs. Setup: https://github.com/anna-oake/nixos-config/tree/main/hosts/lxc-phones
+  — worth reading only for Cisco 7900-series phones.
 
 ## Storage, impermanence, databases
 
@@ -3042,6 +3055,15 @@ Kept for the record so the same paths don't get re-surveyed.
 # 8. Survey log
 
 What was surveyed when; sections above carry per-item attribution.
+
+- 2026-10-08 — `anna-oake/nixos-config` and its shared input
+  `oake/nix-things`. Adopted the same day: per-host ssh background tint
+  (zshrc), four darwin defaults (AdLib, click-to-show-desktop,
+  CrashReporter dialog, Spotlight off external volumes), and the
+  `@upstream-issue` tag on workarounds. The Cisco phone provisioning is
+  filed in §5. Not taken: `LSQuarantine = false`, disk-image verify off,
+  firewall off and passwordless wheel on servers, agenix-rekey (we have
+  sops-nix), their custom deploy hub/beacon.
 
 - 2026-10-03 — `isabelroses/dotfiles` and `colemickens/nixcfg`.
   isabelroses: adopted the same day (tty/debugfs/kexec kernel
