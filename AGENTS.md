@@ -76,6 +76,9 @@ push.
 - **Naming**: VMs are `vm-<arch>-<hypervisor>`; servers get element names
   (helium, nitrogen).
 - **Shell**: bash/zsh only.
+- **Workarounds**: a fix for a defect outside this repo goes in
+  `modules/workarounds.nix` with an `# @upstream-issue <url>` line (or
+  `none`), so `grep -rn @upstream-issue` lists what to re-check on a bump.
 - **Commits**: imperative, lowercase, terse — match the existing log
   (`remove cruft`, `set timezone`). No AI attribution, no
   `Co-Authored-By: Claude`, no "Generated with Claude Code".

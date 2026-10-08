@@ -1,5 +1,8 @@
 # ABOUTME: Every workaround the fleet carries for a defect or gap outside this
 # ABOUTME: repo, in one file so the ones that outlive their cause stay visible.
+# Each workaround carries an `@upstream-issue` line: the upstream issue whose
+# fix retires it, or `none` when nothing upstream tracks it. Grepping for the
+# tag lists them for review on an input bump.
 { inputs, ... }:
 let
   # Packages taken from nixpkgs-unstable because the stable release is
@@ -19,14 +22,17 @@ let
           in
           {
             # gh CLI on stable has bugs.
+            # @upstream-issue none
             inherit (unstable) gh;
 
             # Stable's zed is far behind (1.3.x) and old builds fail to launch
             # against current GPU/library stacks.
+            # @upstream-issue none
             inherit (unstable) zed-editor;
 
             # Stable's golink release embeds a 2023-era tsnet client that the
             # tailscale console flags as outdated.
+            # @upstream-issue none
             inherit (unstable) golink;
           }
         )
@@ -34,9 +40,10 @@ let
     };
 
   # Hard-linking identical store paths as they are added has a history of
-  # store corruption on macOS (https://github.com/NixOS/nix/issues/7273), so
-  # the setting is Linux-only and the scheduled nix.optimise.automatic in
-  # nix-settings.nix runs `nix store optimise` there instead.
+  # store corruption on macOS, so the setting is Linux-only and the scheduled
+  # nix.optimise.automatic in nix-settings.nix runs `nix store optimise`
+  # there instead.
+  # @upstream-issue https://github.com/NixOS/nix/issues/7273
   autoOptimiseStore =
     { pkgs, ... }:
     {
@@ -45,15 +52,17 @@ let
 
   # jj cannot read the experimental reftable format (git 2.45+), so new repos
   # stay on the classic loose-refs layout.
+  # @upstream-issue https://github.com/jj-vcs/jj/issues/9358
   gitRefFormat = {
     home-manager.users.mich.programs.git.settings.init.defaultRefFormat = "files";
   };
 
   # The user should already exist on the Mac; this lets nix-darwin know what
-  # the home directory is (https://github.com/LnL7/nix-darwin/issues/423).
+  # the home directory is.
   # Note: nix-darwin only manages the login shell for users listed in
   # users.knownUsers, so don't set `shell` here — it'd be a silent no-op.
   # Change the login shell with chsh instead.
+  # @upstream-issue https://github.com/nix-darwin/nix-darwin/issues/423
   darwinHomeDirectory = {
     users.users.mich.home = "/Users/mich";
   };
@@ -79,6 +88,7 @@ in
   ];
 
   # UTM offers the guest no hardware acceleration, so GL renders in software.
+  # @upstream-issue none
   flake.modules.nixos.utm =
     { config, lib, ... }:
     {
@@ -95,6 +105,7 @@ in
   # working interface, `sysadminctl -screenLock <seconds> -password <pw>`,
   # demands the account password, so nothing here can drive it either. Treat
   # both options as deprecated; revisit when nix-darwin tracks the OS.
+  # @upstream-issue https://github.com/nix-darwin/nix-darwin/issues/908
 
   # Apple's `container` runtime has no nix expression here: it is installed
   # from Apple's signed pkg into /usr/local/bin, with update-container.sh and
@@ -102,4 +113,5 @@ in
   # far enough to sit behind its security fixes (2026-09-23: 0.12.3 on 26.05,
   # 1.1.0 on unstable, 1.4.1 upstream). It moves into home.packages once
   # nixpkgs tracks the releases.
+  # @upstream-issue none
 }
