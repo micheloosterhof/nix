@@ -96,6 +96,10 @@
       forceLimitAdTracking = true;
     };
 
+    # Clicking the wallpaper does not sweep all windows aside to show the
+    # desktop.
+    CustomUserPreferences."com.apple.WindowManager".EnableStandardClickToShowDesktop = false;
+
     # Chrome policy. Chrome reads its own defaults domain as recommended-level
     # policy (no MDM needed): each key sets the default but stays changeable
     # in Chrome's settings. Only keys that support the recommended level
