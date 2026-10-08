@@ -100,6 +100,9 @@
     # desktop.
     CustomUserPreferences."com.apple.WindowManager".EnableStandardClickToShowDesktop = false;
 
+    # No "quit unexpectedly" dialog after an app crash.
+    CustomUserPreferences."com.apple.CrashReporter".DialogType = "none";
+
     # Chrome policy. Chrome reads its own defaults domain as recommended-level
     # policy (no MDM needed): each key sets the default but stays changeable
     # in Chrome's settings. Only keys that support the recommended level
