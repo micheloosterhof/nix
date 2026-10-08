@@ -88,8 +88,13 @@
     # history onto this Mac and this Mac's usage onto every other device.
     CustomUserPreferences."com.apple.assistant.backedup"."Cloud Sync Enabled" = false;
 
-    # No Apple personalized advertising.
-    CustomUserPreferences."com.apple.AdLib".allowApplePersonalizedAdvertising = false;
+    # No Apple personalized advertising, and no advertising identifier for
+    # apps to track with.
+    CustomUserPreferences."com.apple.AdLib" = {
+      allowApplePersonalizedAdvertising = false;
+      allowIdentifierForAdvertising = false;
+      forceLimitAdTracking = true;
+    };
 
     # Chrome policy. Chrome reads its own defaults domain as recommended-level
     # policy (no MDM needed): each key sets the default but stays changeable
