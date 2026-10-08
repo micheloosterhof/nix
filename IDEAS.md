@@ -590,6 +590,14 @@ style: check against the repo, spec, one commit each) draws from here.
   no-cursor,sudo,no-title` (the `sudo` feature keeps terminfo working
   under sudo), `window-save-state = always`, `unfocused-split-opacity`,
   `window-colorspace = "display-p3"` (relevant on neon).
+- **Global drop-down terminal** (anna-oake
+  `modules/home/profiles/workstation/personal/default.nix`) — `keybind =
+  global:cmd+grave_accent=toggle_quick_terminal`: a terminal slides down
+  from the top of the screen from any app, keeping its session between
+  toggles. `global:` needs ghostty's Accessibility permission on macOS and
+  a running ghostty. Cmd+` shadows macOS's cycle-app-windows shortcut, so
+  pick another key. Tunables: `quick-terminal-position`,
+  `quick-terminal-autohide`.
 - **ghostty→tmux→nvim file-link opener** (Mic92,
   `home-manager/modules/tmux-open-file.nix`): registers a trampoline as the
   MIME/UTI handler for source files on both OSes (xdg.mimeApps on Linux;
