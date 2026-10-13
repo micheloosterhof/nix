@@ -131,6 +131,9 @@ in
     pkgs.duti
     # CLI to switch audio I/O devices; macOS-only.
     pkgs.switchaudio-osx
+    # TUI for the Shure USB mic's hardware DSP (gain, EQ, mute, presets);
+    # packaged in modules/shurectl.nix. Darwin-only: the mic is on neon.
+    pkgs.shurectl
     # Sudoless performance monitoring CLI for Apple Silicon (CPU/GPU/power).
     pkgs.macmon
     # DDC control of external monitors (brightness, contrast, input);

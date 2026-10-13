@@ -30,6 +30,7 @@ modules/                 # every .nix here is a flake-parts module, auto-importe
   hosts/                 # one file per system, composing aggregates + instance hardware
 users/mich/              # nixos/darwin/home-manager.nix + dotfiles (blessed non-module exception)
 keys/                    # *.pub files authorized for mich + root on every NixOS host
+packages/                # callPackage-form derivations for software nixpkgs lacks
 templates/               # per-project dev-shell flake templates
 tests/                   # pure-eval regression tests (the eval-tests flake check)
 docs/                    # architecture + operations

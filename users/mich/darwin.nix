@@ -159,15 +159,11 @@
     taps = [
       "darrylmorley/whatcable"
       "hashicorp/tap"
-      "humblemonk/shurectl"
     ];
 
     brews = [
       # CLI only; the whatcable cask would add the menu bar app as well.
       "darrylmorley/whatcable/whatcable-cli"
-      # TUI for Shure USB mics (MV7, MVX2U, ...): hardware gain, EQ, mute.
-      # Not in nixpkgs; the tap builds it from source with brew's rust.
-      "humblemonk/shurectl/shurectl"
       "mas"
     ];
 

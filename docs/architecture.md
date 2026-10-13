@@ -124,7 +124,7 @@ Cross-cutting interactions resolve themselves:
 
 ## Output families
 
-Four fundamentally different build products, not to be forced onto one axis.
+Five fundamentally different build products, not to be forced onto one axis.
 The identity axis shows up here structurally: singletons are
 `nixosConfigurations`/`darwinConfigurations`, templates are `packages`.
 (`flake.templates` — the per-project dev-shell scaffolds under `templates/` —
@@ -165,6 +165,13 @@ are unrelated to the fleet.)
    public keys authorized for root, so nixos-anywhere
    (`make remote/provision`) can reach a fresh machine without console
    steps.
+
+5. **Programs** — `packages.<system>.<name>` for software nixpkgs lacks.
+   The derivation lives under `packages/` in nixpkgs callPackage form
+   (so `nix-update` bumps it and upstreaming is a copy), and a
+   `modules/<name>.nix` wires it in: an overlay on the aggregate whose
+   hosts install it, plus the `perSystem` package for standalone builds.
+   Currently: shurectl (`packages/shurectl.nix`, darwin only).
 
 ## Validation
 
