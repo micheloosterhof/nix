@@ -180,6 +180,12 @@ style: check against the repo, spec, one commit each) draws from here.
   ["*.envrc" "*.bashrc"]` formats dotfile fragments, per-directory
   mypy/ruff for repo scripts, and `mkShellNoCC` for a compiler-free (much
   smaller) dev shell.
+- **Vale on `docs/` and IDEAS.md** (dnordstrom `home.packages`: vale,
+  proselint, write-good, alex, cspell, codespell) — a Vale config with
+  the write-good / proselint / Readability style packages would enforce
+  the plain-language rule (ISO 24495-1) mechanically on `docs/*.md`,
+  IDEAS.md and AGENTS.md, as a treefmt linter or pre-commit hook. A
+  `typos` hook is the cheaper spelling sibling of his cspell/codespell.
 - **Eval guardrails in `nixConfig`** (mightyiam) — `abort-on-warn =
   true` and `allow-import-from-derivation = false` repo-wide. Two lines;
   complements the pure-eval tests.
@@ -605,6 +611,12 @@ style: check against the repo, spec, one commit each) draws from here.
   ripgrep/compilers print in ghostty opens nvim in the active tmux pane.
   We run exactly this stack on both platforms; his header comment documents
   why naive wrappers fail (GUI apps inherit launchd PATH).
+- **`ls --hyperlink=auto`** (dnordstrom zshrc `ls`/`lsd` aliases) — GNU
+  ls emits OSC-8 links on every file name, so names are clickable in
+  ghostty and through tmux (which already advertises hyperlinks). Linux
+  only in the current `LS_OPT` block; on neon it needs `gls` from
+  coreutils-prefixed.
+
 
 ## ssh
 
@@ -849,6 +861,23 @@ style: check against the repo, spec, one commit each) draws from here.
   home-manager next to the existing offline-aware stdlib.
 - `use_nix_installables() { direnv_load nix shell "$@" -c $direnv dump; }`
   — ad-hoc per-project toolsets without writing a devshell. (vic)
+- **fzf-tab** (dnordstrom `config/zsh/zshrc`, package
+  `pkgs.zsh-fzf-tab`) — Tab completion becomes an fzf picker, so
+  `cd Docu<Tab>` works without the `**` trigger. Per-command zstyle
+  previews: `cd` and `nvim` show a directory tree or `bat` of the
+  candidate, `export` shows the variable's value, `which` shows the
+  resolved path. One package plus one source line after `compinit` in
+  the dotfile-managed zshrc.
+- **zsh abbreviations** (dnordstrom used momo-lab/zsh-abbrev-alias;
+  nixpkgs has `zsh-abbr`) — fish-style abbreviations: `gs` plus space
+  expands to `git status` in the line editor, so the screen and the
+  history record the full command. Candidate for the git aliases in
+  `users/mich/zshrc`; aliases that must stay opaque (`ls`) stay aliases.
+- **magic-ctrl-z widget** (dnordstrom zshrc) — Ctrl-Z on an empty line
+  runs `fg`; on a typed line it `push-input`s the command and clears the
+  screen, and the line comes back after the next command returns. ~8
+  lines, replaces `fg` round-trips.
+
 
 ## macOS / darwin
 
@@ -1972,6 +2001,14 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   reconciles before the apps that hold its roles. Worth copying if any
   GitOps-shaped deploy lands here: the ordering lives in data, not in a
   README telling you what to apply first.
+- **calibre-web + calibre-server on helium** (dnordstrom
+  `modules/common.nix`) — `services.calibre-server.libraries` plus
+  `services.calibre-web` with `enableBookUploading` and
+  `enableBookConversion`: the library lives on the server, the web UI
+  uploads and converts, and the calibre cask on neon becomes a client.
+  Fits the services-register-into-a-proxy pattern above once helium has
+  a reverse proxy.
+
 
 ## Sandboxing and agents
 
@@ -2613,6 +2650,15 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   `mkConfig` helper + provider flavor attrsets (`flavor = "migadu.com"`
   etc.), `passwordCommand = [rbw-pass "Mail" name]` — if mail is ever
   declared in nix.
+- **Live-edit dotfiles via `mkOutOfStoreSymlink`** (dnordstrom
+  `users/dnordstrom.nix`) — `home.file.<x>.source =
+  config.lib.file.mkOutOfStoreSymlink "/etc/nixos/config/<x>"` links the
+  dotfile to the checkout instead of the store, so edits to zshrc,
+  tmux.conf or vimrc apply on the next shell without a rebuild. Needs an
+  absolute per-host checkout path (`~/src/nix` on neon) and gives up the
+  "activation = what is on disk" property; a hybrid keeps `.bin`-style
+  recursive dirs and only links the files iterated on most.
+
 
 ## Packaging patterns
 
@@ -3063,6 +3109,20 @@ Kept for the record so the same paths don't get re-surveyed.
 # 8. Survey log
 
 What was surveyed when; sections above carry per-item attribution.
+
+- 2026-10-13 — `dnordstrom/dotfiles` (HEAD 4050a5d, last commit
+  2023-07-07: one x86_64 Sway/River desktop plus a laptop,
+  flake-utils-plus, agenix, kitty, nvim-nightly; most of the tree is
+  headphone EQ presets and wallpapers, and the nix uses pre-24.05 option
+  names). Filed above: fzf-tab, zsh abbreviations, magic-ctrl-z (zsh
+  section), Vale on docs (guardrails), live-edit dotfile symlinks
+  (home-module mechanics), calibre-web on helium (services), `ls
+  --hyperlink` (terminal). Not taken: firewall off, allowBroken, doas
+  without a password, pam_yubico cloud OTP as `sufficient`, agenix
+  secrets sourced into the shell, the flake-compat nixos-option
+  wrapper, interception-tools caps remap (neon remaps at the HID layer
+  and the VMs inherit it), nix `cores = 1`, his rm-then-ln preview
+  script, kitty leader chords, PragmataPro.
 
 - 2026-10-08 — `anna-oake/nixos-config` and its shared input
   `oake/nix-things`. Adopted the same day: per-host ssh background tint
