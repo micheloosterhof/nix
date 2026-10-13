@@ -2024,6 +2024,22 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   whose traffic is forced through tor's `TransPort`/`DNSPort` via
   nftables NAT: any program runs over Tor without app-level SOCKS
   config. Extends the installed tor/torsocks pair.
+- **WireGuard-only network namespace** (notthebee
+  `modules/homelab/services/wireguard-netns/default.nix`, consumed by his
+  deluge and slskd modules) — the VPN sibling of torjail. A `netns@`
+  template unit creates the namespace; a oneshot creates `wg0` in the root
+  namespace, moves it into the netns, applies `wg setconf`, and adds the
+  default route through it; `/etc/netns/<ns>/resolv.conf` gives the jail
+  its own resolver. Because a WireGuard interface keeps its UDP socket in
+  the namespace it was created in, the encrypted traffic still leaves over
+  the host uplink while the only interface the jailed process can see is
+  the tunnel: no leak path if the VPN drops, nothing to firewall. A
+  consumer unit just sets `bindsTo = [ "netns@<ns>.service" ]` and
+  `serviceConfig.NetworkNamespacePath = [ "/var/run/netns/<ns>" ]`; a
+  socket-activated proxy in the root namespace exposes its web UI.
+  Reference shape for an agent or download jail whose only egress is a
+  tunnel, and for a service that may only talk to one peer. Linux-only
+  (fleet hosts and VMs).
 - **firejail-wrapped GUI apps** (mrcjkb
   `desktop-programs/firejail.nix`) — NixOS's typed
   `programs.firejail.wrappedBinaries` ships sandboxed browser
@@ -3110,6 +3126,21 @@ Kept for the record so the same paths don't get re-surveyed.
 
 What was surveyed when; sections above carry per-item attribution.
 
+- 2026-10-13 — `notthebee/nix-config` (git.notthebe.ee, HEAD fce286b,
+  active: six NixOS hosts — router, two ZFS-root mergerfs/snapraid NAS
+  boxes, a VPS, a Steam HTPC, an aarch64 VM — plus one nix-darwin Mac;
+  flake-parts without import-tree, agenix with a private secrets input,
+  ~30 `homelab.services.*` modules behind caddy and one wildcard cert).
+  Filed above: WireGuard-only network namespace (sandboxing). Taken into
+  AGENTS.md directly: the untracked-file gotcha. Held in memory for a
+  later pick: restic state backup with `readlink -f` over
+  `/var/lib/private`, failed-units motd line, x86_64 via binfmt in the
+  Mac's linux-builder, launchd `limit.maxfiles`, host ssh key as a
+  private-repo deploy identity. Not taken: `LoginGraceTime = 0` (with
+  `PerSourceMaxStartups = 1` one stuck connection blocks its source),
+  sshd on port 69, passwordless sudo on servers, blanket unfree
+  predicate, auto-upgrade with reboot and `git reset --hard`, restic
+  staging under /tmp, agenix, zplug, nh, nixvim, the pi agent stack.
 - 2026-10-13 — `dnordstrom/dotfiles` (HEAD 4050a5d, last commit
   2023-07-07: one x86_64 Sway/River desktop plus a laptop,
   flake-utils-plus, agenix, kitty, nvim-nightly; most of the tree is
