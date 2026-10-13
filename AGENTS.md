@@ -98,3 +98,6 @@ push.
   `users/mich/darwin.nix` are not yet exhaustive.
 - The Mac must keep `nix.enable = true` (nix-darwin owns nix.conf) or the
   Linux builder asserts — see `docs/operations.md`.
+- Nix evaluates the git tree, not the working directory: a new file must
+  be `git add`ed (`git add -N` is enough) before `nix eval`/`nix
+  build`/`make switch` can see it (`Path '…' is not tracked by Git`).
