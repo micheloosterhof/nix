@@ -616,6 +616,17 @@ style: check against the repo, spec, one commit each) draws from here.
   ghostty and through tmux (which already advertises hyperlinks). Linux
   only in the current `LS_OPT` block; on neon it needs `gls` from
   coreutils-prefixed.
+- **Focus the left tab on close** (self-originated, 2026-10-19) — closing
+  a tab (Cmd-W or `exit`) focuses the tab to the right, so Cmd-T then
+  close doesn't return to the original tab. Ghostty 1.3.1 has no option
+  for it. Open PR ghostty-org/ghostty#14370 adds
+  `window-close-tab-focus = left | right`; with the default
+  `window-new-tab-position = current`, `left` returns to the original
+  tab. Once a release ships it and the cask updates, add
+  `window-close-tab-focus = "left";` to `programs.ghostty.settings`. A
+  `chain` keybind (close_surface + previous_tab) is not a substitute: it
+  misses `exit`, switches tabs when closing a split, and overshoots on
+  the rightmost tab.
 
 
 ## ssh
