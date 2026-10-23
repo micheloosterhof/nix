@@ -118,6 +118,7 @@ linux)
 darwin)
   alias top="/usr/bin/top -o cpu"
   alias vlc=/Applications/VLC.app/Contents/MacOS/VLC
+  alias rex='/Applications/Rex\ Beta.app/Contents/Helpers/Rex\ Server.rex/Contents/MacOS/rex'
 ;;
 esac
 
@@ -134,5 +135,3 @@ type fzf >/dev/null 2>&1 && eval "$(fzf --bash)"
 # Use bash-completion, if available
 [ -f ${HOME}/.bash_completion ] && \
     . ${HOME}/.bash_completion
-
-
