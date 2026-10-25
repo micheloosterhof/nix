@@ -74,6 +74,7 @@ in
     pkgs.htop
     pkgs.jq
     pkgs.ripgrep
+    pkgs.tmux
     pkgs.tree
     pkgs.watch
     pkgs.wget
@@ -178,7 +179,7 @@ in
   # the dotfiles win.
   home.file.".inputrc".source = ./inputrc;
   home.file.".vimrc".source = ./vimrc;
-  home.file.".tmux.conf".source = ./tmux.conf;
+  xdg.configFile."tmux/tmux.conf".source = ./tmux.conf;
   home.file.".bash_env".source = ./bash_env;
   home.file.".bash_profile".source = ./bash_profile;
   home.file.".bashrc".source = ./bashrc;
@@ -568,19 +569,6 @@ in
         "super+zero=reset_font_size"
       ];
     };
-  };
-
-  programs.tmux = {
-    enable = true;
-    terminal = "xterm-256color";
-    shortcut = "l";
-    secureSocket = false;
-
-    extraConfig = ''
-      set -ga terminal-overrides ",*256col*:Tc"
-
-      bind -n C-k send-keys "clear"\; send-keys "Enter"
-    '';
   };
 
   programs.i3status = {
