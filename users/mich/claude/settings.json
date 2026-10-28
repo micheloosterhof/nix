@@ -5,7 +5,7 @@
     "sessionUrl": false
   },
   "env": {
-    "SHELL": "/bin/bash",
+    "CLAUDE_CODE_SHELL": "/run/current-system/sw/bin/bash",
     "DISABLE_ERROR_REPORTING": "1"
   },
   "permissions": {
