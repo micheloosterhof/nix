@@ -1036,6 +1036,16 @@ style: check against the repo, spec, one commit each) draws from here.
   workflow whose one step is `mxschmitt/action-tmate` with an OS-choice
   input — an interactive shell on a macos/arm64/x86 runner when CI-only
   failures need poking. Port as-is.
+- **Replace the Logitech camera software** (neon security audit
+  2026-10-29): the `logitech-camera-settings` cask installs
+  LogiVCCoreService, a background agent that fails to start (exit 78).
+  The webcam works without it (standard UVC); the software only adjusts
+  zoom/focus/exposure/white balance. Candidates: `uvc-util`
+  (github.com/jtfrey/uvc-util, CLI, not in nixpkgs or brew — package it
+  in `packages/`; untested on Apple Silicon / macOS 27) or the
+  CameraController cask (GUI, no daemon). Open question: whether
+  Logitech's agent reapplies settings on reconnect. Test with the
+  camera plugged in.
 
 ## CI micro-patterns
 
