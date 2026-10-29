@@ -12,7 +12,9 @@ let
     {
       boot.kernel.sysctl = {
         # The Magic SysRq key lets a console user run low-level kernel commands;
-        # we don't need it and it's a security concern.
+        # we don't need it and it's a security concern. There is no
+        # sysrq_always_enabled boot parameter: the kernel reads its presence,
+        # not its value, so even sysrq_always_enabled=0 forces SysRq on.
         "kernel.sysrq" = 0;
 
         # Hide kernel pointers even from processes with CAP_SYSLOG.
@@ -80,9 +82,6 @@ let
 
         # Shuffle the free lists — less predictable page allocation.
         "page_alloc.shuffle=1"
-
-        # Keep SysRq disabled (matches the sysctl above).
-        "sysrq_always_enabled=0"
 
         # debugfs exposes kernel internals; nothing on these hosts uses it.
         "debugfs=off"
