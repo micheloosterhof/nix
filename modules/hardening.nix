@@ -25,9 +25,6 @@ let
         "kernel.unprivileged_bpf_disabled" = true;
         "net.core.bpf_jit_harden" = 2;
 
-        # Disable ftrace debugging.
-        "kernel.ftrace_enabled" = false;
-
         # Keep kernel memory addresses out of dmesg.
         "kernel.dmesg_restrict" = 1;
 
