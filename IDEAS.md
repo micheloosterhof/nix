@@ -1847,6 +1847,18 @@ domain) is the one DR item that can't be solved by redeploying.
   sops and `builders-use-substitutes = true`. The existing remote-builder
   items here all stop at "dedicated user + trusted-users"; this is the line
   that makes that user harmless if the key leaks.
+- **Make the linux-builder image cacheable** (2026-10-29, flake update
+  blocked) — neon's customized builder (cores, 32 GB memory, 100 GB disk,
+  `nixos-test` feature, htop in `modules/hosts/neon.nix`) is a different
+  derivation from the cache.nixos.org one, so every nixpkgs bump must
+  rebuild the image on the running builder. When that VM is down or hung
+  (it was: QEMU up 8 days at 0% CPU, ssh on 31022 reset), `make build` on
+  neon fails and the lock can't be updated. Options: (a) move cores and
+  memory to QEMU runtime settings if nix-darwin allows it without changing
+  the image (unverified) and drop htop, keeping only what must be in the
+  image; (b) use the stock image (1 core, 3 GB, 20 GB, no VM tests);
+  (c) `make cachix/seed` after every bump. Also worth: a health check
+  that notices a hung builder before a bump does.
 
 ## Services and self-hosting (helium)
 
