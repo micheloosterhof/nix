@@ -1039,13 +1039,16 @@ style: check against the repo, spec, one commit each) draws from here.
 - **Replace the Logitech camera software** (neon security audit
   2026-10-29): the `logitech-camera-settings` cask installs
   LogiVCCoreService, a background agent that fails to start (exit 78).
-  The webcam works without it (standard UVC); the software only adjusts
-  zoom/focus/exposure/white balance. Candidates: `uvc-util`
-  (github.com/jtfrey/uvc-util, CLI, not in nixpkgs or brew — package it
-  in `packages/`; untested on Apple Silicon / macOS 27) or the
-  CameraController cask (GUI, no daemon). Open question: whether
-  Logitech's agent reapplies settings on reconnect. Test with the
-  camera plugged in.
+  Root cause (2026-10-30): the agent and `Camera Settings.app` are
+  x86_64-only and neon has no Rosetta, so nothing from this cask can
+  run; it is dead weight plus a root-owned LaunchAgent pointing at a
+  world-writable directory. The webcam works without it (standard
+  UVC); the software only adjusts zoom/focus/exposure/white balance.
+  Candidates: `uvc-util` (github.com/jtfrey/uvc-util, CLI, not in
+  nixpkgs or brew — package it in `packages/`; seven .m files against
+  Foundation+IOKit, build untested on arm64 / macOS 27) or the
+  CameraController cask (GUI, no daemon, universal arm64 binary,
+  min macOS 10.15). Test with the camera plugged in.
 
 ## CI micro-patterns
 
