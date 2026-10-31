@@ -355,12 +355,6 @@ style: check against the repo, spec, one commit each) draws from here.
   flake>` makes `nix run my#...` and `nix flake init -t my#<template>`
   work from any directory without a path. One line next to the existing
   `registry.nixpkgs` pin in `modules/nix-settings.nix`.
-- **`pkgs-x86` Rosetta escape hatch** (malob overlays) — on
-  aarch64-darwin only, expose `pkgs-x86 = import nixpkgs { system =
-  "x86_64-darwin"; }` so a package broken on Apple Silicon can be
-  swapped for its Rosetta build with one `inherit (final.pkgs-x86)`.
-  His live example is exemplary workaround hygiene: zsh pinned from
-  master with the nixpkgs issue, root cause, and fixing commit cited.
 - **Task-oriented devShells on the config flake** (malob `devShells`:
   `pdf` with ghostscript/poppler/tesseract/pypdf, `docx`, a nix-dev
   shell with deadnix/statix/nixd/nixfmt) — ad-hoc toolchains per task
@@ -1048,20 +1042,6 @@ style: check against the repo, spec, one commit each) draws from here.
   workflow whose one step is `mxschmitt/action-tmate` with an OS-choice
   input — an interactive shell on a macos/arm64/x86 runner when CI-only
   failures need poking. Port as-is.
-- **Replace the Logitech camera software** (neon security audit
-  2026-10-29): the `logitech-camera-settings` cask installs
-  LogiVCCoreService, a background agent that fails to start (exit 78).
-  Root cause (2026-10-30): the agent and `Camera Settings.app` are
-  x86_64-only and neon has no Rosetta, so nothing from this cask can
-  run; it is dead weight plus a root-owned LaunchAgent pointing at a
-  world-writable directory. The webcam works without it (standard
-  UVC); the software only adjusts zoom/focus/exposure/white balance.
-  Candidates: `uvc-util` (github.com/jtfrey/uvc-util, CLI, not in
-  nixpkgs or brew — package it in `packages/`; seven .m files against
-  Foundation+IOKit, build untested on arm64 / macOS 27) or the
-  CameraController cask (GUI, no daemon, universal arm64 binary,
-  min macOS 10.15). Test with the camera plugged in.
-
 ## CI micro-patterns
 
 - **Bump PRs that trigger required checks** — vic's scheduled job pushes
@@ -2274,9 +2254,8 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   without displacing anything.
   For docker-CLI compatibility the reference remains BrianHicks
   `dotfiles/container/default.nix`: `socktainer` as a Docker-socket API
-  shim plus a committed preset script (`container system property set
-  build.rosetta true`, cpu/memory budgets) as the config surface the
-  CLI lacks.
+  shim plus a committed preset script (cpu/memory budgets) as the
+  config surface the CLI lacks.
 - **containers and container machines need different permissions**
   (measured on neon 2026-09-23 with the `container-server-oci` image) — a
   container is a container; a container machine is a VM with a persistent
@@ -2347,14 +2326,10 @@ resolving the storage dir from config with a `hasAttrByPath` fallback.
   tags `<builder-version>-nix<nix-version>`, currently `v2-nix2.35.2`,
   multi-arch amd64/arm64, MIT) — the `linux-builder` half of
   nix-apple-container runs that image as a container to build
-  `aarch64-linux` and `x86_64-linux` derivations on macOS. That is an
-  alternative to both halves of our current arrangement: neon's qemu
-  linux-builder VM for aarch64 and shipping x86_64 work to helium. Its
-  x86_64 builder pins the Kata `3.24.0` kernel through `container run
-  --kernel` to dodge Rosetta regressions with newer kernels, which is the
-  kind of detail that argues for copying their pinning rather than
-  re-deriving it. Adoptable on its own, without the container-reconciling
-  half of the module that we do not want.
+  `aarch64-linux` derivations on macOS (its `x86_64-linux` mode runs
+  under Rosetta, see §7). That is an alternative to neon's qemu
+  linux-builder VM. Adoptable on its own, without the
+  container-reconciling half of the module that we do not want.
 
   Tried on neon 2026-09-23: the image builds an `aarch64-linux`
   derivation over nix's remote-store protocol, so the mechanism works.
@@ -2988,6 +2963,18 @@ full lists live in the per-repo review record.
 # 7. Decided against, superseded, or explicitly skipped
 
 Kept for the record so the same paths don't get re-surveyed.
+
+- **Anything that needs Rosetta** (2026-10-31) — Apple is retiring
+  Rosetta 2, and neon has never had it installed (`arch -x86_64` fails,
+  `extra-platforms` is empty, the only builder is aarch64-linux). Dropped
+  from §2 and §4: malob's `pkgs-x86` x86_64-darwin escape hatch, the
+  `build.rosetta true` half of BrianHicks' container preset, and the
+  `x86_64-linux` mode of the halfwhey nix-builder (Kata kernel pinned to
+  dodge Rosetta regressions). Also removed from `users/mich/darwin.nix`
+  the same day: the `logitech-camera-settings` and `maltego` casks, both
+  x86_64-only and so never runnable here, plus the JDK 21 `java_home`
+  symlink Maltego's launcher needed; the camera-settings replacement
+  idea (uvc-util / CameraController) went with the cask.
 
 - **Pinning nixpkgs-unstable into the registry** — pinned on neon with the
   rest of the inputs 2026-09-26, dropped 2026-09-29 (e7da5f0) once the
