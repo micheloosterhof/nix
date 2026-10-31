@@ -429,6 +429,18 @@ style: check against the repo, spec, one commit each) draws from here.
   little to fall back on. nitrogen boots GRUB/BIOS and gets nothing from
   it. Also the missing half of the rejected sshd-or-reboot watchdog (§7).
 
+- **`services.journald.extraConfig` → `services.journald.settings.Journal`
+  — do with the NixOS 26.11 upgrade** (Mic92 `nixosModules/workstation.nix`
+  12ab566e, 2026-09-19): unstable's journald module removes `extraConfig`
+  (`mkRemovedOptionModule`, "Use services.journald.settings.Journal
+  instead") and renames `storage`, `rateLimit*`, `forwardToSyslog`,
+  `audit` into the same freeform `settings.Journal` attrset. nixos-26.05
+  has only `extraConfig` and no `settings`, so the three call sites
+  (`modules/vm.nix`, `modules/server.nix` with its mkDefault, and the 4G
+  override in `modules/hosts/nitrogen.nix`) cannot move early; they become
+  `services.journald.settings.Journal.SystemMaxUse = "1G"` (mkDefault keeps
+  working per attribute) on the bump. Eval will fail loudly, not silently.
+
 - **Perlless activation** (parked 2026-08-29 during the closure-size
   sweep): the last ~30 MiB of perl on a server is NixOS's own activation
   scripts (setup-etc.pl, update-users-groups.pl). Removing them means
