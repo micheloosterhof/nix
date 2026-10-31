@@ -191,9 +191,7 @@
       "hammerspoon"
       "hashicorp-vagrant"
       "knockknock"
-      "logitech-camera-settings"
       "lulu"
-      "maltego"
       "obs"
       "plex"
       "plex-media-server"
@@ -214,16 +212,4 @@
   # it with the update-container.sh / uninstall-container.sh scripts there.
   # No brew cask exists; the nixpkgs lag that keeps it out of nix is in
   # workarounds.nix.
-
-  # Symlink the nix JDK into the system JavaVirtualMachines directory so
-  # /usr/bin/java and Java-aware GUI apps (Maltego) discover it via
-  # java_home. Maltego requires JDK 21: its launcher passes
-  # -Djava.security.manager=allow, which JDK 24+ rejects at startup
-  # (JEP 486 removed the Security Manager). Trader Workstation needs none
-  # of this: it bundles its own install4j JRE.
-  system.activationScripts.postActivation.text = ''
-    mkdir -p /Library/Java/JavaVirtualMachines
-    ln -sfn ${pkgs.openjdk}/Library/Java/JavaVirtualMachines/zulu-21.jdk \
-      /Library/Java/JavaVirtualMachines/zulu-21.jdk
-  '';
 }
