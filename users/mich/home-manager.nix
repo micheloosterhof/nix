@@ -85,7 +85,6 @@ in
     pkgs.act
     pkgs.asciinema
     pkgs.ast-grep
-    pkgs.bitwarden-cli
     pkgs.claude-code
     pkgs.codex
     pkgs.coreutils-prefixed
