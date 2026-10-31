@@ -104,8 +104,8 @@ in
     pkgs.oils-for-unix
     pkgs.p7zip
     pkgs.pre-commit
-    pkgs.python314
-    pkgs.python314Packages.pip
+    pkgs.python3
+    pkgs.python3Packages.pip
     pkgs.qpdf
     pkgs.qrencode # QR codes from the CLI (wifi creds, URLs to phones)
     pkgs.rbw # Bitwarden CLI with a background agent (no re-login per call)
