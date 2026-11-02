@@ -148,7 +148,8 @@ let
       # Unload attack surface we never use on these VMs.
       boot.blacklistedKernelModules = [
         # Obscure network protocols.
-        "af_802154" # IEEE 802.15.4
+        "ieee802154" # IEEE 802.15.4
+        "ieee802154_socket" # IEEE 802.15.4 socket family
         "appletalk" # Appletalk
         "atm" # ATM
         "ax25" # Amateur X.25
