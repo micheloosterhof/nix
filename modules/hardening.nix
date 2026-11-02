@@ -217,5 +217,9 @@ in
     # or trace even its own children. The VMs keep the kernel default (1,
     # parent-to-child only) so gdb, strace and delve still work as mich.
     boot.kernel.sysctl."kernel.yama.ptrace_scope" = 2;
+
+    # A crashed daemon's core holds its memory, keys included. Nobody debugs
+    # from cores on the servers, so don't write them to disk at all.
+    systemd.coredump.settings.Coredump.Storage = "none";
   };
 }
