@@ -190,6 +190,7 @@
       "google-drive"
       "hammerspoon"
       "hashicorp-vagrant"
+      "imageoptim"
       "knockknock"
       "lulu"
       "obs"
