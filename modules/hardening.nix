@@ -67,6 +67,10 @@ let
         "net.ipv4.conf.all.log_martians" = true;
         "net.ipv4.conf.default.log_martians" = true;
 
+        # Ignore RST segments for sockets in TIME-WAIT (RFC 1337 "TIME-WAIT
+        # assassination"), so a forged RST can't tear the state down early.
+        "net.ipv4.tcp_rfc1337" = true;
+
         # Multipath TCP only pays off with several network paths; these hosts
         # have one. Go 1.24+ enables it on every listener by default, which
         # exposes the kernel's MPTCP option parsing to any remote peer for no
