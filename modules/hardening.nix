@@ -40,6 +40,11 @@ let
         # Disallow perf profiling without CAP_SYS_ADMIN.
         "kernel.perf_event_paranoid" = 3;
 
+        # io_uring is a large, frequently exploited kernel attack surface and
+        # nothing on these hosts uses it. 2 disables it for every process,
+        # root included.
+        "kernel.io_uring_disabled" = 2;
+
         # Only CAP_SYS_MODULE may autoload TTY line disciplines, so an
         # unprivileged user can't pull in a rarely-used, vulnerable one.
         "dev.tty.ldisc_autoload" = 0;
