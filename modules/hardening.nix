@@ -61,6 +61,12 @@ let
         "net.ipv4.conf.default.send_redirects" = false;
         "net.ipv4.conf.all.log_martians" = true;
         "net.ipv4.conf.default.log_martians" = true;
+
+        # Multipath TCP only pays off with several network paths; these hosts
+        # have one. Go 1.24+ enables it on every listener by default, which
+        # exposes the kernel's MPTCP option parsing to any remote peer for no
+        # gain (CVE-2026-80586, CVE-2026-80588). Refuse it at the kernel.
+        "net.mptcp.enabled" = false;
       };
 
       boot.kernelParams = [
