@@ -158,7 +158,6 @@
 
     taps = [
       "darrylmorley/whatcable"
-      "hashicorp/tap"
     ];
 
     brews = [
@@ -189,7 +188,6 @@
       "google-chrome"
       "google-drive"
       "hammerspoon"
-      "hashicorp-vagrant"
       "imageoptim"
       "knockknock"
       "lulu"
