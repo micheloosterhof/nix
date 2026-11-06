@@ -26,7 +26,7 @@ The detailed maps live in `docs/`:
 flake.nix                # inputs + one-line mkFlake over import-tree ./modules
 modules/                 # every .nix here is a flake-parts module, auto-imported
   <feature>.nix          # one feature per file; merges into flake.modules.<class>.<name>
-  platforms/             # platform aggregates: fusion, utm, apple-vm
+  platforms/             # platform aggregates: fusion, utm, apple-vm, gce, container
   hosts/                 # one file per system, composing aggregates + instance hardware
 users/mich/              # nixos/darwin/home-manager.nix + dotfiles (blessed non-module exception)
 keys/                    # *.pub files authorized for mich + root on every NixOS host

@@ -193,7 +193,7 @@
         config.flake.modules.nixos.base
         config.flake.modules.nixos.server
         config.flake.modules.nixos.gce
-        ../users/mich/nixos.nix
+        ../../users/mich/nixos.nix
         { my.profile = "server"; }
         { config._module.args = { inherit inputs; }; }
       ];

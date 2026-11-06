@@ -54,8 +54,9 @@ Every system is a composition along orthogonal axes:
 - **Substrate (what it runs on)** — `flake.modules.nixos.{fusion,utm,apple-vm}`:
   hypervisor drivers, guest tools, host-integration glue. Chosen by each host
   file at composition time (imports cannot depend on `config`). GCE and
-  the container runtime are substrates too, currently encoded ad hoc
-  (`gce.nix`, `container.nix`).
+  the container runtime are substrates too (`flake.modules.nixos.{gce,container}`);
+  their files in `modules/platforms/` also build the image that uses them,
+  rather than being composed by a host file.
 - **Role (what it's for)** — NixOS options declared in `modules/profile.nix`:
 
 ```nix
@@ -137,7 +138,7 @@ are unrelated to the fleet.)
    platform), helium and nitrogen (servers), neon (darwin).
 
 2. **Container images** — `packages.<linux-system>.container-server` and
-   `container-server-oci` (`modules/container.nix`): NixOS on top of
+   `container-server-oci` (`modules/platforms/container.nix`): NixOS on top of
    nixpkgs' upstream `profiles/docker-container.nix`, in the two shapes
    runtimes ask for. One system, two artifacts: a root-filesystem tarball
    for the runtimes that import one (`docker import
@@ -150,7 +151,7 @@ are unrelated to the fleet.)
    no 2020-era state to preserve).
 
 3. **Cloud images** — `packages.<linux-system>.gce-image`
-   (`modules/gce.nix`): a headless server-profile GCE disk image, built for
+   (`modules/platforms/gce.nix`): a headless server-profile GCE disk image, built for
    both x86_64 and aarch64. Generic and reusable — hostname and IP come from
    GCE metadata/DHCP at boot, so one image deploys to many instances. The
    `flake.modules.nixos.gce` aggregate (the upstream google-compute-config
