@@ -954,9 +954,9 @@ style: check against the repo, spec, one commit each) draws from here.
   sleeps the display, so the lock still waits out the grace period.
 
 - **loginwindow hardening** (malob `darwin/defaults.nix`; tjmaynes agrees) —
-  `system.defaults.loginwindow.GuestEnabled = false`,
-  `loginwindow.DisableConsoleAccess = true`. (The stealth-mode third of this
-  entry was tried and reverted — see section 7.)
+  `loginwindow.DisableConsoleAccess = true`. (`GuestEnabled = false` is
+  done; the stealth-mode third of this entry was tried and reverted — see
+  section 7.)
 - **prefmanager** (malob's own tool, flake input) — watches macOS
   `defaults` domains live so the key behind any GUI toggle can be
   discovered; the tool for the remaining audit leftovers (AirPlay

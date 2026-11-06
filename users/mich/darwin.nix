@@ -56,6 +56,9 @@
     # Warning banner shown on the login window.
     loginwindow.LoginwindowText = "Unauthorized access to this machine is prohibited.  Use of this system is limited to authorized individuals only.  All activity is monitored.";
 
+    # No guest account on the login window.
+    loginwindow.GuestEnabled = false;
+
     # No drop shadow around captured windows.
     screencapture.disable-shadow = true;
 
