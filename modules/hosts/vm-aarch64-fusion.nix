@@ -18,6 +18,7 @@ in
 
       # Trials (modules/experimental/).
       config.flake.modules.nixos.rex
+      config.flake.modules.nixos.hermes
 
       # Exposes system.build.vmwareImage. Upstreamed into nixpkgs in 25.05;
       # was previously imported via nixos-generators.

@@ -69,6 +69,9 @@
       url = "https://pkgs.superlogical.com/rex/nix/preview.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # No follows: hermes-agent's Python environment is built and tested
+    # against its own locked nixpkgs and uv2nix set.
+    hermes-agent.url = "github:NousResearch/hermes-agent";
   };
 
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./modules);
