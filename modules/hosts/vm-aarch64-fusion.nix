@@ -16,6 +16,9 @@ in
       config.flake.modules.nixos.vm
       config.flake.modules.nixos.fusion
 
+      # Trials (modules/experimental/).
+      config.flake.modules.nixos.rex
+
       # Exposes system.build.vmwareImage. Upstreamed into nixpkgs in 25.05;
       # was previously imported via nixos-generators.
       "${inputs.nixpkgs}/nixos/modules/virtualisation/vmware-image.nix"

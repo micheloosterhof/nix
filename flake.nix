@@ -61,6 +61,14 @@
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Trials on dev (modules/experimental/). Rex is an unfree prebuilt
+    # binary; the lock records the immutable per-release URL behind the
+    # channel URL. Its own nixpkgs only patchelfs the binary, so stable will do.
+    rex = {
+      url = "https://pkgs.superlogical.com/rex/nix/preview.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } (inputs.import-tree ./modules);

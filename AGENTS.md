@@ -28,6 +28,7 @@ modules/                 # every .nix here is a flake-parts module, auto-importe
   <feature>.nix          # one feature per file; merges into flake.modules.<class>.<name>
   platforms/             # platform aggregates: fusion, utm, apple-vm, gce, container
   hosts/                 # one file per system, composing aggregates + instance hardware
+  experimental/          # tools on trial (rex), composed only into dev
 users/mich/              # nixos/darwin/home-manager.nix + dotfiles (blessed non-module exception)
 keys/                    # *.pub files authorized for mich + root on every NixOS host
 packages/                # callPackage-form derivations for software nixpkgs lacks
