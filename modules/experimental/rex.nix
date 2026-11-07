@@ -1,5 +1,5 @@
 # ABOUTME: Trial of Rex (superlogical terminal multiplexer): mich's personal
-# ABOUTME: Rex server as a user service, reachable as its own tailnet node.
+# ABOUTME: Rex server on dev as a tailnet node, and the rex CLI on neon.
 { inputs, ... }:
 {
   flake.modules.nixos.rex = {
@@ -21,6 +21,15 @@
         enable = true;
         hostname = "rex-dev";
       };
+    };
+  };
+
+  # On macOS the Rex app runs the server; this puts the rex command on PATH,
+  # e.g. `rex -S rex-dev.<tailnet>.ts.net ls` to reach dev.
+  flake.modules.darwin.rex = {
+    home-manager.users.mich = {
+      imports = [ inputs.rex.homeManagerModules.default ];
+      programs.rex.enable = true;
     };
   };
 }

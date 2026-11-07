@@ -7,6 +7,9 @@
     modules = [
       config.flake.modules.darwin.base
 
+      # Trials (modules/experimental/).
+      config.flake.modules.darwin.rex
+
       ../../users/mich/darwin.nix
 
       (
