@@ -182,7 +182,6 @@
       "blackhole-2ch"
       "bruno"
       "calibre"
-      "chromium"
       "db-browser-for-sqlite"
       "discord"
       "docker-desktop"
