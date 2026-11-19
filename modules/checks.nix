@@ -32,6 +32,8 @@
           "**/.envrc"
         ];
         programs.shfmt.enable = true;
+        programs.shfmt.indent_size = 2;
+        programs.shfmt.simplify = true;
         programs.actionlint.enable = true;
       };
     in
