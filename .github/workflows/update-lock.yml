@@ -55,10 +55,12 @@ jobs:
           git add flake.lock
           git commit -m "chore(flake): update inputs"
           pr=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')
-          # An open PR already carrying these exact inputs needs no new commit
-          # and no second CI run; its body still describes what merging does.
-          if [ -n "$pr" ] && git fetch origin "$branch" && git diff --quiet FETCH_HEAD -- flake.lock; then
-            echo "PR #$pr already holds these inputs; nothing to do"
+          # An open PR whose tree already equals main plus this bump needs no
+          # new commit and no second CI run; its body still describes what
+          # merging does. Comparing the whole tree, not just flake.lock, means
+          # a PR that lacks a later commit on main is rebuilt.
+          if [ -n "$pr" ] && git fetch origin "$branch" && git diff --quiet FETCH_HEAD HEAD; then
+            echo "PR #$pr already holds this tree; nothing to do"
             exit 0
           fi
           git push --force -u origin "$branch"
