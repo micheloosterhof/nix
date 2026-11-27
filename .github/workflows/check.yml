@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v7
 
       # The token avoids GitHub API rate limits when fetching flake inputs.
-      - uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@v32
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
